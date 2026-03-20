@@ -4431,120 +4431,27 @@ function RulesTabContent({
 
   return (
     <>
-      {/* ── Primary Routing Decision ────────────────── */}
-      <div className="kam-routing-decision">
-        <div className="kam-routing-decision-header">
-          <h3>Routing Strategy</h3>
+      {/* ── AI Routing Assistant ────────────────── */}
+      <div className="kam-card" style={{ marginBottom: 20 }}>
+        <div className="kam-card-header" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#528FF0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <h3 style={{ margin: 0 }}>Routing Copilot</h3>
+          <span className="kam-badge info" style={{ fontSize: 10 }}>AI</span>
+          <span style={{ flex: 1 }}></span>
+          <span style={{ fontSize: 12, color: 'var(--rzp-text-muted)' }}>Ask about rules, simulate payments, create routing rules</span>
         </div>
-
-        {/* Active strategy display */}
-        <div className="kam-routing-active">
-          <div
-            className={`kam-routing-strategy-card ${routingMode === 'sr' ? 'active' : 'inactive'}`}
-            onClick={() => {
-              if (routingMode !== 'sr') {
-                setRoutingMode('sr')
-                showToast('Switched to SR-optimized routing')
-                addAuditEntry('routing_strategy_change', 'Switched routing strategy to Success Rate optimized', merchant.id)
-              }
-            }}
-            style={routingMode !== 'sr' ? { cursor: 'pointer' } : {}}
-          >
-            <div className="kam-routing-strategy-top">
-              <div className="kam-routing-strategy-card-icon sr">
-                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>
-              </div>
-              <div className="kam-routing-strategy-labels">
-                <strong>Optimize for Success Rate</strong>
-                <span className="kam-badge success" style={{ fontSize: 10, padding: '1px 6px' }}>Recommended</span>
-              </div>
-              {routingMode === 'sr' && (
-                <span className="kam-routing-active-badge">Active</span>
-              )}
-            </div>
-            <p className="kam-routing-strategy-desc">Routes to the highest-SR terminal automatically. Protects wallet share by maximizing payment experience.</p>
-
-            {routingMode === 'sr' && mccBenchmark && (
-              <div className="kam-routing-benefit">
-                <div className="kam-routing-benefit-item">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--rzp-success)" strokeWidth="2.5"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/></svg>
-                  <span>
-                    <strong>+{mccBenchmark.srDelta}% higher SR</strong> than cost-optimized merchants in same MCC category
-                  </span>
-                </div>
-                <div className="kam-routing-benefit-item">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--rzp-success)" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                  <span>Auto-failover across {merchant.gatewayMetrics?.length || 0} terminals — keeps merchant's volume on Razorpay</span>
-                </div>
-              </div>
-            )}
-
-          </div>
-
-          <div
-            className={`kam-routing-strategy-card ${routingMode === 'cost' ? 'active' : 'inactive'}`}
-            onClick={() => {
-              if (routingMode !== 'cost') setShowSwitchWarning(true)
-            }}
-            style={routingMode !== 'cost' ? { cursor: 'pointer' } : {}}
-          >
-            <div className="kam-routing-strategy-top">
-              <div className="kam-routing-strategy-card-icon cost">
-                <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-              </div>
-              <div className="kam-routing-strategy-labels">
-                <strong>Save Cost / Custom Rules</strong>
-              </div>
-              {routingMode === 'cost' && (
-                <span className="kam-routing-active-badge cost">Active</span>
-              )}
-            </div>
-            <p className="kam-routing-strategy-desc">Apply manual rules to reduce backward cost, meet TSP commitments, or enable bank offers.</p>
-
-            {routingMode === 'cost' && (
-              <div className="kam-routing-benefit cost-mode">
-                <div className="kam-routing-benefit-item warn">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--rzp-warning)" strokeWidth="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                  <span>Short-term N/R gain, but <strong>~{mccBenchmark?.srDelta || 2.1}% lower SR</strong> — merchant may shift volume to other PGs, reducing Razorpay's wallet share</span>
-                </div>
-              </div>
-            )}
-
-            {routingMode !== 'cost' && (
-              <button className="kam-btn kam-btn-sm kam-btn-outline" style={{ marginTop: 8 }} onClick={() => setShowSwitchWarning(true)}>
-                Switch to Custom Rules
-              </button>
-            )}
-          </div>
+        <div style={{ width: '100%', minHeight: '500px', borderRadius: '0 0 12px 12px', overflow: 'hidden' }}>
+          <iframe
+            src="https://console.thesys.dev/app/LXBs_T8qKh-J2QkrFSiJc?hideLogin=true"
+            style={{ width: '100%', height: '500px', border: 'none' }}
+            title="Routing Copilot"
+            allow="clipboard-write"
+          />
         </div>
-
-        {/* Switch warning modal */}
-        {showSwitchWarning && (
-          <div className="kam-routing-switch-warning">
-            <div className="kam-routing-switch-warning-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--rzp-warning)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-            </div>
-            <div className="kam-routing-switch-warning-content">
-              <h4>Switching to Cost-optimized Routing</h4>
-              <p>While this may improve net revenue short-term, merchants in the same MCC category ({merchant.mccLabel}) using cost-optimized routing show <strong>~{mccBenchmark?.srDelta || 2.1}% lower success rates</strong>. Lower SR gives the merchant reason to route more volume through other payment gateways, <strong>reducing Razorpay's wallet share</strong> with this merchant.</p>
-              <p style={{ fontSize: 12, color: 'var(--rzp-text-muted)', marginTop: 4 }}>You can switch back to SR-optimized at any time.</p>
-            </div>
-            <div className="kam-routing-switch-warning-actions">
-              <button className="kam-btn kam-btn-sm kam-btn-outline" onClick={() => setShowSwitchWarning(false)}>Cancel</button>
-              <button className="kam-btn kam-btn-sm kam-btn-warning" onClick={() => {
-                setRoutingMode('cost')
-                setShowSwitchWarning(false)
-                showToast('Switched to custom rules routing')
-                addAuditEntry('routing_strategy_change', 'Switched routing strategy to Cost-based / Custom Rules', merchant.id)
-              }}>Switch Anyway</button>
-            </div>
-          </div>
-        )}
       </div>
 
-
-      {/* ── Rules Content (only when cost mode) ──── */}
-      {routingMode === 'cost' && (
+      {/* ── Rules Content (always visible) ──── */}
+      {true && (
       <>
 
       {/* Cost-Saving Mode bar moved inside Routing Rules card below */}
