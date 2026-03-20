@@ -278,6 +278,7 @@
 }
 .gc-pq-options { margin: 6px 0 2px 0; clear: both; }
 .gc-pq-result { clear: both; margin-top: 12px; }
+.gc-msg-full { width: 100%; }
 
 /* ── Progressive Conversational Form (legacy) ── */
 .gc-progressive { display: flex; flex-direction: column; gap: 2px; }

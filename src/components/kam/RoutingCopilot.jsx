@@ -813,6 +813,15 @@ export default function RoutingCopilot({ merchant, rules, addRule, simOverrides 
       )
     }
 
+    // Rule form — renders directly in chat area (not inside bot bubble)
+    if (msg.content === 'rule_form') {
+      return (
+        <div key={i} className="gc-msg-full">
+          <RuleForm merchant={msg.data.merchant} rules={msg.data.rules} onRuleCreated={addRule} prefill={msg.data.prefill} />
+        </div>
+      )
+    }
+
     // Bot messages with GenUI components
     return (
       <div key={i} className="gc-msg gc-msg-bot">
@@ -837,8 +846,6 @@ export default function RoutingCopilot({ merchant, rules, addRule, simOverrides 
           {msg.content === 'pipeline' && <PipelineTrace result={msg.data.result} txn={msg.data.txn} />}
 
           {msg.content === 'rule_table' && <RuleTable rules={msg.data.rules} merchant={msg.data.merchant} />}
-
-          {msg.content === 'rule_form' && <RuleForm merchant={msg.data.merchant} rules={msg.data.rules} onRuleCreated={addRule} prefill={msg.data.prefill} />}
 
           {msg.content === 'coverage' && <CoverageGaps merchant={msg.data.merchant} rules={msg.data.rules} />}
 
