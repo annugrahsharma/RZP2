@@ -274,232 +274,252 @@ function RuleTable({ rules, merchant }) {
   )
 }
 
-// ── Rule Creation Form (GenUI) ──
+// ── Rule Creation Form (Progressive Conversational GenUI) ──
+const RULE_STEPS = [
+  { id: 'method', q: 'What payment method should this rule apply to?', options: ['Cards', 'UPI', 'NB', 'EMI'] },
+  { id: 'network', q: 'Which card network?', options: ['Any', 'Visa', 'Mastercard', 'RuPay'], showIf: (s) => s.method === 'Cards' || s.method === 'EMI' },
+  { id: 'cardType', q: 'Credit or Debit?', options: ['Any', 'Credit', 'Debit'], showIf: (s) => s.method === 'Cards' },
+  { id: 'issuer', q: 'Any specific issuer bank?', options: ['Any', 'HDFC', 'ICICI', 'Axis', 'SBI', 'Kotak'] },
+  { id: 'amount', q: 'Filter by amount range?', options: ['Any', '>₹5K', '>₹1L', '<₹100'] },
+  { id: 'intl', q: 'Domestic or International?', options: ['Domestic', 'International', 'Both'] },
+  { id: 'terminals', q: 'Route to which terminal(s)?', type: 'terminals' },
+  { id: 'srThreshold', q: 'SR Safety Net — below what SR% should it fallback?', type: 'slider' },
+]
+
 function RuleForm({ merchant, rules, onRuleCreated, prefill }) {
-  const [method, setMethod] = useState(prefill?.method || 'Cards')
-  const [network, setNetwork] = useState(prefill?.network || 'Any')
-  const [cardType, setCardType] = useState('Any')
-  const [issuer, setIssuer] = useState('Any')
-  const [amountOp, setAmountOp] = useState('Any')
-  const [amountVal, setAmountVal] = useState('')
-  const [intl, setIntl] = useState('Domestic')
+  const [selections, setSelections] = useState({})
+  const [currentStep, setCurrentStep] = useState(0)
   const [selectedTerminals, setSelectedTerminals] = useState([])
   const [srThreshold, setSrThreshold] = useState(90)
   const [submitted, setSubmitted] = useState(false)
   const [simResult, setSimResult] = useState(null)
+  const stepsEndRef = useRef(null)
 
-  // Get eligible terminals for this merchant
+  useEffect(() => {
+    stepsEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [currentStep, submitted])
+
+  // Pre-fill from intent
+  useEffect(() => {
+    if (prefill?.method) {
+      const initial = { method: prefill.method }
+      setSelections(initial)
+      // Skip to next relevant step
+      let nextIdx = 1
+      while (nextIdx < RULE_STEPS.length && RULE_STEPS[nextIdx].showIf && !RULE_STEPS[nextIdx].showIf(initial)) nextIdx++
+      setCurrentStep(nextIdx)
+    }
+  }, [prefill])
+
   const merchantTerminals = useMemo(() => {
+    const method = selections.method || 'Cards'
     return merchant.gatewayMetrics.map(gm => {
       const gw = gateways.find(g => g.id === gm.gatewayId)
       const term = gw?.terminals.find(t => t.id === gm.terminalId)
       return {
-        id: gm.terminalId,
-        displayId: term?.terminalId || gm.terminalId,
-        gatewayShort: gw?.shortName || '??',
-        successRate: gm.successRate,
-        costPerTxn: gm.costPerTxn,
-        supportedMethods: gm.supportedMethods || [],
+        id: gm.terminalId, displayId: term?.terminalId || gm.terminalId,
+        gatewayShort: gw?.shortName || '??', successRate: gm.successRate,
+        costPerTxn: gm.costPerTxn, supportedMethods: gm.supportedMethods || [],
       }
-    }).filter(t => method === 'Any' || t.supportedMethods.includes(method))
-  }, [merchant, method])
+    }).filter(t => t.supportedMethods.includes(method))
+  }, [merchant, selections.method])
 
-  // Auto-select gateway's terminals if prefill
+  // Auto-select prefill gateway
   useEffect(() => {
-    if (prefill?.gatewayShort) {
+    if (prefill?.gatewayShort && merchantTerminals.length) {
       const matching = merchantTerminals.filter(t => t.gatewayShort === prefill.gatewayShort)
-      setSelectedTerminals(matching.map(t => t.id))
+      if (matching.length) setSelectedTerminals(matching.map(t => t.id))
     }
   }, [prefill, merchantTerminals])
+
+  const handleSelect = (stepId, value) => {
+    const next = { ...selections, [stepId]: value }
+    setSelections(next)
+
+    // Find next visible step
+    let nextIdx = currentStep + 1
+    while (nextIdx < RULE_STEPS.length) {
+      const step = RULE_STEPS[nextIdx]
+      if (!step.showIf || step.showIf(next)) break
+      nextIdx++
+    }
+    setCurrentStep(nextIdx)
+  }
 
   const toggleTerminal = (id) => {
     setSelectedTerminals(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
   }
 
-  const handleSubmit = () => {
-    // Build the rule
+  const confirmTerminals = () => {
+    handleSelect('terminals', selectedTerminals)
+  }
+
+  const confirmSR = () => {
+    handleSelect('srThreshold', srThreshold)
+    // All steps done — submit
+    setTimeout(() => doSubmit(), 100)
+  }
+
+  const doSubmit = () => {
+    const s = { ...selections, terminals: selectedTerminals, srThreshold }
     const conditions = []
-    if (method !== 'Any') conditions.push({ field: 'payment_method', operator: 'equals', value: method })
-    if (network !== 'Any' && (method === 'Cards' || method === 'EMI')) conditions.push({ field: 'card_network', operator: 'equals', value: network })
-    if (cardType !== 'Any' && method === 'Cards') conditions.push({ field: 'card_type', operator: 'equals', value: cardType.toLowerCase() })
-    if (issuer !== 'Any') conditions.push({ field: 'issuer_bank', operator: 'equals', value: issuer })
-    if (amountOp === '>₹1L') conditions.push({ field: 'amount', operator: 'greater_than', value: 100000 })
-    if (amountOp === '>₹5K') conditions.push({ field: 'amount', operator: 'greater_than', value: 5000 })
-    if (amountOp === '<₹100') conditions.push({ field: 'amount', operator: 'less_than', value: 100 })
-    if (amountOp === 'Custom' && amountVal) conditions.push({ field: 'amount', operator: 'greater_than', value: parseInt(amountVal) })
-    if (intl === 'International') conditions.push({ field: 'international', operator: 'equals', value: true })
+    if (s.method) conditions.push({ field: 'payment_method', operator: 'equals', value: s.method })
+    if (s.network && s.network !== 'Any') conditions.push({ field: 'card_network', operator: 'equals', value: s.network })
+    if (s.cardType && s.cardType !== 'Any') conditions.push({ field: 'card_type', operator: 'equals', value: s.cardType.toLowerCase() })
+    if (s.issuer && s.issuer !== 'Any') conditions.push({ field: 'issuer_bank', operator: 'equals', value: s.issuer })
+    if (s.amount === '>₹5K') conditions.push({ field: 'amount', operator: 'greater_than', value: 5000 })
+    if (s.amount === '>₹1L') conditions.push({ field: 'amount', operator: 'greater_than', value: 100000 })
+    if (s.amount === '<₹100') conditions.push({ field: 'amount', operator: 'less_than', value: 100 })
+    if (s.intl === 'International') conditions.push({ field: 'international', operator: 'equals', value: true })
+
+    const termLabels = selectedTerminals.map(tid => merchantTerminals.find(t => t.id === tid)?.displayId || tid)
 
     const newRule = {
       id: `rule-${merchant.id}-new-${Date.now()}`,
-      name: `${method}${network !== 'Any' ? ' ' + network : ''} → ${selectedTerminals.map(t => merchantTerminals.find(mt => mt.id === t)?.displayId).join(' + ')}`,
-      type: 'conditional',
-      enabled: true,
+      name: `${s.method || 'Cards'}${s.network && s.network !== 'Any' ? ' ' + s.network : ''} → ${termLabels.join(' + ')}`,
+      type: 'conditional', enabled: true,
       priority: rules.filter(r => !r.isDefault && !r.isMethodDefault).length + 1,
-      conditions,
-      conditionLogic: 'AND',
-      action: { type: 'route', terminals: selectedTerminals, splits: [], srThreshold, minPaymentCount: 100 },
-      isDefault: false,
-      createdAt: new Date().toISOString(),
-      createdBy: 'anugrah.sharma@razorpay.com',
+      conditions, conditionLogic: 'AND',
+      action: { type: 'route', terminals: selectedTerminals, splits: [], srThreshold: s.srThreshold || 90, minPaymentCount: 100 },
+      isDefault: false, createdAt: new Date().toISOString(), createdBy: 'anugrah.sharma@razorpay.com',
     }
 
-    // Simulate impact
-    const txn = { payment_method: method === 'Any' ? 'Cards' : method, amount: 5000, card_network: network === 'Any' ? 'Visa' : network, card_type: cardType === 'Any' ? 'credit' : cardType.toLowerCase(), international: intl === 'International' }
+    const txn = { payment_method: s.method || 'Cards', amount: 5000, card_network: s.network === 'Any' ? 'Visa' : (s.network || 'Visa'), card_type: s.cardType === 'Any' ? 'credit' : (s.cardType || 'credit').toLowerCase(), international: s.intl === 'International' }
     const withRule = simulateRoutingPipeline(merchant, txn, [...rules, newRule])
     const withoutRule = simulateRoutingPipeline(merchant, txn, rules)
 
     setSimResult({ newRule, withRule, withoutRule, txn })
     setSubmitted(true)
-
     if (onRuleCreated) onRuleCreated(newRule)
   }
 
-  if (submitted && simResult) {
-    return (
-      <div className="gc-form-result">
-        <div className="gc-form-result-header">
-          <span className="gc-badge gc-badge-success">✓ Rule Created</span>
-          <strong>{simResult.newRule.name}</strong>
-        </div>
-
-        <div className="gc-impact">
-          <div className="gc-impact-title">Impact Preview</div>
-          <div className="gc-impact-grid">
-            <div className="gc-impact-card">
-              <div className="gc-impact-label">Before</div>
-              <div className="gc-impact-val">
-                {simResult.withoutRule.isNTF
-                  ? <span style={{ color: 'var(--rzp-danger)' }}>NTF ❌</span>
-                  : <span>→ {simResult.withoutRule.selectedTerminal?.displayId}</span>
-                }
-              </div>
-            </div>
-            <div className="gc-impact-arrow">→</div>
-            <div className="gc-impact-card">
-              <div className="gc-impact-label">After</div>
-              <div className="gc-impact-val">
-                {simResult.withRule.isNTF
-                  ? <span style={{ color: 'var(--rzp-danger)' }}>NTF ❌</span>
-                  : <span style={{ color: 'var(--rzp-success)' }}>→ {simResult.withRule.selectedTerminal?.displayId}</span>
-                }
-              </div>
-            </div>
-          </div>
-
-          {simResult.withRule.isNTF && (
-            <div className="gc-warning-box">
-              ⚠️ This rule will cause NTF for {simResult.txn.payment_method} payments. The target terminals may not support this payment method.
-            </div>
-          )}
-
-          {!simResult.withRule.isNTF && !simResult.withoutRule.isNTF && (
-            <div className="gc-info-box">
-              Routing changes from <strong>{simResult.withoutRule.selectedTerminal?.displayId}</strong> to <strong>{simResult.withRule.selectedTerminal?.displayId}</strong> for {simResult.txn.payment_method} {simResult.txn.card_network} ₹{simResult.txn.amount} payments.
-            </div>
-          )}
-        </div>
-      </div>
-    )
+  // Build visible conversation steps
+  const visibleSteps = []
+  for (let i = 0; i < RULE_STEPS.length && i <= currentStep; i++) {
+    const step = RULE_STEPS[i]
+    if (step.showIf && !step.showIf(selections)) continue
+    visibleSteps.push({ ...step, idx: i })
   }
 
   return (
-    <div className="gc-form">
-      <div className="gc-form-title">Create Routing Rule</div>
+    <div className="gc-progressive">
+      {visibleSteps.map((step, vi) => {
+        const isAnswered = selections[step.id] !== undefined
+        const isCurrent = step.idx === currentStep && !submitted
 
-      <div className="gc-form-row">
-        <label>Payment Method</label>
-        <div className="gc-btn-group">
-          {['Cards', 'UPI', 'NB', 'EMI'].map(m => (
-            <button key={m} className={`gc-btn-opt ${method === m ? 'active' : ''}`} onClick={() => setMethod(m)}>{m}</button>
-          ))}
-        </div>
-      </div>
+        return (
+          <div key={step.id} className={`gc-step ${isAnswered ? 'answered' : ''} ${isCurrent ? 'current' : ''}`}>
+            {/* Question */}
+            <div className="gc-step-q">{step.q}</div>
 
-      {(method === 'Cards' || method === 'EMI') && (
-        <div className="gc-form-row">
-          <label>Card Network</label>
-          <div className="gc-btn-group">
-            {['Any', 'Visa', 'Mastercard', 'RuPay'].map(n => (
-              <button key={n} className={`gc-btn-opt ${network === n ? 'active' : ''}`} onClick={() => setNetwork(n)}>{n}</button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {method === 'Cards' && (
-        <div className="gc-form-row">
-          <label>Card Type</label>
-          <div className="gc-btn-group">
-            {['Any', 'Credit', 'Debit'].map(ct => (
-              <button key={ct} className={`gc-btn-opt ${cardType === ct ? 'active' : ''}`} onClick={() => setCardType(ct)}>{ct}</button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="gc-form-row">
-        <label>Issuer Bank</label>
-        <div className="gc-btn-group">
-          {['Any', 'HDFC', 'ICICI', 'Axis', 'SBI', 'Kotak'].map(ib => (
-            <button key={ib} className={`gc-btn-opt ${issuer === ib ? 'active' : ''}`} onClick={() => setIssuer(ib)}>{ib}</button>
-          ))}
-        </div>
-      </div>
-
-      <div className="gc-form-row">
-        <label>Amount</label>
-        <div className="gc-btn-group">
-          {['Any', '>₹5K', '>₹1L', '<₹100', 'Custom'].map(a => (
-            <button key={a} className={`gc-btn-opt ${amountOp === a ? 'active' : ''}`} onClick={() => setAmountOp(a)}>{a}</button>
-          ))}
-        </div>
-        {amountOp === 'Custom' && (
-          <input className="gc-input" type="number" placeholder="Enter amount" value={amountVal} onChange={e => setAmountVal(e.target.value)} />
-        )}
-      </div>
-
-      <div className="gc-form-row">
-        <label>International</label>
-        <div className="gc-btn-group">
-          {['Domestic', 'International', 'Both'].map(i => (
-            <button key={i} className={`gc-btn-opt ${intl === i ? 'active' : ''}`} onClick={() => setIntl(i)}>{i}</button>
-          ))}
-        </div>
-      </div>
-
-      <div className="gc-form-row">
-        <label>Route To (select terminals)</label>
-        <div className="gc-terminal-list">
-          {merchantTerminals.map(t => (
-            <div key={t.id} className={`gc-terminal-opt ${selectedTerminals.includes(t.id) ? 'selected' : ''}`} onClick={() => toggleTerminal(t.id)}>
-              <div className="gc-terminal-check">{selectedTerminals.includes(t.id) ? '✓' : ''}</div>
-              <div className="gc-terminal-info">
-                <strong>{t.displayId}</strong>
-                <span>{t.gatewayShort}</span>
+            {/* Answer (if already answered) */}
+            {isAnswered && step.type !== 'terminals' && step.type !== 'slider' && (
+              <div className="gc-step-a">
+                <span className="gc-step-answer">{selections[step.id]}</span>
               </div>
-              <div className="gc-terminal-stats">
-                <span className="gc-terminal-sr">SR {t.successRate}%</span>
-                <span className="gc-terminal-cost">₹{t.costPerTxn}</span>
+            )}
+            {isAnswered && step.id === 'terminals' && (
+              <div className="gc-step-a">
+                <div className="gc-chips">
+                  {selectedTerminals.map(tid => {
+                    const t = merchantTerminals.find(mt => mt.id === tid)
+                    return <span key={tid} className="gc-chip gc-chip-pass">{t?.displayId || tid}</span>
+                  })}
+                </div>
               </div>
+            )}
+            {isAnswered && step.id === 'srThreshold' && (
+              <div className="gc-step-a">
+                <span className="gc-step-answer">{srThreshold === 0 ? 'Off (no fallback)' : `${srThreshold}%`}</span>
+              </div>
+            )}
+
+            {/* Options (if current unanswered step) */}
+            {isCurrent && step.options && (
+              <div className="gc-btn-group" style={{ marginTop: 6 }}>
+                {step.options.map(opt => (
+                  <button key={opt} className="gc-btn-opt" onClick={() => handleSelect(step.id, opt)}>{opt}</button>
+                ))}
+              </div>
+            )}
+
+            {/* Terminal selection */}
+            {isCurrent && step.type === 'terminals' && (
+              <div style={{ marginTop: 6 }}>
+                <div className="gc-terminal-list">
+                  {merchantTerminals.map(t => (
+                    <div key={t.id} className={`gc-terminal-opt ${selectedTerminals.includes(t.id) ? 'selected' : ''}`} onClick={() => toggleTerminal(t.id)}>
+                      <div className="gc-terminal-check">{selectedTerminals.includes(t.id) ? '✓' : ''}</div>
+                      <div className="gc-terminal-info">
+                        <strong>{t.displayId}</strong>
+                        <span>{t.gatewayShort}</span>
+                      </div>
+                      <div className="gc-terminal-stats">
+                        <span className="gc-terminal-sr">SR {t.successRate}%</span>
+                        <span className="gc-terminal-cost">₹{t.costPerTxn}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {selectedTerminals.length > 0 && (
+                  <button className="gc-btn-opt active" style={{ marginTop: 8 }} onClick={confirmTerminals}>
+                    Confirm {selectedTerminals.length} terminal{selectedTerminals.length > 1 ? 's' : ''} →
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* SR Slider */}
+            {isCurrent && step.type === 'slider' && (
+              <div style={{ marginTop: 6 }}>
+                <input type="range" min="0" max="99" value={srThreshold} onChange={e => setSrThreshold(parseInt(e.target.value))} style={{ width: '100%' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#94a3b8', marginBottom: 8 }}>
+                  <span>0% (no fallback)</span>
+                  <span style={{ fontWeight: 700, color: srThreshold > 0 ? '#528FF0' : '#dc2626', fontSize: 14 }}>{srThreshold}%</span>
+                  <span>99%</span>
+                </div>
+                <button className="gc-btn-opt active" onClick={confirmSR}>Create Rule & Preview Impact →</button>
+              </div>
+            )}
+          </div>
+        )
+      })}
+
+      {/* Impact result */}
+      {submitted && simResult && (
+        <div className="gc-step answered" style={{ marginTop: 8 }}>
+          <div className="gc-form-result">
+            <div className="gc-form-result-header">
+              <span className="gc-badge gc-badge-success">✓ Rule Created</span>
+              <strong>{simResult.newRule.name}</strong>
             </div>
-          ))}
+            <div className="gc-impact">
+              <div className="gc-impact-title">Impact Preview</div>
+              <div className="gc-impact-grid">
+                <div className="gc-impact-card">
+                  <div className="gc-impact-label">Before</div>
+                  <div className="gc-impact-val">
+                    {simResult.withoutRule.isNTF ? <span style={{ color: 'var(--rzp-danger)' }}>NTF ❌</span> : <span>→ {simResult.withoutRule.selectedTerminal?.displayId}</span>}
+                  </div>
+                </div>
+                <div className="gc-impact-arrow">→</div>
+                <div className="gc-impact-card">
+                  <div className="gc-impact-label">After</div>
+                  <div className="gc-impact-val">
+                    {simResult.withRule.isNTF ? <span style={{ color: 'var(--rzp-danger)' }}>NTF ❌</span> : <span style={{ color: 'var(--rzp-success)' }}>→ {simResult.withRule.selectedTerminal?.displayId}</span>}
+                  </div>
+                </div>
+              </div>
+              {simResult.withRule.isNTF && <div className="gc-warning-box">⚠️ This rule will cause NTF for {simResult.txn.payment_method} payments. The target terminals may not support this payment method.</div>}
+              {!simResult.withRule.isNTF && !simResult.withoutRule.isNTF && (
+                <div className="gc-info-box">Routing changes from <strong>{simResult.withoutRule.selectedTerminal?.displayId}</strong> to <strong>{simResult.withRule.selectedTerminal?.displayId}</strong> for {simResult.txn.payment_method} {simResult.txn.card_network} ₹{simResult.txn.amount} payments.</div>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
-      <div className="gc-form-row">
-        <label>SR Safety Net (min {srThreshold}%)</label>
-        <input type="range" min="0" max="99" value={srThreshold} onChange={e => setSrThreshold(parseInt(e.target.value))}
-          style={{ width: '100%' }} />
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#94a3b8' }}>
-          <span>0% (no fallback)</span>
-          <span style={{ fontWeight: 600, color: srThreshold > 0 ? '#528FF0' : '#dc2626' }}>{srThreshold}%</span>
-          <span>99%</span>
-        </div>
-      </div>
-
-      <button className="gc-submit-btn" onClick={handleSubmit} disabled={selectedTerminals.length === 0}>
-        Create Rule & Preview Impact
-      </button>
+      <div ref={stepsEndRef} />
     </div>
   )
 }
