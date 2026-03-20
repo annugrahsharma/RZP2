@@ -408,6 +408,17 @@ function RuleForm({ merchant, rules, onRuleCreated, prefill }) {
     visibleSteps.push({ ...step, idx: i })
   }
 
+  // Render answer text for a step
+  const getAnswerText = (stepId) => {
+    if (stepId === 'terminals') {
+      return selectedTerminals.map(tid => merchantTerminals.find(t => t.id === tid)?.displayId || tid).join(', ')
+    }
+    if (stepId === 'srThreshold') {
+      return srThreshold === 0 ? 'Off (no fallback)' : `SR threshold: ${srThreshold}%`
+    }
+    return selections[stepId] || ''
+  }
+
   return (
     <div className="gc-progressive">
       {visibleSteps.map((step, vi) => {
@@ -415,86 +426,82 @@ function RuleForm({ merchant, rules, onRuleCreated, prefill }) {
         const isCurrent = step.idx === currentStep && !submitted
 
         return (
-          <div key={step.id} className={`gc-step ${isAnswered ? 'answered' : ''} ${isCurrent ? 'current' : ''}`}>
-            {/* Question */}
-            <div className="gc-step-q">{step.q}</div>
+          <React.Fragment key={step.id}>
+            {/* AI Question — left side */}
+            <div className="gc-msg gc-msg-bot">
+              <div className="gc-msg-avatar">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#528FF0" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              </div>
+              <div className="gc-msg-bubble gc-msg-bubble-bot">
+                <div style={{ fontSize: 13, fontWeight: 500 }}>{step.q}</div>
 
-            {/* Answer (if already answered) */}
-            {isAnswered && step.type !== 'terminals' && step.type !== 'slider' && (
-              <div className="gc-step-a">
-                <span className="gc-step-answer">{selections[step.id]}</span>
-              </div>
-            )}
-            {isAnswered && step.id === 'terminals' && (
-              <div className="gc-step-a">
-                <div className="gc-chips">
-                  {selectedTerminals.map(tid => {
-                    const t = merchantTerminals.find(mt => mt.id === tid)
-                    return <span key={tid} className="gc-chip gc-chip-pass">{t?.displayId || tid}</span>
-                  })}
-                </div>
-              </div>
-            )}
-            {isAnswered && step.id === 'srThreshold' && (
-              <div className="gc-step-a">
-                <span className="gc-step-answer">{srThreshold === 0 ? 'Off (no fallback)' : `${srThreshold}%`}</span>
-              </div>
-            )}
+                {/* Options (if current unanswered step) */}
+                {isCurrent && step.options && (
+                  <div className="gc-btn-group" style={{ marginTop: 8 }}>
+                    {step.options.map(opt => (
+                      <button key={opt} className="gc-btn-opt" onClick={() => handleSelect(step.id, opt)}>{opt}</button>
+                    ))}
+                  </div>
+                )}
 
-            {/* Options (if current unanswered step) */}
-            {isCurrent && step.options && (
-              <div className="gc-btn-group" style={{ marginTop: 6 }}>
-                {step.options.map(opt => (
-                  <button key={opt} className="gc-btn-opt" onClick={() => handleSelect(step.id, opt)}>{opt}</button>
-                ))}
-              </div>
-            )}
-
-            {/* Terminal selection */}
-            {isCurrent && step.type === 'terminals' && (
-              <div style={{ marginTop: 6 }}>
-                <div className="gc-terminal-list">
-                  {merchantTerminals.map(t => (
-                    <div key={t.id} className={`gc-terminal-opt ${selectedTerminals.includes(t.id) ? 'selected' : ''}`} onClick={() => toggleTerminal(t.id)}>
-                      <div className="gc-terminal-check">{selectedTerminals.includes(t.id) ? '✓' : ''}</div>
-                      <div className="gc-terminal-info">
-                        <strong>{t.displayId}</strong>
-                        <span>{t.gatewayShort}</span>
-                      </div>
-                      <div className="gc-terminal-stats">
-                        <span className="gc-terminal-sr">SR {t.successRate}%</span>
-                        <span className="gc-terminal-cost">₹{t.costPerTxn}</span>
-                      </div>
+                {/* Terminal selection */}
+                {isCurrent && step.type === 'terminals' && (
+                  <div style={{ marginTop: 8 }}>
+                    <div className="gc-terminal-list">
+                      {merchantTerminals.map(t => (
+                        <div key={t.id} className={`gc-terminal-opt ${selectedTerminals.includes(t.id) ? 'selected' : ''}`} onClick={() => toggleTerminal(t.id)}>
+                          <div className="gc-terminal-check">{selectedTerminals.includes(t.id) ? '✓' : ''}</div>
+                          <div className="gc-terminal-info">
+                            <strong>{t.displayId}</strong>
+                            <span>{t.gatewayShort}</span>
+                          </div>
+                          <div className="gc-terminal-stats">
+                            <span className="gc-terminal-sr">SR {t.successRate}%</span>
+                            <span className="gc-terminal-cost">₹{t.costPerTxn}</span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-                {selectedTerminals.length > 0 && (
-                  <button className="gc-btn-opt active" style={{ marginTop: 8 }} onClick={confirmTerminals}>
-                    Confirm {selectedTerminals.length} terminal{selectedTerminals.length > 1 ? 's' : ''} →
-                  </button>
+                    {selectedTerminals.length > 0 && (
+                      <button className="gc-btn-opt active" style={{ marginTop: 8 }} onClick={confirmTerminals}>
+                        Confirm {selectedTerminals.length} terminal{selectedTerminals.length > 1 ? 's' : ''} →
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* SR Slider */}
+                {isCurrent && step.type === 'slider' && (
+                  <div style={{ marginTop: 8 }}>
+                    <input type="range" min="0" max="99" value={srThreshold} onChange={e => setSrThreshold(parseInt(e.target.value))} style={{ width: '100%' }} />
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#94a3b8', marginBottom: 8 }}>
+                      <span>0% (no fallback)</span>
+                      <span style={{ fontWeight: 700, color: srThreshold > 0 ? '#528FF0' : '#dc2626', fontSize: 14 }}>{srThreshold}%</span>
+                      <span>99%</span>
+                    </div>
+                    <button className="gc-btn-opt active" onClick={confirmSR}>Create Rule & Preview Impact →</button>
+                  </div>
                 )}
               </div>
-            )}
+            </div>
 
-            {/* SR Slider */}
-            {isCurrent && step.type === 'slider' && (
-              <div style={{ marginTop: 6 }}>
-                <input type="range" min="0" max="99" value={srThreshold} onChange={e => setSrThreshold(parseInt(e.target.value))} style={{ width: '100%' }} />
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#94a3b8', marginBottom: 8 }}>
-                  <span>0% (no fallback)</span>
-                  <span style={{ fontWeight: 700, color: srThreshold > 0 ? '#528FF0' : '#dc2626', fontSize: 14 }}>{srThreshold}%</span>
-                  <span>99%</span>
-                </div>
-                <button className="gc-btn-opt active" onClick={confirmSR}>Create Rule & Preview Impact →</button>
+            {/* User Answer — right side */}
+            {isAnswered && (
+              <div className="gc-msg gc-msg-user">
+                <div className="gc-msg-bubble gc-msg-bubble-user">{getAnswerText(step.id)}</div>
               </div>
             )}
-          </div>
+          </React.Fragment>
         )
       })}
 
-      {/* Impact result */}
+      {/* Impact result — AI response on left */}
       {submitted && simResult && (
-        <div className="gc-step answered" style={{ marginTop: 8 }}>
+        <div className="gc-msg gc-msg-bot">
+          <div className="gc-msg-avatar">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#528FF0" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <div className="gc-msg-bubble gc-msg-bubble-bot">
           <div className="gc-form-result">
             <div className="gc-form-result-header">
               <span className="gc-badge gc-badge-success">✓ Rule Created</span>
@@ -522,6 +529,7 @@ function RuleForm({ merchant, rules, onRuleCreated, prefill }) {
                 <div className="gc-info-box">Routing changes from <strong>{simResult.withoutRule.selectedTerminal?.displayId}</strong> to <strong>{simResult.withRule.selectedTerminal?.displayId}</strong> for {simResult.txn.payment_method} {simResult.txn.card_network} ₹{simResult.txn.amount} payments.</div>
               )}
             </div>
+          </div>
           </div>
         </div>
       )}
