@@ -427,81 +427,68 @@ function RuleForm({ merchant, rules, onRuleCreated, prefill }) {
 
         return (
           <React.Fragment key={step.id}>
-            {/* AI Question — left side */}
-            <div className="gc-msg gc-msg-bot">
-              <div className="gc-msg-avatar">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#528FF0" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            {/* AI Question — left aligned, flat */}
+            <div className="gc-pq">{step.q}</div>
+
+            {/* Options (if current unanswered step) */}
+            {isCurrent && step.options && (
+              <div className="gc-btn-group gc-pq-options">
+                {step.options.map(opt => (
+                  <button key={opt} className="gc-btn-opt" onClick={() => handleSelect(step.id, opt)}>{opt}</button>
+                ))}
               </div>
-              <div className="gc-msg-bubble gc-msg-bubble-bot">
-                <div style={{ fontSize: 13, fontWeight: 500 }}>{step.q}</div>
+            )}
 
-                {/* Options (if current unanswered step) */}
-                {isCurrent && step.options && (
-                  <div className="gc-btn-group" style={{ marginTop: 8 }}>
-                    {step.options.map(opt => (
-                      <button key={opt} className="gc-btn-opt" onClick={() => handleSelect(step.id, opt)}>{opt}</button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Terminal selection */}
-                {isCurrent && step.type === 'terminals' && (
-                  <div style={{ marginTop: 8 }}>
-                    <div className="gc-terminal-list">
-                      {merchantTerminals.map(t => (
-                        <div key={t.id} className={`gc-terminal-opt ${selectedTerminals.includes(t.id) ? 'selected' : ''}`} onClick={() => toggleTerminal(t.id)}>
-                          <div className="gc-terminal-check">{selectedTerminals.includes(t.id) ? '✓' : ''}</div>
-                          <div className="gc-terminal-info">
-                            <strong>{t.displayId}</strong>
-                            <span>{t.gatewayShort}</span>
-                          </div>
-                          <div className="gc-terminal-stats">
-                            <span className="gc-terminal-sr">SR {t.successRate}%</span>
-                            <span className="gc-terminal-cost">₹{t.costPerTxn}</span>
-                          </div>
-                        </div>
-                      ))}
+            {/* Terminal selection */}
+            {isCurrent && step.type === 'terminals' && (
+              <div className="gc-pq-options">
+                <div className="gc-terminal-list">
+                  {merchantTerminals.map(t => (
+                    <div key={t.id} className={`gc-terminal-opt ${selectedTerminals.includes(t.id) ? 'selected' : ''}`} onClick={() => toggleTerminal(t.id)}>
+                      <div className="gc-terminal-check">{selectedTerminals.includes(t.id) ? '✓' : ''}</div>
+                      <div className="gc-terminal-info">
+                        <strong>{t.displayId}</strong>
+                        <span>{t.gatewayShort}</span>
+                      </div>
+                      <div className="gc-terminal-stats">
+                        <span className="gc-terminal-sr">SR {t.successRate}%</span>
+                        <span className="gc-terminal-cost">₹{t.costPerTxn}</span>
+                      </div>
                     </div>
-                    {selectedTerminals.length > 0 && (
-                      <button className="gc-btn-opt active" style={{ marginTop: 8 }} onClick={confirmTerminals}>
-                        Confirm {selectedTerminals.length} terminal{selectedTerminals.length > 1 ? 's' : ''} →
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                {/* SR Slider */}
-                {isCurrent && step.type === 'slider' && (
-                  <div style={{ marginTop: 8 }}>
-                    <input type="range" min="0" max="99" value={srThreshold} onChange={e => setSrThreshold(parseInt(e.target.value))} style={{ width: '100%' }} />
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#94a3b8', marginBottom: 8 }}>
-                      <span>0% (no fallback)</span>
-                      <span style={{ fontWeight: 700, color: srThreshold > 0 ? '#528FF0' : '#dc2626', fontSize: 14 }}>{srThreshold}%</span>
-                      <span>99%</span>
-                    </div>
-                    <button className="gc-btn-opt active" onClick={confirmSR}>Create Rule & Preview Impact →</button>
-                  </div>
+                  ))}
+                </div>
+                {selectedTerminals.length > 0 && (
+                  <button className="gc-btn-opt active" style={{ marginTop: 8 }} onClick={confirmTerminals}>
+                    Confirm {selectedTerminals.length} terminal{selectedTerminals.length > 1 ? 's' : ''} →
+                  </button>
                 )}
               </div>
-            </div>
+            )}
 
-            {/* User Answer — right side */}
+            {/* SR Slider */}
+            {isCurrent && step.type === 'slider' && (
+              <div className="gc-pq-options">
+                <input type="range" min="0" max="99" value={srThreshold} onChange={e => setSrThreshold(parseInt(e.target.value))} style={{ width: '100%' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#94a3b8', marginBottom: 8 }}>
+                  <span>0% (no fallback)</span>
+                  <span style={{ fontWeight: 700, color: srThreshold > 0 ? '#528FF0' : '#dc2626', fontSize: 14 }}>{srThreshold}%</span>
+                  <span>99%</span>
+                </div>
+                <button className="gc-btn-opt active" onClick={confirmSR}>Create Rule & Preview Impact →</button>
+              </div>
+            )}
+
+            {/* User Answer — right aligned */}
             {isAnswered && (
-              <div className="gc-msg gc-msg-user">
-                <div className="gc-msg-bubble gc-msg-bubble-user">{getAnswerText(step.id)}</div>
-              </div>
+              <div className="gc-pa">{getAnswerText(step.id)}</div>
             )}
           </React.Fragment>
         )
       })}
 
-      {/* Impact result — AI response on left */}
+      {/* Impact result — left aligned */}
       {submitted && simResult && (
-        <div className="gc-msg gc-msg-bot">
-          <div className="gc-msg-avatar">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#528FF0" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          </div>
-          <div className="gc-msg-bubble gc-msg-bubble-bot">
+        <div className="gc-pq-result">
           <div className="gc-form-result">
             <div className="gc-form-result-header">
               <span className="gc-badge gc-badge-success">✓ Rule Created</span>
@@ -529,7 +516,6 @@ function RuleForm({ merchant, rules, onRuleCreated, prefill }) {
                 <div className="gc-info-box">Routing changes from <strong>{simResult.withoutRule.selectedTerminal?.displayId}</strong> to <strong>{simResult.withRule.selectedTerminal?.displayId}</strong> for {simResult.txn.payment_method} {simResult.txn.card_network} ₹{simResult.txn.amount} payments.</div>
               )}
             </div>
-          </div>
           </div>
         </div>
       )}

@@ -262,7 +262,24 @@
 .gc-what-if { margin: 4px 0; }
 .gc-what-if-title { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
 
-/* ── Progressive Conversational Form ── */
+/* ── Progressive Flat Form (question left, answer right) ── */
+.gc-pq {
+  font-size: 13px; font-weight: 600; color: #1e293b;
+  padding: 2px 0; margin-top: 10px;
+}
+.gc-pa {
+  text-align: right; margin: 6px 0 2px 0;
+}
+.gc-pa {
+  display: inline-block; float: right; clear: both;
+  padding: 5px 14px; border-radius: 10px;
+  background: #528FF0; color: #fff; font-size: 13px; font-weight: 600;
+  margin-bottom: 4px;
+}
+.gc-pq-options { margin: 6px 0 2px 0; clear: both; }
+.gc-pq-result { clear: both; margin-top: 12px; }
+
+/* ── Progressive Conversational Form (legacy) ── */
 .gc-progressive { display: flex; flex-direction: column; gap: 2px; }
 .gc-step {
   padding: 10px 14px; border-radius: 12px;
