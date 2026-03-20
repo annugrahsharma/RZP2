@@ -1,0 +1,414 @@
+/* ==========================================================================
+   KAM Dashboard - Merchant Table
+   Data table — Blade Design System aligned
+   ========================================================================== */
+
+/* Table Controls
+   ========================================================================== */
+
+.kam-table-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-5);
+  gap: var(--spacing-5);
+}
+
+.kam-table-search {
+  position: relative;
+  flex: 1;
+  max-width: 360px;
+}
+
+.kam-table-search svg {
+  position: absolute;
+  left: var(--spacing-4);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--rzp-text-muted);
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+}
+
+.kam-table-search input {
+  width: 100%;
+  height: var(--spacing-9);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--rzp-border);
+  padding: 0 var(--spacing-4) 0 36px;
+  font-size: var(--font-size-14);
+  font-family: var(--font-secondary);
+  background: var(--rzp-card-bg);
+  color: var(--rzp-text-primary);
+  transition: border-color var(--duration-quick) var(--easing-standard),
+              box-shadow var(--duration-quick) var(--easing-standard);
+}
+
+.kam-table-search input::placeholder {
+  color: var(--rzp-text-muted);
+}
+
+.kam-table-search input:focus {
+  border-color: var(--rzp-blue);
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.kam-table-filters {
+  display: flex;
+  gap: var(--spacing-3);
+  align-items: center;
+}
+
+/* Table Wrapper
+   ========================================================================== */
+
+.kam-table-wrapper {
+  background: var(--rzp-card-bg);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--rzp-border);
+  overflow: hidden;
+  box-shadow: var(--shadow-low);
+}
+
+/* Table
+   ========================================================================== */
+
+.kam-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* Table Header */
+.kam-table th {
+  text-align: left;
+  padding: var(--spacing-4) var(--spacing-5);
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--rzp-text-secondary);
+  font-family: var(--font-secondary);
+  border-bottom: 2px solid var(--rzp-border);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+  position: relative;
+  background: var(--rzp-card-bg);
+  transition: color var(--duration-quick) var(--easing-standard);
+}
+
+.kam-table th:hover {
+  color: var(--rzp-text-primary);
+}
+
+.kam-table th .sort-icon {
+  display: inline-flex;
+  margin-left: var(--spacing-2);
+  opacity: 0.4;
+  transition: opacity var(--duration-quick) var(--easing-standard),
+              color var(--duration-quick) var(--easing-standard);
+  vertical-align: middle;
+}
+
+.kam-table th .sort-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+.kam-table th.sorted .sort-icon {
+  opacity: 1;
+  color: var(--rzp-blue);
+}
+
+.kam-table th.sorted {
+  color: var(--rzp-text-primary);
+}
+
+/* Table Cells */
+.kam-table td {
+  padding: var(--spacing-4) var(--spacing-5);
+  font-size: var(--font-size-14);
+  color: var(--rzp-text-primary);
+  font-family: var(--font-secondary);
+  border-bottom: 1px solid var(--rzp-border);
+  white-space: nowrap;
+}
+
+/* Table Rows */
+.kam-table-row {
+  transition: background 0.1s var(--easing-standard);
+}
+
+.kam-table-row:hover {
+  background: var(--rzp-bg-subtle);
+}
+
+.kam-table-row.selected {
+  background: var(--rzp-blue-light);
+}
+
+.kam-table-row:last-child td {
+  border-bottom: none;
+}
+
+/* Checkbox */
+.kam-table-checkbox {
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--rzp-border);
+  cursor: pointer;
+  accent-color: var(--rzp-blue);
+  margin: 0;
+  vertical-align: middle;
+}
+
+.kam-table-checkbox:checked {
+  border-color: var(--rzp-blue);
+}
+
+/* Merchant Info Cell */
+.kam-merchant-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.kam-merchant-info .name {
+  font-weight: var(--font-weight-semibold);
+  color: var(--rzp-text-primary);
+  line-height: var(--line-height-s);
+}
+
+.kam-merchant-info .mid {
+  font-size: var(--font-size-12);
+  color: var(--rzp-text-muted);
+  font-family: var(--font-secondary);
+  margin-top: 1px;
+}
+
+/* Success Rate Indicator */
+.kam-sr-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.kam-sr-bar {
+  width: var(--spacing-10);
+  height: var(--spacing-2);
+  background: var(--rzp-bg-muted);
+  border-radius: var(--radius-xs);
+  overflow: hidden;
+}
+
+.kam-sr-fill {
+  height: 100%;
+  border-radius: var(--radius-xs);
+  transition: width 0.3s var(--easing-standard);
+}
+
+/* Actions Cell
+   ========================================================================== */
+
+.kam-actions-cell {
+  position: relative;
+}
+
+.kam-actions-btn {
+  width: var(--spacing-8);
+  height: var(--spacing-8);
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--rzp-text-muted);
+  transition: background var(--duration-quick) var(--easing-standard),
+              color var(--duration-quick) var(--easing-standard);
+}
+
+.kam-actions-btn:hover {
+  background: var(--rzp-bg);
+  color: var(--rzp-text-primary);
+}
+
+.kam-actions-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Actions Dropdown Menu */
+.kam-actions-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  background: var(--rzp-card-bg);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--rzp-border);
+  box-shadow: var(--shadow-mid);
+  z-index: 100;
+  min-width: 180px;
+  padding: var(--spacing-2);
+  animation: kamFadeIn var(--duration-quick) var(--easing-entrance);
+}
+
+.kam-actions-menu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+  padding: var(--spacing-3) var(--spacing-4);
+  border-radius: 6px;
+  font-size: var(--font-size-14);
+  font-family: var(--font-secondary);
+  cursor: pointer;
+  color: var(--rzp-text-primary);
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  transition: background 0.1s var(--easing-standard);
+}
+
+.kam-actions-menu-item:hover {
+  background: var(--rzp-bg);
+}
+
+.kam-actions-menu-item svg {
+  width: 16px;
+  height: 16px;
+  color: var(--rzp-text-secondary);
+  flex-shrink: 0;
+}
+
+.kam-actions-menu-item.danger {
+  color: var(--rzp-danger);
+}
+
+.kam-actions-menu-item.danger svg {
+  color: var(--rzp-danger);
+}
+
+.kam-actions-menu-divider {
+  height: 1px;
+  background: var(--rzp-border);
+  margin: var(--spacing-2) 0;
+}
+
+/* Bulk Action Bar
+   ========================================================================== */
+
+.kam-bulk-bar {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--rzp-card-bg);
+  border-top: 2px solid var(--rzp-blue);
+  padding: var(--spacing-4) var(--spacing-7);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
+  animation: kamSlideUp 0.2s var(--easing-entrance);
+  z-index: 50;
+}
+
+.kam-bulk-bar .bulk-info {
+  font-size: var(--font-size-14);
+  font-weight: var(--font-weight-semibold);
+  color: var(--rzp-text-primary);
+  font-family: var(--font-secondary);
+}
+
+.kam-bulk-bar .bulk-info span {
+  color: var(--rzp-blue);
+}
+
+.kam-bulk-bar .bulk-actions {
+  display: flex;
+  gap: var(--spacing-3);
+}
+
+/* Pagination
+   ========================================================================== */
+
+.kam-table-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--spacing-4) var(--spacing-5);
+  border-top: 1px solid var(--rzp-border);
+  font-size: var(--font-size-14);
+  color: var(--rzp-text-secondary);
+  font-family: var(--font-secondary);
+}
+
+.kam-table-pagination-info {
+  font-weight: var(--font-weight-medium);
+}
+
+.kam-table-pagination-controls {
+  display: flex;
+  gap: var(--spacing-2);
+}
+
+.kam-table-pagination-btn {
+  width: var(--spacing-8);
+  height: var(--spacing-8);
+  border-radius: 6px;
+  border: 1px solid var(--rzp-border);
+  background: var(--rzp-card-bg);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--rzp-text-secondary);
+  font-size: var(--font-size-14);
+  font-weight: var(--font-weight-medium);
+  transition: background var(--duration-quick) var(--easing-standard),
+              border-color var(--duration-quick) var(--easing-standard),
+              color var(--duration-quick) var(--easing-standard);
+}
+
+.kam-table-pagination-btn:hover {
+  background: var(--rzp-bg);
+  border-color: var(--rzp-text-muted);
+}
+
+.kam-table-pagination-btn.active {
+  background: var(--rzp-blue);
+  border-color: var(--rzp-blue);
+  color: var(--rzp-text-on-dark);
+}
+
+.kam-table-pagination-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Animations
+   ========================================================================== */
+
+@keyframes kamFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes kamSlideUp {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}

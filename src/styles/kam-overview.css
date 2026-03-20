@@ -1,0 +1,573 @@
+/* ==========================================================================
+   KAM Dashboard - Overview Page
+   Dashboard overview — Blade Design System aligned
+   ========================================================================== */
+
+/* Metrics Grid
+   ========================================================================== */
+
+.kam-overview-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--spacing-6);
+  margin-bottom: var(--spacing-7);
+}
+
+@media (max-width: 1200px) {
+  .kam-overview-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .kam-overview-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Revenue Tracker
+   ========================================================================== */
+
+.kam-revenue-tracker {
+  background: var(--rzp-card-bg);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--rzp-border);
+  padding: var(--spacing-8);
+  margin-bottom: var(--spacing-7);
+  box-shadow: var(--shadow-low);
+}
+
+.kam-revenue-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: var(--spacing-6);
+}
+
+.kam-revenue-header h3 {
+  font-size: var(--font-size-16);
+  font-weight: var(--font-weight-semibold);
+  color: var(--rzp-text-primary);
+  font-family: var(--font-secondary);
+}
+
+.kam-revenue-amounts {
+  display: flex;
+  gap: var(--spacing-10);
+  margin-bottom: var(--spacing-6);
+}
+
+.kam-revenue-amount {
+  display: flex;
+  flex-direction: column;
+}
+
+.kam-revenue-amount .label {
+  font-size: var(--font-size-12);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--rzp-text-secondary);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-secondary);
+  margin-bottom: var(--spacing-2);
+}
+
+.kam-revenue-amount .value {
+  font-size: var(--font-size-28);
+  font-weight: var(--font-weight-bold);
+  color: var(--rzp-text-primary);
+  font-family: var(--font-primary);
+  line-height: var(--line-height-s);
+}
+
+.kam-revenue-amount .value.target {
+  color: var(--rzp-text-muted);
+}
+
+/* Revenue Progress */
+.kam-revenue-progress {
+  margin-bottom: var(--spacing-5);
+}
+
+.kam-revenue-progress .kam-progress-bar {
+  height: 10px;
+  border-radius: var(--radius-sm);
+}
+
+.kam-revenue-progress .kam-progress-fill {
+  background: linear-gradient(90deg, var(--rzp-blue), var(--rzp-blue-dark));
+  border-radius: var(--radius-sm);
+}
+
+.kam-revenue-progress-labels {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+  font-size: var(--font-size-12);
+  color: var(--rzp-text-muted);
+  font-family: var(--font-secondary);
+}
+
+/* Revenue Meta */
+.kam-revenue-meta {
+  display: flex;
+  gap: var(--spacing-8);
+  margin-top: var(--spacing-5);
+}
+
+.kam-revenue-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-size-14);
+  color: var(--rzp-text-secondary);
+  font-family: var(--font-secondary);
+}
+
+.kam-revenue-meta-item svg {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.kam-revenue-meta-item strong {
+  font-weight: var(--font-weight-semibold);
+  color: var(--rzp-text-primary);
+}
+
+/* Attention Table
+   ========================================================================== */
+
+.kam-attention-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.kam-attention-table th {
+  text-align: left;
+  padding: 10px var(--spacing-5);
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--rzp-text-secondary);
+  font-family: var(--font-secondary);
+  border-bottom: 2px solid var(--rzp-border);
+  white-space: nowrap;
+}
+
+.kam-attention-table td {
+  padding: var(--spacing-4) var(--spacing-5);
+  font-size: var(--font-size-14);
+  color: var(--rzp-text-primary);
+  font-family: var(--font-secondary);
+  border-bottom: 1px solid var(--rzp-border);
+}
+
+.kam-attention-table tr:last-child td {
+  border-bottom: none;
+}
+
+.kam-attention-row {
+  cursor: pointer;
+  transition: background 0.1s var(--easing-standard);
+}
+
+.kam-attention-row:hover {
+  background: var(--rzp-blue-light);
+}
+
+.kam-attention-row .merchant-name {
+  font-weight: var(--font-weight-semibold);
+  color: var(--rzp-text-primary);
+  display: block;
+}
+
+.kam-attention-row .merchant-mid {
+  font-size: var(--font-size-12);
+  color: var(--rzp-text-muted);
+  font-family: var(--font-secondary);
+  display: block;
+  margin-top: 1px;
+}
+
+/* Overview Quick Actions */
+.kam-overview-actions {
+  display: flex;
+  gap: var(--spacing-4);
+  margin-bottom: var(--spacing-7);
+  flex-wrap: wrap;
+}
+
+/* Overview Split Layout */
+.kam-overview-split {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-6);
+  margin-bottom: var(--spacing-7);
+}
+
+@media (max-width: 1024px) {
+  .kam-overview-split {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ==========================================================================
+   Monthly Performance Heatmap (LeetCode-style)
+   ========================================================================== */
+
+.kam-heatmap-card {
+  background: var(--rzp-card-bg);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--rzp-border);
+  padding: var(--spacing-8);
+  margin-bottom: var(--spacing-7);
+  box-shadow: var(--shadow-low);
+}
+
+.kam-heatmap-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-7);
+}
+
+.kam-heatmap-header h3 {
+  font-size: var(--font-size-16);
+  font-weight: var(--font-weight-semibold);
+  color: var(--rzp-text-primary);
+  font-family: var(--font-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.kam-heatmap-legend {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-5);
+  font-size: var(--font-size-12);
+  color: var(--rzp-text-secondary);
+  font-family: var(--font-secondary);
+}
+
+.kam-heatmap-legend-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-2);
+}
+
+.kam-heatmap-legend-dot {
+  width: var(--spacing-4);
+  height: var(--spacing-4);
+  border-radius: var(--radius-xs);
+  flex-shrink: 0;
+}
+
+.kam-heatmap-legend-dot.green {
+  background: var(--rzp-success);
+}
+
+.kam-heatmap-legend-dot.yellow {
+  background: #F5D623;
+}
+
+.kam-heatmap-legend-dot.red {
+  background: var(--rzp-danger);
+}
+
+/* Grid Layout */
+.kam-heatmap-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Month Labels Row */
+.kam-heatmap-month-labels {
+  display: grid;
+  grid-template-columns: var(--spacing-10) repeat(12, 36px);
+  gap: 6px;
+  margin-bottom: var(--spacing-1);
+}
+
+.kam-heatmap-month-label {
+  font-size: var(--font-size-11);
+  font-weight: var(--font-weight-semibold);
+  color: var(--rzp-text-muted);
+  font-family: var(--font-secondary);
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+
+/* Year Row */
+.kam-heatmap-row {
+  display: grid;
+  grid-template-columns: var(--spacing-10) repeat(12, 36px);
+  gap: 6px;
+  align-items: center;
+}
+
+.kam-heatmap-year {
+  font-size: var(--font-size-14);
+  font-weight: var(--font-weight-semibold);
+  color: var(--rzp-text-secondary);
+  font-family: var(--font-secondary);
+}
+
+/* Cells */
+.kam-heatmap-cell {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: transform var(--duration-quick) var(--easing-standard),
+              box-shadow var(--duration-quick) var(--easing-standard);
+  position: relative;
+}
+
+.kam-heatmap-cell:hover {
+  transform: scale(1.15);
+  z-index: 2;
+}
+
+.kam-heatmap-cell.green {
+  background: var(--rzp-success);
+  box-shadow: 0 1px 3px rgba(30, 166, 114, 0.3);
+}
+
+.kam-heatmap-cell.green:hover {
+  box-shadow: 0 3px 8px rgba(30, 166, 114, 0.4);
+}
+
+.kam-heatmap-cell.yellow {
+  background: #F5D623;
+  box-shadow: 0 1px 3px rgba(245, 214, 35, 0.3);
+}
+
+.kam-heatmap-cell.yellow:hover {
+  box-shadow: 0 3px 8px rgba(245, 214, 35, 0.4);
+}
+
+.kam-heatmap-cell.red {
+  background: var(--rzp-danger);
+  box-shadow: 0 1px 3px rgba(231, 76, 60, 0.3);
+}
+
+.kam-heatmap-cell.red:hover {
+  box-shadow: 0 3px 8px rgba(231, 76, 60, 0.4);
+}
+
+.kam-heatmap-cell.current {
+  outline: 2.5px solid var(--rzp-blue);
+  outline-offset: 2px;
+}
+
+.kam-heatmap-cell.selected {
+  outline: 2.5px solid var(--rzp-text-primary);
+  outline-offset: 2px;
+}
+
+.kam-heatmap-cell.empty {
+  background: transparent;
+  cursor: default;
+  box-shadow: none;
+}
+
+.kam-heatmap-cell.empty:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+/* Tooltip */
+.kam-heatmap-tooltip {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--rzp-text-primary);
+  color: var(--rzp-text-on-dark);
+  padding: 10px var(--spacing-4);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-12);
+  font-family: var(--font-secondary);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 100;
+  animation: heatmapTooltipIn var(--duration-quick) var(--easing-entrance);
+  box-shadow: var(--shadow-mid);
+}
+
+.kam-heatmap-tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border: 5px solid transparent;
+  border-top-color: var(--rzp-text-primary);
+}
+
+@keyframes heatmapTooltipIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+.kam-heatmap-tooltip-month {
+  font-weight: var(--font-weight-semibold);
+  margin-bottom: var(--spacing-2);
+  font-size: var(--font-size-14);
+}
+
+.kam-heatmap-tooltip-detail {
+  color: rgba(255, 255, 255, 0.8);
+  line-height: var(--line-height-m);
+}
+
+.kam-heatmap-tooltip-pct {
+  font-weight: var(--font-weight-bold);
+  color: var(--rzp-text-on-dark);
+}
+
+/* Selected Month Detail Strip */
+.kam-heatmap-selected {
+  margin-top: var(--spacing-6);
+  padding: var(--spacing-5) var(--spacing-6);
+  background: var(--rzp-bg);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--rzp-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--spacing-7);
+  animation: heatmapDetailIn 0.2s var(--easing-entrance);
+}
+
+@keyframes heatmapDetailIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.kam-heatmap-selected-month {
+  font-size: var(--font-size-16);
+  font-weight: var(--font-weight-bold);
+  color: var(--rzp-text-primary);
+  font-family: var(--font-secondary);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.kam-heatmap-selected-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: var(--radius-xs);
+  flex-shrink: 0;
+}
+
+.kam-heatmap-selected-stats {
+  display: flex;
+  gap: var(--spacing-8);
+}
+
+.kam-heatmap-selected-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.kam-heatmap-selected-stat .label {
+  font-size: var(--font-size-11);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--rzp-text-muted);
+  font-weight: var(--font-weight-semibold);
+  font-family: var(--font-secondary);
+  margin-bottom: var(--spacing-1);
+}
+
+.kam-heatmap-selected-stat .value {
+  font-size: var(--font-size-16);
+  font-weight: var(--font-weight-bold);
+  color: var(--rzp-text-primary);
+  font-family: var(--font-primary);
+}
+
+.kam-heatmap-selected-badge {
+  padding: var(--spacing-2) var(--spacing-4);
+  border-radius: var(--radius-round);
+  font-size: var(--font-size-12);
+  font-weight: var(--font-weight-bold);
+  font-family: var(--font-secondary);
+}
+
+.kam-heatmap-selected-badge.green {
+  background: rgba(30, 166, 114, 0.12);
+  color: var(--rzp-success);
+}
+
+.kam-heatmap-selected-badge.yellow {
+  background: rgba(245, 214, 35, 0.15);
+  color: #b59e00;
+}
+
+.kam-heatmap-selected-badge.red {
+  background: rgba(231, 76, 60, 0.12);
+  color: var(--rzp-danger);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .kam-heatmap-month-labels {
+    grid-template-columns: var(--spacing-9) repeat(12, 28px);
+    gap: var(--spacing-2);
+  }
+
+  .kam-heatmap-row {
+    grid-template-columns: var(--spacing-9) repeat(12, 28px);
+    gap: var(--spacing-2);
+  }
+
+  .kam-heatmap-cell {
+    width: 28px;
+    height: 28px;
+    border-radius: var(--radius-sm);
+  }
+
+  .kam-heatmap-month-label {
+    font-size: var(--font-size-10);
+  }
+
+  .kam-heatmap-year {
+    font-size: var(--font-size-12);
+  }
+
+  .kam-heatmap-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-4);
+  }
+
+  .kam-heatmap-selected {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--spacing-4);
+  }
+
+  .kam-heatmap-selected-stats {
+    gap: var(--spacing-6);
+  }
+}

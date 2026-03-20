@@ -1,0 +1,26 @@
+<svg id="Component_2_1" data-name="Component 2 – 1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="3145.719" height="3026.693" viewBox="0 0 3145.719 3026.693">
+  <defs>
+    <filter id="Ellipse_8" x="2722.072" y="0" width="240.174" height="240.173" filterUnits="userSpaceOnUse">
+      <feOffset dy="3" input="SourceAlpha"/>
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feFlood flood-opacity="0.161" result="color"/>
+      <feComposite operator="out" in="SourceGraphic" in2="blur"/>
+      <feComposite operator="in" in="color"/>
+      <feComposite operator="in" in2="SourceGraphic"/>
+    </filter>
+  </defs>
+  <path id="Path_38" data-name="Path 38" d="M38.276,100.632l695.8-91.158L845.654,175.549-18.994,407.76Z" transform="translate(1863.104 1722.938)" fill="#d5cc8e"/>
+  <path id="Path_39" data-name="Path 39" d="M67.52,113.828,751.945,0,854.959,164,0,425.4Z" transform="translate(1868.892 1331.364) rotate(13)" fill="#648349"/>
+  <path id="Path_40" data-name="Path 40" d="M73.654,129.479,745.956,0l96.768,164.848L0,447.917Z" transform="translate(1929.003 960.198) rotate(24)" fill="#e2b910"/>
+  <text id="super" transform="translate(0 2123.14)" font-size="855" font-family="DINCondensed-Bold, DIN Condensed" font-weight="700"><tspan x="0" y="0">super</tspan></text>
+  <text id="morpheus" transform="translate(0 2779.693)" font-size="859" font-family="DINCondensed-Bold, DIN Condensed" font-weight="700"><tspan x="0" y="0">morpheus</tspan></text>
+  <path id="Path_41" data-name="Path 41" d="M788.389,100.632,92.589,9.474-18.994,175.549,845.66,407.76Z" transform="translate(2202.77 884.419)" fill="#d5cc8e"/>
+  <path id="Path_42" data-name="Path 42" d="M67.52,311.577l684.43,113.829,103.014-164L0,0Z" transform="translate(3119.348 907.345) rotate(167)" fill="#648349"/>
+  <path id="Path_43" data-name="Path 43" d="M73.656,318.439,745.961,447.919l96.768-164.848L0,0Z" transform="matrix(-0.914, 0.407, -0.407, -0.914, 3145.719, 530.872)" fill="#e2b910"/>
+  <g data-type="innerShadowGroup">
+    <circle id="Ellipse_8-2" data-name="Ellipse 8" cx="120.087" cy="120.087" r="120.087" transform="translate(2722.072)" fill="#f0ba3f"/>
+    <g transform="matrix(1, 0, 0, 1, 0, 0)" filter="url(#Ellipse_8)">
+      <circle id="Ellipse_8-3" data-name="Ellipse 8" cx="120.087" cy="120.087" r="120.087" transform="translate(2722.07)" fill="#fff"/>
+    </g>
+  </g>
+</svg>

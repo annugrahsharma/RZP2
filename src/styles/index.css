@@ -1,0 +1,222 @@
+/* SuperMorpheus Design System - Base Styles */
+
+/* Font Definitions */
+@font-face {
+  font-family: 'DIN Condensed';
+  src: url('/SM/fonts/DIN Condensed Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'DIN Alternate';
+  src: url('/SM/fonts/DIN Alternate Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Eina';
+  src: url('/SM/fonts/Eina01-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Eina';
+  src: url('/SM/fonts/Eina01-SemiBold.ttf') format('truetype');
+  font-weight: 600;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Eina';
+  src: url('/SM/fonts/Eina01-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+:root {
+  /* SuperMorpheus Brand Colors */
+  --primary-green: #648349;        /* Meta Green */
+  --primary-green-light: #EDFAE2;
+  --milk-green: #D5CC8E;           /* Milk Green */
+
+  /* Secondary Colors */
+  --golden-orange: #E2B910;        /* One Gold */
+  --truth-orange: #F0BA3F;         /* Truth (logo top) */
+  --event-card-bg: #FFF6DA;
+  --notification-red: #E53935;
+
+  /* Neutral Colors */
+  --white: #FFFFFF;
+  --dark-gray: #3C3C43;
+  --medium-gray: #898989;
+  --light-gray: #F5F5F5;
+  --border-gray: #E0E0E0;
+
+  /* Typography - SuperMorpheus Brand Fonts */
+  --font-logo: 'DIN Condensed', sans-serif;
+  --font-primary: 'DIN Alternate', 'DIN Condensed', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-secondary: 'Eina', 'DM Sans', sans-serif;
+  --font-accent: 'Eina', 'IBM Plex Sans', sans-serif;
+
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+
+  /* Border Radius */
+  --radius-sm: 5px;
+  --radius-md: 10px;
+  --radius-lg: 24px;
+  --radius-full: 50%;
+
+  /* ==========================================================================
+     Blade Design System — Aligned Tokens
+     Based on Razorpay Blade DS: token-first, 4px spacing, semantic colors
+     ========================================================================== */
+
+  /* --- Interactive / Brand --- */
+  --rzp-blue: #528FF0;
+  --rzp-blue-dark: #3D6FD4;
+  --rzp-blue-light: #E8F0FE;
+  --rzp-blue-hover: #4580E0;
+
+  /* --- Feedback: Positive (Green) --- */
+  --rzp-success: #1EA672;
+  --rzp-success-light: #E6F9F0;
+  --rzp-success-hover: #178C60;
+
+  /* --- Feedback: Notice (Amber/Orange) --- */
+  --rzp-warning: #F5A623;
+  --rzp-warning-light: #FFF4E0;
+  --rzp-warning-hover: #E09615;
+
+  /* --- Feedback: Negative (Red) --- */
+  --rzp-danger: #E74C3C;
+  --rzp-danger-light: #FDECEB;
+  --rzp-danger-hover: #D13B2E;
+
+  /* --- Feedback: Information (Blue alias) --- */
+  --rzp-info: var(--rzp-blue);
+  --rzp-info-light: var(--rzp-blue-light);
+
+  /* --- Feedback: Neutral --- */
+  --rzp-neutral: #718096;
+  --rzp-neutral-light: #F1F5F9;
+
+  /* --- Surface / Background --- */
+  --rzp-bg: #F7F8FA;
+  --rzp-bg-subtle: #F1F5F9;
+  --rzp-bg-muted: #EDF2F7;
+  --rzp-card-bg: #FFFFFF;
+
+  /* --- Sidebar --- */
+  --rzp-sidebar-bg: #1B2B4B;
+  --rzp-sidebar-hover: #243656;
+  --rzp-sidebar-text: #A0AEC0;
+  --rzp-sidebar-active: #FFFFFF;
+
+  /* --- Border --- */
+  --rzp-border: #E2E8F0;
+  --rzp-border-subtle: #EDF2F7;
+
+  /* --- Text --- */
+  --rzp-text-primary: #1A202C;
+  --rzp-text-secondary: #718096;
+  --rzp-text-muted: #A0AEC0;
+  --rzp-text-on-dark: #FFFFFF;
+
+  /* --- Blade Spacing Scale (4px base) --- */
+  --spacing-0: 0px;
+  --spacing-1: 2px;
+  --spacing-2: 4px;
+  --spacing-3: 8px;
+  --spacing-4: 12px;
+  --spacing-5: 16px;
+  --spacing-6: 20px;
+  --spacing-7: 24px;
+  --spacing-8: 32px;
+  --spacing-9: 40px;
+  --spacing-10: 48px;
+  --spacing-11: 64px;
+
+  /* --- Blade Border Radius --- */
+  --radius-none: 0px;
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-round: 999px;
+  --radius-full: 50%;
+
+  /* --- Blade Elevation / Shadows --- */
+  --shadow-low: 0 1px 2px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+  --shadow-mid: 0 4px 8px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-high: 0 8px 24px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.04);
+
+  /* --- Blade Typography Scale --- */
+  --font-size-10: 10px;
+  --font-size-11: 11px;
+  --font-size-12: 12px;
+  --font-size-14: 14px;
+  --font-size-16: 16px;
+  --font-size-18: 18px;
+  --font-size-20: 20px;
+  --font-size-24: 24px;
+  --font-size-28: 28px;
+
+  --line-height-s: 1.25;
+  --line-height-m: 1.4;
+  --line-height-l: 1.6;
+
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  /* --- Blade Transitions --- */
+  --duration-quick: 0.15s;
+  --duration-moderate: 0.25s;
+  --duration-gentle: 0.4s;
+  --easing-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --easing-entrance: cubic-bezier(0, 0, 0.2, 1);
+  --easing-exit: cubic-bezier(0.4, 0, 1, 1);
+
+  /* --- Focus Ring (Blade accessibility) --- */
+  --focus-ring: 0 0 0 3px rgba(82, 143, 240, 0.2);
+
+  /* --- Badge / Category Colors (Blade-aligned semantic) --- */
+  --rzp-deal-tsp-bg: #FFF3E0;
+  --rzp-deal-tsp-text: #E65100;
+  --rzp-deal-offer-bg: #F3E5F5;
+  --rzp-deal-offer-text: #7B1FA2;
+  --rzp-method-upi-bg: #E8F5E9;
+  --rzp-method-upi-text: #2E7D32;
+  --rzp-method-cards-bg: #FFF3E0;
+  --rzp-method-cards-text: #E65100;
+  --rzp-method-nb-bg: #F3E5F5;
+  --rzp-method-nb-text: #7B1FA2;
+  --rzp-method-wallet-bg: #FFF8E1;
+  --rzp-method-wallet-text: #F9A825;
+  --rzp-method-emi-bg: #E0F2F1;
+  --rzp-method-emi-text: #00695C;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-secondary);
+  background-color: #f0f0f0;
+  color: var(--dark-gray);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
