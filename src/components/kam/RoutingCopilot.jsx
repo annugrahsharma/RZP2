@@ -296,7 +296,14 @@ function RuleForm({ merchant, rules, onRuleCreated, prefill }) {
   const stepsEndRef = useRef(null)
 
   useEffect(() => {
-    stepsEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    // Scroll within the chat container, not the page
+    const el = stepsEndRef.current
+    if (el) {
+      const container = el.closest('.gc-chat-area')
+      if (container) {
+        container.scrollTop = container.scrollHeight
+      }
+    }
   }, [currentStep, submitted])
 
   // Pre-fill from intent
@@ -635,7 +642,14 @@ export default function RoutingCopilot({ merchant, rules, addRule, simOverrides 
   const chatEndRef = useRef(null)
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+    // Scroll within the chat container, not the page
+    const el = chatEndRef.current
+    if (el) {
+      const container = el.closest('.gc-chat-area')
+      if (container) {
+        container.scrollTop = container.scrollHeight
+      }
+    }
   }, [messages])
 
   // Initial greeting
