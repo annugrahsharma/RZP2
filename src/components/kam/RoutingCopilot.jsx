@@ -480,7 +480,7 @@ function RuleForm({ merchant, rules, onRuleCreated, prefill }) {
 
             {/* User Answer — right aligned */}
             {isAnswered && (
-              <div className="gc-pa">{getAnswerText(step.id)}</div>
+              <div className="gc-pa-wrap"><span className="gc-pa">{getAnswerText(step.id)}</span></div>
             )}
           </React.Fragment>
         )
