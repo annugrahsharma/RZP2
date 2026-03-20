@@ -36,6 +36,8 @@ import {
   getPlatformRulesForMerchant,
   generateMethodExplainer,
 } from '../../data/kamMockData'
+import RoutingCopilot from './RoutingCopilot'
+import '../../styles/routing-copilot.css'
 
 // ---------------------------------------------------------------------------
 // Deterministic pseudo-random from a string (for methods & daily volumes)
@@ -4431,7 +4433,7 @@ function RulesTabContent({
 
   return (
     <>
-      {/* ── AI Routing Assistant ────────────────── */}
+      {/* ── AI Routing Copilot ────────────────── */}
       <div className="kam-card" style={{ marginBottom: 20 }}>
         <div className="kam-card-header" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#528FF0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
@@ -4440,14 +4442,7 @@ function RulesTabContent({
           <span style={{ flex: 1 }}></span>
           <span style={{ fontSize: 12, color: 'var(--rzp-text-muted)' }}>Ask about rules, simulate payments, create routing rules</span>
         </div>
-        <div style={{ width: '100%', minHeight: '500px', borderRadius: '0 0 12px 12px', overflow: 'hidden' }}>
-          <iframe
-            src="https://console.thesys.dev/app/LXBs_T8qKh-J2QkrFSiJc?hideLogin=true"
-            style={{ width: '100%', height: '500px', border: 'none' }}
-            title="Routing Copilot"
-            allow="clipboard-write"
-          />
-        </div>
+        <RoutingCopilot merchant={merchant} rules={rules} addRule={addRule} simOverrides={simOverrides} />
       </div>
 
       {/* ── Rules Content (always visible) ──── */}
