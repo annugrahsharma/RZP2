@@ -99,7 +99,7 @@
 
 /* ── L2: action nav panel ── */
 .gc-l2-panel {
-  width: 210px;
+  width: 265px;
   flex-shrink: 0;
   border-right: 1px solid var(--rzp-border);
   background: #f8fafc;
