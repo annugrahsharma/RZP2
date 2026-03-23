@@ -1093,6 +1093,82 @@ function SimulateView({ method, merchant, rules }) {
 }
 
 // ════════════════════════════════════════════
+// SR Ranking View — read-only terminal ranking
+// ════════════════════════════════════════════
+function SRRankingView({ method, merchant }) {
+  const methodLabel = method === 'NB' ? 'Net Banking' : method
+
+  const terminals = useMemo(() =>
+    merchant.gatewayMetrics
+      .filter(gm => (gm.supportedMethods || []).includes(method))
+      .map(gm => {
+        const gw = gateways.find(g => g.id === gm.gatewayId)
+        const term = gw?.terminals.find(t => t.id === gm.terminalId)
+        return { id: gm.terminalId, displayId: term?.terminalId || gm.terminalId, gatewayShort: gw?.shortName || '?', successRate: gm.successRate, costPerTxn: gm.costPerTxn, txnShare: gm.txnShare || 0 }
+      })
+      .sort((a, b) => b.successRate - a.successRate),
+    [merchant, method]
+  )
+
+  const maxSR = terminals[0]?.successRate || 100
+  const srColor = (sr) => sr >= 90 ? '#059669' : sr >= 78 ? '#d97706' : '#dc2626'
+
+  return (
+    <div className="gc-sr-view">
+      <div className="gc-sr-hdr">
+        <div>
+          <div className="gc-sr-title">Terminal Ranking by Success Rate</div>
+          <div className="gc-sr-subtitle">Optimized for SR — highest success rate terminals take priority</div>
+        </div>
+        <span className="gc-badge gc-badge-blue">{methodLabel}</span>
+      </div>
+
+      <div className="gc-sr-list">
+        <div className="gc-sr-list-header">
+          <span className="gc-sr-col-rank" />
+          <span className="gc-sr-col-terminal">Terminal</span>
+          <span className="gc-sr-col-bar">Success Rate</span>
+          <span className="gc-sr-col-cost">Cost/txn</span>
+          <span className="gc-sr-col-share">Traffic</span>
+        </div>
+        {terminals.map((t, i) => (
+          <div key={t.id} className={`gc-sr-row${i === 0 ? ' gc-sr-row--top' : ''}`}>
+            <span className="gc-sr-col-rank">
+              <span className={`gc-sr-rank-badge${i === 0 ? ' top' : ''}`}>#{i + 1}</span>
+            </span>
+            <div className="gc-sr-col-terminal">
+              <div className="gc-sr-term-id">{t.displayId}</div>
+              <div className="gc-sr-gw">{t.gatewayShort}</div>
+            </div>
+            <div className="gc-sr-col-bar">
+              <div className="gc-sr-bar-track">
+                <div className="gc-sr-bar-fill" style={{ width: `${(t.successRate / maxSR) * 100}%`, background: srColor(t.successRate) }} />
+              </div>
+              <span className="gc-sr-pct" style={{ color: srColor(t.successRate) }}>{t.successRate}%</span>
+            </div>
+            <div className="gc-sr-col-cost">
+              {t.costPerTxn === 0
+                ? <span className="gc-badge gc-badge-success" style={{ fontSize: 11, padding: '1px 6px' }}>₹0</span>
+                : <span>₹{t.costPerTxn}</span>}
+            </div>
+            <div className="gc-sr-col-share">
+              <div className="gc-sr-share-bar-track">
+                <div className="gc-sr-share-bar-fill" style={{ width: `${Math.min(100, t.txnShare * 2)}%` }} />
+              </div>
+              <span>{t.txnShare}%</span>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="gc-sr-note">
+        Terminals are ranked by success rate. To customize priority or optimize for cost, select <strong>Save Cost / Custom Rules</strong>.
+      </div>
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════
 // Create Rule Wizard — multi-step flow
 // ════════════════════════════════════════════
 
@@ -1401,8 +1477,8 @@ function MethodPanel({ method, merchant, rules, addRule, simOverrides }) {
 
   const handleStrategy = (s) => {
     setRoutingStrategy(s)
-    if (s === 'sr') fireChat(`What is the priority order of terminals for ${methodLabel}?`)
-    // cost: just reveals card 4, no chat auto-trigger
+    if (s === 'sr') setActiveView('sr_ranking')
+    // cost: just reveals card 4, no auto-trigger
   }
 
   return (
@@ -1461,6 +1537,8 @@ function MethodPanel({ method, merchant, rules, addRule, simOverrides }) {
         ? <SimulateView key={method} method={method} merchant={merchant} rules={rules} />
         : activeView === 'create_rule'
         ? <CreateRuleWizard method={method} merchant={merchant} rules={rules} addRule={addRule} onClose={() => setActiveView(null)} />
+        : activeView === 'sr_ranking'
+        ? <SRRankingView method={method} merchant={merchant} />
         : <MethodChat key={chatKey} method={method} merchant={merchant} rules={rules} addRule={addRule} simOverrides={simOverrides} triggerMsg={triggerMsg} />
       }
     </div>
