@@ -1237,7 +1237,7 @@ function SRRankingView({ method, merchant, strategy }) {
 
       {strategy !== 'cost' && (
         <div className="gc-sr-note">
-          Terminals are ranked by success rate. To customize priority or optimize for cost, select <strong>Save Cost / Custom Rules</strong>.
+          Terminals are ranked by success rate. To customize priority or optimize for cost, select <strong>Save Cost / Custom Routing</strong>.
         </div>
       )}
     </div>
@@ -1694,7 +1694,7 @@ function MethodPanel({ method, merchant, rules, addRule, simOverrides }) {
             </button>
             <button className={`gc-strategy-btn gc-strategy-btn--cost${routingStrategy === 'cost' ? ' active' : ''}`} onClick={() => handleStrategy('cost')}>
               <div className="gc-strategy-btn-top">
-                <span className="gc-strategy-btn-label"><IconCostIcon /> Save Cost / Custom</span>
+                <span className="gc-strategy-btn-label"><IconCostIcon /> Save Cost / Custom Routing</span>
               </div>
             </button>
           </div>
