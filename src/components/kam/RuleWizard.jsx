@@ -507,10 +507,70 @@ function generateImpactedFlows(method, filters, monthlyTxns) {
   }]
 }
 
+// ── Mini pipeline renderer (before/after traces) ────────────────
+function ImpactPipelineTrace({ result, label }) {
+  if (!result) return null
+  const stages = result.stages || []
+  return (
+    <div className="rw-impact-pipeline">
+      <div className="rw-impact-pipeline-hdr">
+        <span className="rw-impact-pipeline-label">{label}</span>
+        {result.isNTF
+          ? <span className="rw-impact-pip-badge ntf">NTF — payment fails</span>
+          : <span className="rw-impact-pip-badge ok">→ {result.selectedTerminal?.displayId} · SR {result.selectedTerminal?.successRate}%</span>
+        }
+      </div>
+      {stages.map((stage, i) => {
+        const isNTF    = stage.type === 'ntf' || stage.type === 'rule_ntf'
+        const isFilter = stage.type === 'rule_filter'
+        const isSorter = stage.type === 'sorter'
+        const isPass   = stage.type === 'rule_pass'
+        return (
+          <div key={i} className={`rw-impact-pip-stage${isNTF ? ' ntf' : isFilter ? ' filter' : isSorter ? ' sorter' : isPass ? ' pass' : ''}`}>
+            <div className="rw-impact-pip-num">{i + 1}</div>
+            <div className="rw-impact-pip-body">
+              <div className="rw-impact-pip-stage-label">{stage.label}</div>
+              <div className="rw-impact-pip-desc">{stage.description}</div>
+              {(stage.terminalsRemaining || []).length > 0 && (
+                <div className="rw-impact-pip-chips">
+                  {stage.terminalsRemaining.map(t => (
+                    <span key={t.terminalId} className="rw-impact-pip-chip pass">{t.displayId} <span className="rw-impact-pip-chip-sr">{t.successRate}%</span></span>
+                  ))}
+                </div>
+              )}
+              {(stage.terminalsEliminated || []).length > 0 && (
+                <div className="rw-impact-pip-chips">
+                  {stage.terminalsEliminated.map(t => (
+                    <span key={t.terminalId} className="rw-impact-pip-chip fail">{t.displayId} <em className="rw-impact-pip-chip-sr">{t.reason}</em></span>
+                  ))}
+                </div>
+              )}
+              {isSorter && stage.scored && (
+                <div className="rw-impact-pip-scores">
+                  {stage.scored.map((t, si) => (
+                    <div key={t.terminalId} className={`rw-impact-pip-score-row${t.isSelected ? ' selected' : ''}`}>
+                      <span className="rw-impact-pip-rank">#{si + 1}</span>
+                      <span className="rw-impact-pip-name">{t.displayId}</span>
+                      <div className="rw-impact-pip-bar-wrap"><div className="rw-impact-pip-bar" style={{ width: `${Math.min(t.finalScore, 100)}%` }} /></div>
+                      <span className="rw-impact-pip-score-val">{Math.round(t.finalScore)}</span>
+                      {t.isSelected && <span className="rw-impact-pip-sel-badge">Selected</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 function RuleImpactAnalysis({ rule, savedTerminals, merchant, filters, method, monthlyTxns, avgTxnValue, allTerminals, rules, srThresh, onDone, onEditRule, onDisableRule }) {
   const flows = useMemo(() => generateImpactedFlows(method, filters, monthlyTxns), [method, filters, monthlyTxns])
-  const [simulated, setSimulated] = useState({}) // flowId → { before, after }
-  const [simulating, setSimulating] = useState(null) // flowId currently loading
+  const [simulated, setSimulated] = useState({})   // flowId → { before, after }
+  const [simulating, setSimulating] = useState(null)
+  const [expanded, setExpanded]   = useState({})   // flowId → bool
 
   const runSim = useCallback((flow) => {
     setSimulating(flow.id)
@@ -520,9 +580,12 @@ function RuleImpactAnalysis({ rule, savedTerminals, merchant, filters, method, m
       const before = simulateRoutingPipeline(merchant, flow.txn, rulesWithout)
       const after  = simulateRoutingPipeline(merchant, flow.txn, rulesWith)
       setSimulated(p => ({ ...p, [flow.id]: { before, after } }))
+      setExpanded(p => ({ ...p, [flow.id]: true }))  // auto-expand after sim
       setSimulating(null)
-    }, 120)
+    }, 140)
   }, [rules, rule, merchant])
+
+  const toggleExpand = (flowId) => setExpanded(p => ({ ...p, [flowId]: !p[flowId] }))
 
   const formatRev = (amt) => {
     const abs = Math.abs(amt)
@@ -531,29 +594,46 @@ function RuleImpactAnalysis({ rule, savedTerminals, merchant, filters, method, m
     return `₹${abs}`
   }
 
+  // Derive per-flow impact metrics
+  const flowMetrics = useMemo(() => {
+    const m = {}
+    flows.forEach(flow => {
+      const sim = simulated[flow.id]
+      if (!sim) return
+      const beforeTerm = sim.before.isNTF ? null : sim.before.selectedTerminal
+      const afterTerm  = sim.after.isNTF  ? null : sim.after.selectedTerminal
+      const beforeSR   = beforeTerm?.successRate || 0
+      const afterSR    = afterTerm?.successRate  || 0
+      const srDelta    = afterSR - beforeSR
+      const ntfRisk    = sim.after.isNTF && !sim.before.isNTF
+      const revDelta   = Math.round((srDelta / 100) * flow.dailyVol * avgTxnValue)
+      m[flow.id] = { beforeTerm, afterTerm, beforeSR, afterSR, srDelta, ntfRisk, revDelta }
+    })
+    return m
+  }, [simulated, flows, avgTxnValue])
+
   const aggregateSummary = useMemo(() => {
-    const keys = Object.keys(simulated)
+    const keys = Object.keys(flowMetrics)
     if (!keys.length) return null
     let ntfRisks = 0, totalSRDelta = 0, totalRevDelta = 0
-    const dailyAvgTxn = avgTxnValue
     keys.forEach(flowId => {
-      const { before, after } = simulated[flowId]
-      const flow = flows.find(f => f.id === flowId)
-      if (!flow) return
-      if (after.isNTF && !before.isNTF) ntfRisks++
-      const beforeSR = before.isNTF ? 0 : (before.selectedTerminal?.successRate || 0)
-      const afterSR  = after.isNTF  ? 0 : (after.selectedTerminal?.successRate  || 0)
-      const srDelta  = afterSR - beforeSR
-      totalSRDelta  += srDelta
-      totalRevDelta += (srDelta / 100) * flow.dailyVol * dailyAvgTxn
+      const m = flowMetrics[flowId]
+      if (m.ntfRisk) ntfRisks++
+      totalSRDelta  += m.srDelta
+      totalRevDelta += m.revDelta
     })
     const simCount = keys.length
-    return { ntfRisks, avgSRDelta: simCount ? Math.round(totalSRDelta / simCount * 10) / 10 : 0, totalRevDelta: Math.round(totalRevDelta), simCount }
-  }, [simulated, flows, avgTxnValue])
+    return {
+      ntfRisks,
+      avgSRDelta: simCount ? Math.round(totalSRDelta / simCount * 10) / 10 : 0,
+      totalRevDelta: Math.round(totalRevDelta),
+      simCount,
+    }
+  }, [flowMetrics])
 
   return (
     <div className="rw-impact">
-      {/* Success banner */}
+      {/* ── Success banner ── */}
       <div className="rw-impact-banner">
         <span className="rw-impact-check">✓</span>
         <div>
@@ -563,95 +643,116 @@ function RuleImpactAnalysis({ rule, savedTerminals, merchant, filters, method, m
         <span className="rw-impact-enabled-badge">Active</span>
       </div>
 
-      {/* Impacted flows section */}
+      {/* ── Impacted flows ── */}
       <div className="rw-impact-section-label">Impacted Payment Flows ({flows.length})</div>
       <div className="rw-impact-flows">
         {flows.map(flow => {
-          const sim = simulated[flow.id]
+          const sim      = simulated[flow.id]
           const isSimming = simulating === flow.id
-
-          const beforeTerm = sim ? (sim.before.isNTF ? null : sim.before.selectedTerminal) : null
-          const afterTerm  = sim ? (sim.after.isNTF  ? null : sim.after.selectedTerminal)  : null
-          const beforeSR   = beforeTerm?.successRate || 0
-          const afterSR    = afterTerm?.successRate  || 0
-          const srDelta    = sim ? (afterSR - beforeSR) : 0
-          const ntfRisk    = sim && sim.after.isNTF && !sim.before.isNTF
-          const revDelta   = sim ? Math.round((srDelta / 100) * flow.dailyVol * avgTxnValue) : 0
+          const isOpen   = !!expanded[flow.id]
+          const m        = flowMetrics[flow.id]
 
           return (
-            <div key={flow.id} className="rw-impact-flow-card">
-              <div className="rw-impact-flow-header">
+            <div key={flow.id} className={`rw-impact-flow-card${sim ? (isOpen ? ' open' : ' collapsed') : ''}`}>
+
+              {/* ── Header row (always visible) ── */}
+              <div className="rw-impact-flow-header" onClick={sim ? () => toggleExpand(flow.id) : undefined} style={sim ? { cursor: 'pointer' } : {}}>
                 <div className="rw-impact-flow-meta">
                   <span className="rw-impact-flow-label">{flow.label}</span>
                   <span className="rw-impact-flow-vol">~{flow.dailyVol.toLocaleString()} txns/day</span>
                 </div>
-                {!sim && (
+
+                {/* Inline badges when collapsed (post-sim) */}
+                {sim && !isOpen && m && (
+                  <div className="rw-impact-flow-inline-badges">
+                    {m.ntfRisk && <span className="rw-impact-badge ntf compact">⚠️ NTF Risk</span>}
+                    {!m.ntfRisk && Math.abs(m.srDelta) >= 0.1 && (
+                      <span className={`rw-impact-badge compact ${m.srDelta > 0 ? 'sr-up' : 'sr-down'}`}>
+                        {m.srDelta > 0 ? '↑' : '↓'} SR {Math.abs(m.srDelta).toFixed(1)}%
+                      </span>
+                    )}
+                    {!m.ntfRisk && Math.abs(m.revDelta) >= 100 && (
+                      <span className={`rw-impact-badge compact ${m.revDelta >= 0 ? 'rev-up' : 'rev-down'}`}>
+                        {m.revDelta >= 0 ? '↑' : '↓'} {formatRev(m.revDelta)}/day
+                      </span>
+                    )}
+                    {!m.ntfRisk && Math.abs(m.srDelta) < 0.1 && (
+                      <span className="rw-impact-badge compact neutral">No change</span>
+                    )}
+                  </div>
+                )}
+
+                {/* Simulate / Re-simulate button (only when not collapsed) */}
+                {(!sim || isOpen) && (
                   <button
                     className="rw-impact-sim-btn"
-                    onClick={() => runSim(flow)}
+                    onClick={e => { e.stopPropagation(); runSim(flow) }}
                     disabled={isSimming}
                   >
-                    {isSimming ? 'Simulating…' : '▷ Simulate'}
+                    {isSimming ? 'Simulating…' : sim ? '↺ Re-simulate' : '▷ Simulate'}
                   </button>
                 )}
-                {sim && <span className="rw-impact-sim-done">✓ Simulated</span>}
+
+                {/* Chevron toggle (post-sim) */}
+                {sim && (
+                  <span className={`rw-impact-chevron${isOpen ? ' open' : ''}`}>▼</span>
+                )}
               </div>
 
-              {!sim && (
-                <div className="rw-impact-flow-hint">Click Simulate to see routing impact</div>
+              {/* Pre-sim hint */}
+              {!sim && !isSimming && (
+                <div className="rw-impact-flow-hint">Click Simulate to trace routing impact</div>
+              )}
+              {isSimming && (
+                <div className="rw-impact-flow-hint simming">⏳ Running pipeline simulation…</div>
               )}
 
-              {sim && (
-                <div className="rw-impact-sim-results">
-                  <div className="rw-impact-route-compare">
-                    <div className="rw-impact-route-side">
-                      <span className="rw-impact-route-label">Before</span>
-                      {beforeTerm
-                        ? <span className="rw-impact-route-term">{beforeTerm.displayId} · {beforeTerm.gatewayShort} · SR {beforeTerm.successRate}% · ₹{beforeTerm.costPerTxn}/txn</span>
-                        : <span className="rw-impact-route-ntf">NTF (no terminal)</span>
-                      }
-                    </div>
-                    <span className="rw-impact-route-arrow">→</span>
-                    <div className="rw-impact-route-side">
-                      <span className="rw-impact-route-label">After</span>
-                      {afterTerm
-                        ? <span className="rw-impact-route-term">{afterTerm.displayId} · {afterTerm.gatewayShort} · SR {afterTerm.successRate}% · ₹{afterTerm.costPerTxn}/txn</span>
-                        : <span className="rw-impact-route-ntf">NTF — no terminal matches</span>
-                      }
-                    </div>
-                  </div>
+              {/* ── Expandable detail ── */}
+              <div className={`rw-impact-flow-expand${isOpen ? ' open' : ''}`}>
+                {sim && (
+                  <div className="rw-impact-sim-results">
+                    {/* Impact badges */}
+                    {m && (
+                      <div className="rw-impact-badges">
+                        {m.ntfRisk && (
+                          <span className="rw-impact-badge ntf">
+                            ⚠️ NTF Risk — rule routes to {savedTerminals.map(t => t.displayId).join(', ')} with no fallback terminal
+                          </span>
+                        )}
+                        {!m.ntfRisk && Math.abs(m.srDelta) >= 0.1 && (
+                          <span className={`rw-impact-badge ${m.srDelta > 0 ? 'sr-up' : 'sr-down'}`}>
+                            {m.srDelta > 0 ? '↑' : '↓'} SR {m.srDelta > 0 ? 'improves' : 'drops'} {Math.abs(m.srDelta).toFixed(1)}%  ({m.beforeSR}% → {m.afterSR}%)
+                          </span>
+                        )}
+                        {!m.ntfRisk && Math.abs(m.revDelta) >= 100 && (
+                          <span className={`rw-impact-badge ${m.revDelta >= 0 ? 'rev-up' : 'rev-down'}`}>
+                            {m.revDelta >= 0 ? '↑' : '↓'} Est. {formatRev(m.revDelta)}/day revenue {m.revDelta >= 0 ? 'gain' : 'reduction'}
+                          </span>
+                        )}
+                        {!m.ntfRisk && Math.abs(m.srDelta) < 0.1 && (
+                          <span className="rw-impact-badge neutral">No routing change for this flow</span>
+                        )}
+                      </div>
+                    )}
 
-                  <div className="rw-impact-badges">
-                    {ntfRisk && (
-                      <span className="rw-impact-badge ntf">
-                        ⚠️ NTF Risk: {savedTerminals.map(t => t.displayId).join(', ')} selected, no fallback available
-                      </span>
-                    )}
-                    {!ntfRisk && Math.abs(srDelta) >= 0.1 && (
-                      <span className={`rw-impact-badge ${srDelta > 0 ? 'sr-up' : 'sr-down'}`}>
-                        {srDelta > 0 ? '↑' : '↓'} SR {srDelta > 0 ? 'improves' : 'drops'} {Math.abs(srDelta).toFixed(1)}% ({beforeSR}% → {afterSR}%)
-                      </span>
-                    )}
-                    {!ntfRisk && Math.abs(revDelta) >= 100 && (
-                      <span className={`rw-impact-badge ${revDelta >= 0 ? 'rev-up' : 'rev-down'}`}>
-                        {revDelta >= 0 ? '↑' : '↓'} Est. {formatRev(revDelta)}/day revenue {revDelta >= 0 ? 'gain' : 'reduction'}
-                      </span>
-                    )}
-                    {!ntfRisk && Math.abs(srDelta) < 0.1 && (
-                      <span className="rw-impact-badge neutral">No routing change for this flow</span>
-                    )}
+                    {/* Full pipeline traces — side by side (stacked on narrow) */}
+                    <div className="rw-impact-pipelines">
+                      <ImpactPipelineTrace result={sim.before} label="Without this rule" />
+                      <ImpactPipelineTrace result={sim.after}  label="With this rule" />
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
+
             </div>
           )
         })}
       </div>
 
-      {/* Aggregate summary */}
+      {/* ── Aggregate summary ── */}
       {aggregateSummary && (
         <div className={`rw-impact-summary ${aggregateSummary.ntfRisks > 0 ? 'danger' : aggregateSummary.avgSRDelta < -0.5 ? 'warn' : 'ok'}`}>
-          <div className="rw-impact-summary-title">Impact Summary ({aggregateSummary.simCount} flows simulated)</div>
+          <div className="rw-impact-summary-title">Impact Summary ({aggregateSummary.simCount} flow{aggregateSummary.simCount > 1 ? 's' : ''} simulated)</div>
           <div className="rw-impact-summary-rows">
             {aggregateSummary.ntfRisks > 0 && (
               <div className="rw-impact-summary-row red">⚠️ {aggregateSummary.ntfRisks} flow{aggregateSummary.ntfRisks > 1 ? 's' : ''} at NTF risk — no fallback terminal</div>
@@ -669,7 +770,7 @@ function RuleImpactAnalysis({ rule, savedTerminals, merchant, filters, method, m
         </div>
       )}
 
-      {/* Action buttons */}
+      {/* ── Action buttons ── */}
       <div className="rw-impact-actions">
         <button className="rw-btn ghost" onClick={onEditRule}>← Edit Rule</button>
         <button className="rw-btn secondary" onClick={onDisableRule}>⏸ Disable Rule</button>
