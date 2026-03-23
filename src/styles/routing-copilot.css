@@ -1795,3 +1795,101 @@
   text-align: left;
   width: 100%;
 }
+
+/* ════════════════════════════════════════
+   Cost-switch discouragement modal
+   ════════════════════════════════════════ */
+
+.gc-modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  border-radius: 12px;
+}
+
+.gc-modal {
+  background: #fff;
+  border-radius: 12px;
+  padding: 24px 24px 20px;
+  width: 380px;
+  max-width: calc(100% - 32px);
+  box-shadow: 0 8px 32px rgba(15, 23, 42, 0.18);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gc-modal-icon { font-size: 22px; line-height: 1; }
+
+.gc-modal-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.gc-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.gc-modal-body p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.55;
+  color: #374151;
+}
+
+.gc-modal-stat {
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 8px;
+  padding: 9px 11px;
+  color: #78350f !important;
+}
+
+.gc-modal-impact { color: #374151; }
+
+.gc-modal-reassure {
+  font-size: 12px !important;
+  color: #64748b !important;
+}
+
+.gc-modal-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* "Stay on SR" — visually prominent, filled blue — the encouraged action */
+.gc-modal-btn-cancel {
+  flex: 1;
+  padding: 9px 14px;
+  background: #528FF0;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.gc-modal-btn-cancel:hover { background: #3b7dd8; }
+
+/* "Switch anyway" — muted, outlined — the discouraged action */
+.gc-modal-btn-switch {
+  padding: 9px 14px;
+  background: #fff;
+  color: #94a3b8;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 400;
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+.gc-modal-btn-switch:hover { background: #f8fafc; color: #64748b; }

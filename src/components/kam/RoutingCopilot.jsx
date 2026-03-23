@@ -1488,11 +1488,54 @@ function _OldCreateRuleWizard({ method, merchant, rules, addRule, onClose }) {
 // ════════════════════════════════════════════
 // Method Panel — cards + chat/simulate
 // ════════════════════════════════════════════
+// Cost-switch discouragement modal
+// ════════════════════════════════════════════
+function CostSwitchModal({ merchant, onCancel, onConfirm }) {
+  const mccLabel  = merchant?.mccLabel  || merchant?.category || 'this MCC category'
+  const category  = merchant?.category  || mccLabel
+
+  return (
+    <div className="gc-modal-overlay" onClick={onCancel}>
+      <div className="gc-modal" onClick={e => e.stopPropagation()}>
+        <div className="gc-modal-icon">⚠️</div>
+        <div className="gc-modal-title">Switching to Cost-optimized Routing</div>
+
+        <div className="gc-modal-body">
+          <p className="gc-modal-stat">
+            Merchants in the same MCC category (<strong>{mccLabel}</strong>
+            {category !== mccLabel ? ` · ${category}` : ''}) using cost-optimized
+            routing show <strong>~2.1% lower success rates</strong> on average.
+          </p>
+          <p className="gc-modal-impact">
+            Lower SR gives <strong>{merchant?.name || 'this merchant'}</strong> reason
+            to route more volume through competing payment gateways, reducing
+            Razorpay's wallet share with this merchant.
+          </p>
+          <p className="gc-modal-reassure">
+            You can switch back to SR-optimized at any time.
+          </p>
+        </div>
+
+        <div className="gc-modal-actions">
+          <button className="gc-modal-btn-cancel" onClick={onCancel}>
+            Stay on SR-optimized
+          </button>
+          <button className="gc-modal-btn-switch" onClick={onConfirm}>
+            Switch anyway
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════
 function MethodPanel({ method, merchant, rules, addRule, simOverrides }) {
   const [routingStrategy, setRoutingStrategy] = useState('sr')       // 'sr' | 'cost'
   const [activeView, setActiveView]           = useState('sr_ranking') // default: show terminal ranking
   const [triggerMsg, setTriggerMsg]           = useState(null)
   const [chatKey, setChatKey]                 = useState(0)
+  const [showCostModal, setShowCostModal]     = useState(false)
   const methodLabel = method === 'UPIOnetime' ? 'UPI Onetime' : method === 'UPIRecurring' ? 'UPI Recurring' : method
 
   const fireChat = (text) => {
@@ -1502,12 +1545,29 @@ function MethodPanel({ method, merchant, rules, addRule, simOverrides }) {
   }
 
   const handleStrategy = (s) => {
+    if (s === 'cost' && routingStrategy === 'sr') {
+      setShowCostModal(true)
+      return
+    }
     setRoutingStrategy(s)
-    setActiveView('sr_ranking') // always show terminal ranking when a strategy is selected
+    setActiveView('sr_ranking')
+  }
+
+  const confirmCostSwitch = () => {
+    setShowCostModal(false)
+    setRoutingStrategy('cost')
+    setActiveView('sr_ranking')
   }
 
   return (
     <div className="gc-method-panel">
+      {showCostModal && (
+        <CostSwitchModal
+          merchant={merchant}
+          onCancel={() => setShowCostModal(false)}
+          onConfirm={confirmCostSwitch}
+        />
+      )}
       {/* ── Top: action cards ── */}
       <div className="gc-panel-top">
         <div className="gc-panel-cards">
