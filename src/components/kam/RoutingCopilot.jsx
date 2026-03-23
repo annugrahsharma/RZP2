@@ -573,7 +573,7 @@ function RuleForm({ merchant, rules, onRuleCreated, prefill }) {
 // ════════════════════════════════════════════
 // Method-scoped Chat
 // ════════════════════════════════════════════
-function MethodChat({ method, merchant, rules, addRule, simOverrides }) {
+function MethodChat({ method, merchant, rules, addRule, simOverrides, triggerMsg }) {
   const [messages, setMessages] = useState([])
   const [input, setInput]       = useState('')
   const chatEndRef              = useRef(null)
@@ -686,6 +686,11 @@ function MethodChat({ method, merchant, rules, addRule, simOverrides }) {
     }, 280)
   }, [method, merchant, rules, simOverrides, methodLabel])
 
+  // Fire when an L2 nav item is clicked
+  useEffect(() => {
+    if (triggerMsg?.id) dispatch(triggerMsg.text)
+  }, [triggerMsg?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleSend = useCallback(() => {
     if (!input.trim()) return
     const msg = input.trim()
@@ -792,19 +797,8 @@ function MethodChat({ method, merchant, rules, addRule, simOverrides }) {
     )
   }
 
-  const suggests = SMART_SUGGESTS[method] || []
-
   return (
     <div className="gc-method-chat">
-      {/* Smart Suggest chips */}
-      {suggests.length > 0 && (
-        <div className="gc-suggest-bar">
-          {suggests.map((s, i) => (
-            <button key={i} className="gc-suggest-chip" onClick={() => dispatch(s)}>{s}</button>
-          ))}
-        </div>
-      )}
-
       {/* Chat messages */}
       <div className="gc-chat-area">
         {messages.map((msg, i) => renderMessage(msg, i))}
@@ -833,6 +827,16 @@ function MethodChat({ method, merchant, rules, addRule, simOverrides }) {
 // ════════════════════════════════════════════
 export default function RoutingCopilot({ merchant, rules, addRule, simOverrides }) {
   const [selectedMethod, setSelectedMethod] = useState('Cards')
+  const [triggerMsg, setTriggerMsg]         = useState(null)
+
+  const handleMethodSelect = (key) => {
+    setSelectedMethod(key)
+    setTriggerMsg(null)
+  }
+
+  const handleL2Click = (question) => {
+    setTriggerMsg({ text: question, id: Date.now() })
+  }
 
   const ruleCount = useMemo(() => {
     const counts = {}
@@ -845,9 +849,11 @@ export default function RoutingCopilot({ merchant, rules, addRule, simOverrides 
     return counts
   }, [rules])
 
+  const l2Suggests = SMART_SUGGESTS[selectedMethod] || []
+
   return (
     <div className="gc-copilot">
-      {/* ── Left Sidebar ── */}
+      {/* ── L1: Method list ── */}
       <nav className="gc-sidebar">
         {ALL_PAYMENT_METHODS.map(({ key, label, Icon }) => {
           const isActive = selectedMethod === key
@@ -856,7 +862,7 @@ export default function RoutingCopilot({ merchant, rules, addRule, simOverrides 
             <button
               key={key}
               className={`gc-nav-item${isActive ? ' gc-nav-item--active' : ''}`}
-              onClick={() => setSelectedMethod(key)}
+              onClick={() => handleMethodSelect(key)}
             >
               <span className="gc-nav-icon"><Icon /></span>
               <span className="gc-nav-label">{label}</span>
@@ -864,6 +870,13 @@ export default function RoutingCopilot({ merchant, rules, addRule, simOverrides 
             </button>
           )
         })}
+      </nav>
+
+      {/* ── L2: Smart suggest questions ── */}
+      <nav className="gc-sidebar-l2">
+        {l2Suggests.map((q, i) => (
+          <button key={i} className="gc-l2-item" onClick={() => handleL2Click(q)}>{q}</button>
+        ))}
       </nav>
 
       {/* ── Right: Method-scoped Chat ── */}
@@ -875,6 +888,7 @@ export default function RoutingCopilot({ merchant, rules, addRule, simOverrides 
           rules={rules}
           addRule={addRule}
           simOverrides={simOverrides}
+          triggerMsg={triggerMsg}
         />
       </div>
     </div>
