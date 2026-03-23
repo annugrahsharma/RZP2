@@ -64,6 +64,13 @@ function IconNB()     { return <svg viewBox="0 0 24 24" width="15" height="15" f
 function IconEMI()    { return <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> }
 function IconWallet() { return <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 12V22H4a2 2 0 0 1-2-2V6a2 2 0 0 0 2 2h16v4z"/><path d="M22 12H4"/><path d="M6 6V4a2 2 0 0 1 2-2h12"/><circle cx="17" cy="17" r="1" fill="currentColor"/></svg> }
 
+// ── Card icons ───────────────────────────────
+function IconRoute()   { return <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg> }
+function IconPlay()    { return <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill="currentColor" stroke="none"/></svg> }
+function IconClock()   { return <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> }
+function IconSRIcon()  { return <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg> }
+function IconCostIcon(){ return <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg> }
+
 // ── Intent Classifier ──────────────────────
 function classifyIntent(input) {
   const q = input.toLowerCase().trim()
@@ -823,20 +830,100 @@ function MethodChat({ method, merchant, rules, addRule, simOverrides, triggerMsg
 }
 
 // ════════════════════════════════════════════
+// Method Panel — cards + chat
+// ════════════════════════════════════════════
+function MethodPanel({ method, merchant, rules, addRule, simOverrides }) {
+  const [routingStrategy, setRoutingStrategy] = useState(null) // 'sr' | 'cost'
+  const [triggerMsg, setTriggerMsg]           = useState(null)
+  const methodLabel = method === 'NB' ? 'Net Banking' : method
+
+  const fire = (text) => setTriggerMsg({ text, id: Date.now() })
+
+  const handleStrategy = (s) => {
+    setRoutingStrategy(s)
+    if (s === 'sr') fire(`What is the priority order of terminals for ${methodLabel}?`)
+  }
+
+  return (
+    <div className="gc-method-panel">
+      {/* ── Top: action cards ── */}
+      <div className="gc-panel-top">
+        <div className="gc-panel-cards">
+          {/* Card 1: Routing Strategy */}
+          <div className="gc-card">
+            <div className="gc-card-icon"><IconRoute /></div>
+            <div className="gc-card-title">Routing Strategy</div>
+            <div className="gc-card-desc">Set the optimization goal for {methodLabel}</div>
+            <div className="gc-strategy-opts">
+              <button
+                className={`gc-strategy-btn${routingStrategy === 'sr' ? ' active' : ''}`}
+                onClick={() => handleStrategy('sr')}
+              >
+                <IconSRIcon /> Optimize for Success Rate
+              </button>
+              <button
+                className={`gc-strategy-btn${routingStrategy === 'cost' ? ' active' : ''}`}
+                onClick={() => handleStrategy('cost')}
+              >
+                <IconCostIcon /> Save Cost / Custom Rules
+              </button>
+            </div>
+          </div>
+
+          {/* Card 2: Simulate Payments */}
+          <div className="gc-card gc-card-clickable" onClick={() => fire(`Simulate a ${methodLabel} payment of ₹5,000`)}>
+            <div className="gc-card-icon" style={{ color: '#059669' }}><IconPlay /></div>
+            <div className="gc-card-title">Simulate Payments</div>
+            <div className="gc-card-desc">Trace a transaction through the routing pipeline end-to-end</div>
+            <div className="gc-card-cta">Run Simulation →</div>
+          </div>
+
+          {/* Card 3: Historic Routing Logic */}
+          <div className="gc-card gc-card-clickable" onClick={() => fire(`What is the priority order of terminals for ${methodLabel}?`)}>
+            <div className="gc-card-icon" style={{ color: '#7c3aed' }}><IconClock /></div>
+            <div className="gc-card-title">Historic Routing Logic</div>
+            <div className="gc-card-desc">View terminal priority order and current routing patterns</div>
+            <div className="gc-card-cta">View Routing →</div>
+          </div>
+        </div>
+
+        {/* Card 4: Create / View Rules — conditional */}
+        {routingStrategy === 'cost' && (
+          <div className="gc-rules-card">
+            <div className="gc-rules-card-info">
+              <div className="gc-rules-card-title">Create / View Rules</div>
+              <div className="gc-rules-card-desc">Custom routing rules for {methodLabel} payments</div>
+            </div>
+            <div className="gc-rules-card-actions">
+              <button className="gc-rules-card-btn gc-rules-card-btn--primary" onClick={() => fire(`Create a routing rule for ${methodLabel}`)}>
+                + Create Rule
+              </button>
+              <button className="gc-rules-card-btn gc-rules-card-btn--secondary" onClick={() => fire(`Show routing rules for ${methodLabel}`)}>
+                View Rules
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Chat ── */}
+      <MethodChat
+        method={method}
+        merchant={merchant}
+        rules={rules}
+        addRule={addRule}
+        simOverrides={simOverrides}
+        triggerMsg={triggerMsg}
+      />
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════
 // Main Component
 // ════════════════════════════════════════════
 export default function RoutingCopilot({ merchant, rules, addRule, simOverrides }) {
   const [selectedMethod, setSelectedMethod] = useState('Cards')
-  const [triggerMsg, setTriggerMsg]         = useState(null)
-
-  const handleMethodSelect = (key) => {
-    setSelectedMethod(key)
-    setTriggerMsg(null)
-  }
-
-  const handleL2Click = (question) => {
-    setTriggerMsg({ text: question, id: Date.now() })
-  }
 
   const ruleCount = useMemo(() => {
     const counts = {}
@@ -849,8 +936,6 @@ export default function RoutingCopilot({ merchant, rules, addRule, simOverrides 
     return counts
   }, [rules])
 
-  const l2Suggests = SMART_SUGGESTS[selectedMethod] || []
-
   return (
     <div className="gc-copilot">
       {/* ── L1: Method list ── */}
@@ -862,7 +947,7 @@ export default function RoutingCopilot({ merchant, rules, addRule, simOverrides 
             <button
               key={key}
               className={`gc-nav-item${isActive ? ' gc-nav-item--active' : ''}`}
-              onClick={() => handleMethodSelect(key)}
+              onClick={() => setSelectedMethod(key)}
             >
               <span className="gc-nav-icon"><Icon /></span>
               <span className="gc-nav-label">{label}</span>
@@ -872,23 +957,15 @@ export default function RoutingCopilot({ merchant, rules, addRule, simOverrides 
         })}
       </nav>
 
-      {/* ── L2: Smart suggest questions ── */}
-      <nav className="gc-sidebar-l2">
-        {l2Suggests.map((q, i) => (
-          <button key={i} className="gc-l2-item" onClick={() => handleL2Click(q)}>{q}</button>
-        ))}
-      </nav>
-
-      {/* ── Right: Method-scoped Chat ── */}
+      {/* ── Right: Cards + scoped chat ── */}
       <div className="gc-panel">
-        <MethodChat
+        <MethodPanel
           key={selectedMethod}
           method={selectedMethod}
           merchant={merchant}
           rules={rules}
           addRule={addRule}
           simOverrides={simOverrides}
-          triggerMsg={triggerMsg}
         />
       </div>
     </div>
