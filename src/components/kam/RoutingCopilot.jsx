@@ -1093,6 +1093,297 @@ function SimulateView({ method, merchant, rules }) {
 }
 
 // ════════════════════════════════════════════
+// Create Rule Wizard — multi-step flow
+// ════════════════════════════════════════════
+
+const PAYMENT_FLOWS = {
+  Cards: [
+    { id: 'visa_credit_dom',  label: 'Visa Credit',       sub: 'Domestic',      params: { card_network: 'Visa',       card_type: 'credit', international: false } },
+    { id: 'visa_debit_dom',   label: 'Visa Debit',        sub: 'Domestic',      params: { card_network: 'Visa',       card_type: 'debit',  international: false } },
+    { id: 'mc_credit_dom',    label: 'Mastercard Credit', sub: 'Domestic',      params: { card_network: 'Mastercard', card_type: 'credit', international: false } },
+    { id: 'mc_debit_dom',     label: 'Mastercard Debit',  sub: 'Domestic',      params: { card_network: 'Mastercard', card_type: 'debit',  international: false } },
+    { id: 'rupay_debit_dom',  label: 'RuPay Debit',       sub: 'Domestic',      params: { card_network: 'RuPay',      card_type: 'debit',  international: false } },
+    { id: 'amex_credit_dom',  label: 'Amex Credit',       sub: 'Domestic',      params: { card_network: 'Amex',       card_type: 'credit', international: false } },
+    { id: 'visa_credit_intl', label: 'Visa Credit',       sub: 'International', params: { card_network: 'Visa',       card_type: 'credit', international: true  } },
+    { id: 'mc_credit_intl',   label: 'Mastercard Credit', sub: 'International', params: { card_network: 'Mastercard', card_type: 'credit', international: true  } },
+  ],
+  UPI: [
+    { id: 'upi_intent',  label: 'UPI Intent',  sub: 'Pay via app',  params: { upi_type: 'intent'  } },
+    { id: 'upi_collect', label: 'UPI Collect', sub: 'Pull payment', params: { upi_type: 'collect' } },
+    { id: 'upi_qr',      label: 'UPI QR',      sub: 'Scan & pay',  params: { upi_type: 'qr'      } },
+  ],
+  NB: [
+    { id: 'nb_hdfc',  label: 'HDFC Bank',       sub: 'Net Banking', params: { bank: 'HDFC'  } },
+    { id: 'nb_icici', label: 'ICICI Bank',      sub: 'Net Banking', params: { bank: 'ICICI' } },
+    { id: 'nb_sbi',   label: 'SBI',             sub: 'Net Banking', params: { bank: 'SBI'   } },
+    { id: 'nb_axis',  label: 'Axis Bank',       sub: 'Net Banking', params: { bank: 'Axis'  } },
+    { id: 'nb_kotak', label: 'Kotak Bank',      sub: 'Net Banking', params: { bank: 'Kotak' } },
+    { id: 'nb_other', label: 'All Other Banks', sub: 'Net Banking', params: { bank: 'Other' } },
+  ],
+  EMI: [
+    { id: 'emi_nc_visa',  label: 'No-cost EMI',  sub: 'Visa',       params: { emi_type: 'no_cost',  card_network: 'Visa'       } },
+    { id: 'emi_nc_mc',    label: 'No-cost EMI',  sub: 'Mastercard', params: { emi_type: 'no_cost',  card_network: 'Mastercard' } },
+    { id: 'emi_std_visa', label: 'Standard EMI', sub: 'Visa',       params: { emi_type: 'standard', card_network: 'Visa'       } },
+    { id: 'emi_std_mc',   label: 'Standard EMI', sub: 'Mastercard', params: { emi_type: 'standard', card_network: 'Mastercard' } },
+  ],
+  Wallet: [
+    { id: 'w_paytm',   label: 'Paytm',      sub: 'Wallet', params: { wallet: 'Paytm'      } },
+    { id: 'w_phonepe', label: 'PhonePe',    sub: 'Wallet', params: { wallet: 'PhonePe'    } },
+    { id: 'w_amazon',  label: 'Amazon Pay', sub: 'Wallet', params: { wallet: 'Amazon Pay' } },
+    { id: 'w_free',    label: 'Freecharge', sub: 'Wallet', params: { wallet: 'Freecharge' } },
+    { id: 'w_mobi',    label: 'Mobikwik',   sub: 'Wallet', params: { wallet: 'Mobikwik'   } },
+  ],
+}
+
+const AMOUNT_RANGES = [
+  { id: 'any',      label: 'Any amount',        conditions: [] },
+  { id: 'low',      label: 'Below ₹1,000',      conditions: [{ field: 'amount', operator: 'less_than', value: 1000 }] },
+  { id: 'mid',      label: '₹1K – ₹10K',        conditions: [{ field: 'amount', operator: 'greater_than', value: 1000 }, { field: 'amount', operator: 'less_than', value: 10000 }] },
+  { id: 'high',     label: 'Above ₹10,000',     conditions: [{ field: 'amount', operator: 'greater_than', value: 10000 }] },
+  { id: 'very_high',label: 'Above ₹1,00,000',   conditions: [{ field: 'amount', operator: 'greater_than', value: 100000 }] },
+]
+
+const WIZARD_STEPS = ['Select Flow', 'Configure', 'Set Priority', 'Preview Rule', 'Confirm']
+
+function CreateRuleWizard({ method, merchant, rules, addRule, onClose }) {
+  const [step, setStep]               = useState(1)
+  const [selectedFlow, setSelectedFlow] = useState(null)
+  const [amountRange, setAmountRange] = useState('any')
+  const [terminalOrder, setTerminalOrder] = useState([])
+  const [srThresholds, setSrThresholds]   = useState({})
+  const [dragIdx, setDragIdx]         = useState(null)
+  const [confirmed, setConfirmed]     = useState(false)
+  const methodLabel = method === 'NB' ? 'Net Banking' : method
+
+  const methodTerminals = useMemo(() =>
+    merchant.gatewayMetrics
+      .filter(gm => (gm.supportedMethods || []).includes(method))
+      .map(gm => {
+        const gw = gateways.find(g => g.id === gm.gatewayId)
+        const term = gw?.terminals.find(t => t.id === gm.terminalId)
+        return { id: gm.terminalId, displayId: term?.terminalId || gm.terminalId, gatewayShort: gw?.shortName || '?', successRate: gm.successRate, costPerTxn: gm.costPerTxn }
+      }),
+    [merchant, method]
+  )
+
+  useEffect(() => {
+    const sorted = [...methodTerminals].sort((a, b) => b.successRate - a.successRate)
+    setTerminalOrder(sorted)
+    const defaults = {}
+    sorted.forEach(t => { defaults[t.id] = Math.max(70, Math.floor(t.successRate - 3)) })
+    setSrThresholds(defaults)
+  }, [methodTerminals])
+
+  const getThreshold = (id) => srThresholds[id] ?? 90
+  const setThreshold = (id, val) => setSrThresholds(prev => ({ ...prev, [id]: val }))
+  const dailyVol = Math.round((merchant?.txnVolumeHistory?.currentMonth || 30000) / 30)
+  const flows = PAYMENT_FLOWS[method] || []
+
+  // Drag & drop
+  const handleDragStart = (e, idx) => { setDragIdx(idx); e.dataTransfer.effectAllowed = 'move' }
+  const handleDragOver  = (e, idx) => {
+    e.preventDefault()
+    if (dragIdx === null || dragIdx === idx) return
+    const next = [...terminalOrder]; const [moved] = next.splice(dragIdx, 1); next.splice(idx, 0, moved)
+    setTerminalOrder(next); setDragIdx(idx)
+  }
+  const handleDragEnd = () => setDragIdx(null)
+
+  const handleConfirm = () => {
+    const amtRange = AMOUNT_RANGES.find(r => r.id === amountRange) || AMOUNT_RANGES[0]
+    const fp = selectedFlow?.params || {}
+    const conditions = [
+      { field: 'payment_method', operator: 'equals', value: method },
+      ...(fp.card_network ? [{ field: 'card_network', operator: 'equals', value: fp.card_network }] : []),
+      ...(fp.card_type    ? [{ field: 'card_type',    operator: 'equals', value: fp.card_type    }] : []),
+      ...(fp.international !== undefined ? [{ field: 'international', operator: 'equals', value: fp.international }] : []),
+      ...amtRange.conditions,
+    ]
+    const newRule = {
+      id: `rule-${merchant.id}-wiz-${Date.now()}`,
+      name: `${selectedFlow.label} ${selectedFlow.sub} → ${terminalOrder[0]?.displayId}`,
+      type: 'conditional', enabled: true,
+      priority: rules.filter(r => !r.isDefault && !r.isMethodDefault).length + 1,
+      conditions, conditionLogic: 'AND',
+      action: { type: 'route', terminals: terminalOrder.map(t => t.id), splits: [], srThreshold: getThreshold(terminalOrder[0]?.id), minPaymentCount: 100 },
+      isDefault: false, createdAt: new Date().toISOString(), createdBy: 'anugrah.sharma@razorpay.com',
+    }
+    addRule?.(newRule)
+    setConfirmed(true)
+  }
+
+  return (
+    <div className="gc-wizard">
+      {/* ── Stepper ── */}
+      <div className="gc-wizard-stepper">
+        {WIZARD_STEPS.map((s, i) => (
+          <React.Fragment key={i}>
+            <div className={`gc-wz-step${step > i + 1 ? ' done' : step === i + 1 ? ' active' : ''}`}>
+              <div className="gc-wz-dot">{step > i + 1 ? '✓' : i + 1}</div>
+              <div className="gc-wz-label">{s}</div>
+            </div>
+            {i < WIZARD_STEPS.length - 1 && <div className={`gc-wz-connector${step > i + 1 ? ' done' : ''}`} />}
+          </React.Fragment>
+        ))}
+      </div>
+
+      <div className="gc-wizard-body">
+        {/* ── Step 1: Select Flow ── */}
+        {step === 1 && (
+          <div>
+            <div className="gc-wz-hdr"><div className="gc-wz-title">Select a payment flow to configure</div><div className="gc-wz-sub">Pick a specific payment type — you'll set terminal priority for this exact scenario.</div></div>
+            <div className="gc-flow-grid">
+              {flows.map(f => (
+                <button key={f.id} className={`gc-flow-card${selectedFlow?.id === f.id ? ' active' : ''}`} onClick={() => setSelectedFlow(f)}>
+                  <div className="gc-flow-label">{f.label}</div>
+                  <div className="gc-flow-sub">{f.sub}</div>
+                </button>
+              ))}
+            </div>
+            <div className="gc-wz-footer">
+              <button className="gc-wz-btn gc-wz-btn--ghost" onClick={onClose}>Cancel</button>
+              <button className="gc-wz-btn gc-wz-btn--primary" disabled={!selectedFlow} onClick={() => setStep(2)}>Next: Configure →</button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Step 2: Configure ── */}
+        {step === 2 && (
+          <div>
+            <div className="gc-wz-hdr"><div className="gc-wz-title">{selectedFlow?.label} · {selectedFlow?.sub}</div><div className="gc-wz-sub">Set additional filters for when this rule applies.</div></div>
+            <div className="gc-sim-section" style={{ marginBottom: 14 }}>
+              <div className="gc-sim-label">Amount Range</div>
+              <div className="gc-sim-opts">
+                {AMOUNT_RANGES.map(r => <button key={r.id} className={`gc-sim-opt${amountRange === r.id ? ' active' : ''}`} onClick={() => setAmountRange(r.id)}>{r.label}</button>)}
+              </div>
+            </div>
+            {method === 'Cards' && <div className="gc-info-box">Network, card type, and geography are pre-set from your flow selection: <strong>{selectedFlow?.label} · {selectedFlow?.sub}</strong>.</div>}
+            <div className="gc-wz-footer">
+              <button className="gc-wz-btn gc-wz-btn--ghost" onClick={() => setStep(1)}>← Back</button>
+              <button className="gc-wz-btn gc-wz-btn--primary" onClick={() => setStep(3)}>Next: Set Priority →</button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Step 3: Terminal Priority ── */}
+        {step === 3 && (
+          <div>
+            <div className="gc-wz-hdr"><div className="gc-wz-title">Set Terminal Priority</div><div className="gc-wz-sub">Drag terminals to reorder. Set an SR threshold — traffic falls back to the next terminal when SR drops below it.</div></div>
+            <div className="gc-priority-list">
+              {terminalOrder.map((t, i) => (
+                <div key={t.id} className={`gc-priority-row${dragIdx === i ? ' dragging' : ''}`} draggable onDragStart={e => handleDragStart(e, i)} onDragOver={e => handleDragOver(e, i)} onDragEnd={handleDragEnd}>
+                  <span className="gc-priority-handle">⠿</span>
+                  <span className="gc-priority-rank">#{i + 1}</span>
+                  <div className="gc-priority-info">
+                    <div className="gc-priority-term">{t.displayId}</div>
+                    <div className="gc-priority-gw">{t.gatewayShort}</div>
+                  </div>
+                  <div className="gc-priority-metrics">
+                    <span style={{ color: t.successRate >= 90 ? '#059669' : '#d97706', fontWeight: 600, fontSize: 13 }}>SR {t.successRate}%</span>
+                    <span style={{ fontSize: 12, color: t.costPerTxn === 0 ? '#059669' : '#64748b' }}>{t.costPerTxn === 0 ? '₹0 zero-cost' : `₹${t.costPerTxn}/txn`}</span>
+                  </div>
+                  {i < terminalOrder.length - 1
+                    ? <div className="gc-priority-thresh"><span className="gc-priority-thresh-lbl">Fallback if SR &lt;</span><input type="number" min="50" max="99" className="gc-priority-sr-input" value={getThreshold(t.id)} onChange={e => setThreshold(t.id, +e.target.value)} /><span>%</span></div>
+                    : <span className="gc-badge gc-badge-gray" style={{ fontSize: 10 }}>Final fallback</span>}
+                </div>
+              ))}
+            </div>
+            <div className="gc-wz-footer">
+              <button className="gc-wz-btn gc-wz-btn--ghost" onClick={() => setStep(2)}>← Back</button>
+              <button className="gc-wz-btn gc-wz-btn--primary" onClick={() => setStep(4)}>Preview Rule →</button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Step 4: Rule Preview ── */}
+        {step === 4 && (
+          <div>
+            <div className="gc-wz-hdr"><div className="gc-wz-title">Rule Preview</div><div className="gc-wz-sub">Review the routing cascade and cost impact before saving.</div></div>
+            <div className="gc-preview-cascade">
+              <div className="gc-preview-cascade-title">Routing Cascade</div>
+              {terminalOrder.map((t, i) => (
+                <React.Fragment key={t.id}>
+                  <div className={`gc-preview-terminal${i === 0 ? ' primary' : ''}`}>
+                    <span className="gc-preview-rank">#{i + 1}</span>
+                    <div className="gc-preview-info">
+                      <span className="gc-preview-term-id">{t.displayId}</span>
+                      <span className="gc-preview-gw">{t.gatewayShort}</span>
+                    </div>
+                    <div className="gc-preview-metrics">
+                      <span style={{ color: t.successRate >= 90 ? '#059669' : '#d97706', fontWeight: 600 }}>SR {t.successRate}%</span>
+                      <span style={{ color: t.costPerTxn === 0 ? '#059669' : '#64748b', fontSize: 12 }}>{t.costPerTxn === 0 ? '₹0' : `₹${t.costPerTxn}/txn`}</span>
+                    </div>
+                    <span className={`gc-badge ${i === 0 ? 'gc-badge-blue' : 'gc-badge-gray'}`} style={{ fontSize: 10, whiteSpace: 'nowrap' }}>{i === 0 ? 'Primary' : `Fallback ${i}`}</span>
+                  </div>
+                  {i < terminalOrder.length - 1 && <div className="gc-preview-connector">↓ if SR drops below {getThreshold(t.id)}%</div>}
+                </React.Fragment>
+              ))}
+            </div>
+            <div className="gc-preview-narrative">
+              {terminalOrder.map((t, i) => {
+                const prev = terminalOrder[i - 1]
+                const costNote = t.costPerTxn === 0 ? '₹0/txn — zero-cost deal' : `₹${t.costPerTxn}/txn`
+                if (i === 0) return <span key={t.id}><strong>{t.displayId}</strong> handles payments first (SR {t.successRate}%, {costNote}). </span>
+                const thresh = getThreshold(prev.id)
+                const suffix = i === terminalOrder.length - 1 ? ' as the final fallback.' : '. '
+                return <span key={t.id}>If SR drops below {thresh}%, traffic shifts to <strong>{t.displayId}</strong> (SR {t.successRate}%, {costNote}){suffix}</span>
+              })}
+            </div>
+            {terminalOrder.length >= 2 && (() => {
+              const [p1, p2] = terminalOrder
+              const delta = p2.costPerTxn - p1.costPerTxn
+              if (delta <= 0) return null
+              const saving = Math.round(delta * dailyVol)
+              return (
+                <div className="gc-preview-saving">
+                  <div className="gc-preview-saving-title">Cost Impact</div>
+                  <div className="gc-preview-saving-text">Routing via <strong>{p1.displayId}</strong> costs <strong>{p1.costPerTxn === 0 ? '₹0' : `₹${p1.costPerTxn}`}/txn</strong> vs <strong>₹{p2.costPerTxn}/txn</strong> on {p2.displayId}. At ~{dailyVol.toLocaleString()} daily {methodLabel} transactions, that's <span className="gc-preview-saving-badge">₹{saving.toLocaleString()}/day</span> saved by routing here first.</div>
+                </div>
+              )
+            })()}
+            <div className="gc-preview-meta">
+              <span className="gc-badge gc-badge-blue">{selectedFlow?.label} · {selectedFlow?.sub}</span>
+              {amountRange !== 'any' && <span className="gc-badge gc-badge-gray">{AMOUNT_RANGES.find(r => r.id === amountRange)?.label}</span>}
+              <span className="gc-badge gc-badge-gray">{terminalOrder.length} terminals</span>
+            </div>
+            <div className="gc-wz-footer">
+              <button className="gc-wz-btn gc-wz-btn--ghost" onClick={() => setStep(3)}>← Back</button>
+              <button className="gc-wz-btn gc-wz-btn--primary" onClick={() => setStep(5)}>Confirm & Create →</button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Step 5: Confirm ── */}
+        {step === 5 && !confirmed && (
+          <div>
+            <div className="gc-wz-hdr"><div className="gc-wz-title">Confirm Rule Creation</div><div className="gc-wz-sub">This rule will be added to the active routing configuration for {merchant?.name}.</div></div>
+            <div className="gc-confirm-table">
+              <div className="gc-confirm-row"><span className="gc-confirm-lbl">Flow</span><span>{selectedFlow?.label} · {selectedFlow?.sub}</span></div>
+              <div className="gc-confirm-row"><span className="gc-confirm-lbl">Amount</span><span>{AMOUNT_RANGES.find(r => r.id === amountRange)?.label}</span></div>
+              <div className="gc-confirm-row"><span className="gc-confirm-lbl">Priority</span><span>{terminalOrder.map(t => t.displayId).join(' → ')}</span></div>
+              <div className="gc-confirm-row"><span className="gc-confirm-lbl">Fallback</span><span>SR threshold per terminal (configured in Step 3)</span></div>
+            </div>
+            <div className="gc-wz-footer">
+              <button className="gc-wz-btn gc-wz-btn--ghost" onClick={() => setStep(4)}>← Back</button>
+              <button className="gc-wz-btn gc-wz-btn--primary" onClick={handleConfirm}>✓ Create Rule</button>
+            </div>
+          </div>
+        )}
+
+        {step === 5 && confirmed && (
+          <div className="gc-wizard-success">
+            <div className="gc-success-icon">✓</div>
+            <div className="gc-success-title">Rule Created Successfully</div>
+            <div className="gc-success-sub"><strong>{selectedFlow?.label} · {selectedFlow?.sub}</strong> routing rule is now active for {merchant?.name}. Priority: {terminalOrder.map(t => t.displayId).join(' → ')}.</div>
+            <button className="gc-wz-btn gc-wz-btn--primary" style={{ marginTop: 20 }} onClick={onClose}>Done</button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════
 // Method Panel — cards + chat/simulate
 // ════════════════════════════════════════════
 function MethodPanel({ method, merchant, rules, addRule, simOverrides }) {
@@ -1151,16 +1442,15 @@ function MethodPanel({ method, merchant, rules, addRule, simOverrides }) {
           </div>
         </div>
 
-        {/* Card 4: Create / View Rules — conditional on cost strategy */}
+        {/* Card 4: Create Rule — conditional on cost strategy */}
         {routingStrategy === 'cost' && (
           <div className="gc-rules-card">
             <div className="gc-rules-card-info">
-              <div className="gc-rules-card-title">Create / View Rules</div>
-              <div className="gc-rules-card-desc">Custom routing rules for {methodLabel} payments</div>
+              <div className="gc-rules-card-title">Create Rule</div>
+              <div className="gc-rules-card-desc">Build a custom routing rule for {methodLabel} payments with terminal priority and SR fallback thresholds.</div>
             </div>
             <div className="gc-rules-card-actions">
-              <button className="gc-rules-card-btn gc-rules-card-btn--primary" onClick={() => fireChat(`Create a routing rule for ${methodLabel}`)}>+ Create Rule</button>
-              <button className="gc-rules-card-btn gc-rules-card-btn--secondary" onClick={() => fireChat(`Show routing rules for ${methodLabel}`)}>View Rules</button>
+              <button className="gc-rules-card-btn gc-rules-card-btn--primary" onClick={() => setActiveView('create_rule')}>+ Create Rule</button>
             </div>
           </div>
         )}
@@ -1169,6 +1459,8 @@ function MethodPanel({ method, merchant, rules, addRule, simOverrides }) {
       {/* ── Content area ── */}
       {activeView === 'simulate'
         ? <SimulateView key={method} method={method} merchant={merchant} rules={rules} />
+        : activeView === 'create_rule'
+        ? <CreateRuleWizard method={method} merchant={merchant} rules={rules} addRule={addRule} onClose={() => setActiveView(null)} />
         : <MethodChat key={chatKey} method={method} merchant={merchant} rules={rules} addRule={addRule} simOverrides={simOverrides} triggerMsg={triggerMsg} />
       }
     </div>
