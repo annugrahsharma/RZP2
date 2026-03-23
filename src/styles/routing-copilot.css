@@ -139,14 +139,14 @@
 .gc-card-cta   { font-size: 12.5px; font-weight: 600; color: #528FF0; margin-top: 4px; }
 
 /* Strategy toggle buttons inside Card 1 */
-.gc-strategy-opts { display: flex; flex-direction: column; gap: 5px; margin-top: 4px; }
+.gc-strategy-opts { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
 
 .gc-strategy-btn {
   display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 7px 10px;
-  border-radius: 7px;
+  flex-direction: column;
+  gap: 0;
+  padding: 9px 11px;
+  border-radius: 8px;
   border: 1.5px solid var(--rzp-border);
   background: #fff;
   font-size: 12px;
@@ -154,19 +154,96 @@
   color: #374151;
   cursor: pointer;
   text-align: left;
-  transition: all 0.12s;
+  transition: border-color 0.12s, background 0.12s;
+  width: 100%;
 }
 
-.gc-strategy-btn:hover {
-  border-color: #528FF0;
-  background: #eff6ff;
-  color: #1e40af;
+/* SR button — active: green-tinted border + background */
+.gc-strategy-btn--sr.active {
+  border-color: #059669;
+  background: #f0fdf4;
+  color: #064e3b;
+}
+.gc-strategy-btn--sr:not(.active):hover {
+  border-color: #6ee7b7;
+  background: #f0fdf4;
 }
 
-.gc-strategy-btn.active {
-  border-color: #528FF0;
-  background: #528FF0;
-  color: #fff;
+/* Cost button — active: plain gray */
+.gc-strategy-btn--cost.active {
+  border-color: #94a3b8;
+  background: #f8fafc;
+  color: #475569;
+}
+.gc-strategy-btn--cost:not(.active):hover {
+  border-color: #94a3b8;
+  background: #f8fafc;
+}
+
+/* Inner layout */
+.gc-strategy-btn-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+}
+.gc-strategy-btn-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* "Recommended" badge — always visible on SR button */
+.gc-strategy-badge-rec {
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 10px;
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #6ee7b7;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* Expanded SR detail (only when active) */
+.gc-strategy-desc {
+  font-size: 11.5px;
+  font-weight: 400;
+  color: #065f46;
+  line-height: 1.5;
+  margin-top: 7px;
+}
+
+.gc-strategy-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+}
+.gc-strategy-stat {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #374151;
+}
+.gc-strategy-stat--good { color: #065f46; }
+.gc-strategy-stat-arrow {
+  font-size: 13px;
+  font-weight: 700;
+  color: #059669;
+  line-height: 1;
+}
+.gc-strategy-stat-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: #059669;
+  flex-shrink: 0;
 }
 
 /* Card 4: Rules card — full-width strip below the 3-col grid */

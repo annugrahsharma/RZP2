@@ -1577,11 +1577,35 @@ function MethodPanel({ method, merchant, rules, addRule, simOverrides }) {
             <div className="gc-card-title">Routing Strategy</div>
             <div className="gc-card-desc">Set the optimization goal for {methodLabel}</div>
             <div className="gc-strategy-opts">
-              <button className={`gc-strategy-btn${routingStrategy === 'sr' ? ' active' : ''}`} onClick={() => handleStrategy('sr')}>
-                <IconSRIcon /> Optimize for Success Rate
+              {/* SR option — rich when active */}
+              <button className={`gc-strategy-btn gc-strategy-btn--sr${routingStrategy === 'sr' ? ' active' : ''}`} onClick={() => handleStrategy('sr')}>
+                <div className="gc-strategy-btn-top">
+                  <span className="gc-strategy-btn-label"><IconSRIcon /> Optimize for Success Rate</span>
+                  <span className="gc-strategy-badge-rec">Recommended</span>
+                </div>
+                {routingStrategy === 'sr' && (
+                  <>
+                    <div className="gc-strategy-desc">
+                      Routes to the highest-SR terminal automatically. Protects wallet share by maximizing payment experience.
+                    </div>
+                    <div className="gc-strategy-stats">
+                      <div className="gc-strategy-stat gc-strategy-stat--good">
+                        <span className="gc-strategy-stat-arrow">↑</span>
+                        +2.1% higher SR than cost-optimized merchants in same MCC
+                      </div>
+                      <div className="gc-strategy-stat">
+                        <span className="gc-strategy-stat-dot" />
+                        Auto-failover across {merchant?.gatewayMetrics?.filter(gm => (gm.supportedMethods || []).includes(methodToDataKey(method))).length || 0} terminals — keeps volume on Razorpay
+                      </div>
+                    </div>
+                  </>
+                )}
               </button>
-              <button className={`gc-strategy-btn${routingStrategy === 'cost' ? ' active' : ''}`} onClick={() => handleStrategy('cost')}>
-                <IconCostIcon /> Save Cost / Custom Rules
+              {/* Cost option — always plain */}
+              <button className={`gc-strategy-btn gc-strategy-btn--cost${routingStrategy === 'cost' ? ' active' : ''}`} onClick={() => handleStrategy('cost')}>
+                <div className="gc-strategy-btn-top">
+                  <span className="gc-strategy-btn-label"><IconCostIcon /> Save Cost / Custom Rules</span>
+                </div>
               </button>
             </div>
           </div>
