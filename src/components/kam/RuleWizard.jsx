@@ -1,23 +1,6 @@
 import React, { useState, useMemo, useCallback } from 'react'
 import { gateways } from '../../data/kamMockData'
 
-// ── GMV target presets ──────────────────────
-const GMV_PRESETS = [
-  { id: '10L',  label: '₹10L',  value: 1_000_000  },
-  { id: '25L',  label: '₹25L',  value: 2_500_000  },
-  { id: '50L',  label: '₹50L',  value: 5_000_000  },
-  { id: '1Cr',  label: '₹1Cr',  value: 10_000_000 },
-  { id: '5Cr',  label: '₹5Cr',  value: 50_000_000 },
-  { id: '10Cr', label: '₹10Cr', value: 100_000_000 },
-]
-
-function formatGMV(amount) {
-  if (!amount || amount <= 0) return '₹0'
-  if (amount >= 10_000_000) return `₹${(amount / 10_000_000).toFixed(1).replace(/\.0$/, '')}Cr`
-  if (amount >= 100_000)    return `₹${(amount / 100_000).toFixed(1).replace(/\.0$/, '')}L`
-  return `₹${Math.round(amount).toLocaleString('en-IN')}`
-}
-
 // ════════════════════════════════════════════
 // DATA CONSTANTS
 // ════════════════════════════════════════════
@@ -460,68 +443,49 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack }) {
         }
       }), [merchant, method])
 
-  // Monthly transactions + assumed avg transaction value for GMV projection
-  const monthlyTxns  = merchant?.txnVolumeHistory?.currentMonth || 30000
-  const avgTxnValue  = 850 // ₹850 default avg order value
+  // Monthly transactions + assumed avg transaction value
+  const monthlyTxns = merchant?.txnVolumeHistory?.currentMonth || 30000
+  const avgTxnValue = 850 // ₹850 default avg order value
 
-  // Compute recommended split from historical txnShare (SR-weighted)
-  const computeRecommendedSplit = useCallback((terminals) => {
-    if (!terminals.length) return {}
-    const weights     = terminals.map(t => (t.txnShare || 0) * (t.successRate / 100))
-    const totalWeight = weights.reduce((s, w) => s + w, 0)
-    const m = {}
-    if (totalWeight === 0) {
-      const eq = Math.floor(100 / terminals.length)
-      terminals.forEach((t, i) => { m[t.id] = eq + (i === 0 ? 100 - eq * terminals.length : 0) })
-      return m
-    }
-    terminals.forEach((t, i) => { m[t.id] = Math.round((weights[i] / totalWeight) * 100) })
-    // Fix rounding drift
-    const sum = Object.values(m).reduce((s, v) => s + v, 0)
-    if (sum !== 100) m[terminals[0].id] += (100 - sum)
-    return m
-  }, [])
-
-  const [mode, setMode]           = useState('priority')
-  const [order, setOrder]         = useState(() => [...allTerminals].sort((a, b) => b.successRate - a.successRate))
+  const [mode, setMode]            = useState('priority')
+  const [order, setOrder]          = useState(() => [...allTerminals].sort((a, b) => b.successRate - a.successRate))
   const [selectedIds, setSelected] = useState(() => allTerminals.map(t => t.id))
-  const [loads, setLoads]         = useState(() => computeRecommendedSplit(allTerminals))
-  const [srThresh, setSrThresh]   = useState(() => {
+  const [srThresh, setSrThresh]    = useState(() => {
     const m = {}; allTerminals.forEach(t => { m[t.id] = Math.max(70, Math.floor(t.successRate - 3)) }); return m
   })
-  const [fallbackId, setFallback] = useState(() => {
+  const [fallbackId, setFallback]  = useState(() => {
     const sorted = [...allTerminals].sort((a, b) => b.successRate - a.successRate)
     return sorted[sorted.length - 1]?.id || null
   })
-  const [dragIdx, setDragIdx]     = useState(null)
-  const [saved, setSaved]         = useState(null)
+  const [dragIdx, setDragIdx]      = useState(null)
+  const [saved, setSaved]          = useState(null)
 
-  // GMV target state
-  const [gmvTarget, setGmvTarget] = useState('')
-  const [gmvPreset, setGmvPreset] = useState(null)
+  // Per-terminal GMV targets (Meet GMV Target mode)
+  const [gmvTargets, setGmvTargets] = useState({})
 
   const selectedTerminals = order.filter(t => selectedIds.includes(t.id))
-  const loadTotal = selectedIds.reduce((s, id) => s + (loads[id] || 0), 0)
-  const loadValid = Math.abs(loadTotal - 100) < 1
 
-  // Effective GMV target (from preset or typed input)
-  const effectiveGmvTarget = useMemo(() => {
-    if (gmvPreset) return GMV_PRESETS.find(p => p.id === gmvPreset)?.value || 0
-    const parsed = parseFloat(gmvTarget.replace(/,/g, ''))
-    return isNaN(parsed) ? 0 : parsed
-  }, [gmvPreset, gmvTarget])
+  // Compute required traffic % for each terminal from its GMV target
+  // Formula: requiredTxns = gmvTarget / avgTxnValue / (SR/100)
+  //          trafficPct   = requiredTxns / monthlyTxns × 100
+  const requiredTraffic = useMemo(() => {
+    const m = {}
+    allTerminals.forEach(t => {
+      const raw = gmvTargets[t.id] || ''
+      const amt = parseFloat(raw.replace(/,/g, ''))
+      if (!isNaN(amt) && amt > 0 && monthlyTxns > 0 && t.successRate > 0) {
+        const requiredTxns = amt / avgTxnValue / (t.successRate / 100)
+        m[t.id] = Math.round((requiredTxns / monthlyTxns) * 1000) / 10 // 1 decimal
+      } else {
+        m[t.id] = null
+      }
+    })
+    return m
+  }, [gmvTargets, allTerminals, monthlyTxns, avgTxnValue])
 
-  // Projected GMV based on current load % and terminal SR
-  const projectedGMV = useMemo(() => {
-    return selectedTerminals.reduce((total, t) => {
-      const load = loads[t.id] || 0
-      return total + (load / 100) * monthlyTxns * avgTxnValue * (t.successRate / 100)
-    }, 0)
-  }, [selectedTerminals, loads, monthlyTxns])
-
-  const handleApplyRecommended = () => {
-    setLoads(computeRecommendedSplit(selectedTerminals))
-  }
+  const totalRequiredTraffic = useMemo(() =>
+    selectedIds.reduce((sum, id) => sum + (requiredTraffic[id] ?? 0), 0),
+    [selectedIds, requiredTraffic])
 
   const handleDragStart = (e, i) => { setDragIdx(i); e.dataTransfer.effectAllowed = 'move' }
   const handleDragOver  = (e, i) => {
@@ -533,6 +497,9 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack }) {
 
   const handleSave = () => {
     const conditions = buildConditions(method, filters)
+    const splits = mode === 'load'
+      ? selectedTerminals.map(t => ({ terminalId: t.id, percentage: Math.min(Math.round(requiredTraffic[t.id] ?? 0), 100) }))
+      : []
     const rule = {
       id: `rule-${merchant.id}-rw-${Date.now()}`,
       name: buildRuleName(method, filters, selectedTerminals),
@@ -543,7 +510,7 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack }) {
       action: {
         type: mode === 'load' ? 'split' : 'route',
         terminals: selectedTerminals.map(t => t.id),
-        splits: mode === 'load' ? selectedTerminals.map(t => ({ terminalId: t.id, percentage: loads[t.id] || 0 })) : [],
+        splits,
         srThreshold: srThresh[selectedTerminals[0]?.id] || 90,
         fallbackTerminal: fallbackId,
       },
@@ -588,6 +555,12 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack }) {
     )
   }
 
+  // ── Total traffic status for GMV mode ──
+  const trafficRounded = Math.round(totalRequiredTraffic * 10) / 10
+  const trafficOver    = trafficRounded > 100
+  const trafficExact   = Math.abs(trafficRounded - 100) < 0.5
+  const trafficRemain  = Math.round((100 - trafficRounded) * 10) / 10
+
   return (
     <div className="rw-term-step">
       <FilterSummary method={method} f={filters} />
@@ -601,100 +574,123 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack }) {
         <button className={`rw-mode-btn${mode === 'load' ? ' on' : ''}`} onClick={() => setMode('load')}>Meet GMV Target</button>
       </div>
 
-      {/* ── GMV Target input (Meet GMV Target mode only) ── */}
-      {mode === 'load' && (
-        <div className="rw-gmv-section">
-          <div className="rw-gmv-label">Monthly GMV target for this method</div>
-          <div className="rw-gmv-presets">
-            {GMV_PRESETS.map(p => (
-              <button
-                key={p.id}
-                className={`rw-gmv-preset${gmvPreset === p.id ? ' on' : ''}`}
-                onClick={() => { setGmvPreset(p.id); setGmvTarget('') }}
-              >
-                {p.label}
-              </button>
-            ))}
-          </div>
-          <div className="rw-gmv-input-row">
-            <span className="rw-gmv-rupee">₹</span>
-            <input
-              className="rw-gmv-input"
-              type="number"
-              placeholder="Enter custom amount…"
-              value={gmvTarget}
-              onChange={e => { setGmvTarget(e.target.value); setGmvPreset(null) }}
-            />
-          </div>
-          {effectiveGmvTarget > 0 && (
-            <div className="rw-gmv-rec-row">
-              <span className="rw-gmv-rec-note">Recommended split based on past 30-day merchant data</span>
-              <button className="rw-gmv-apply-btn" onClick={handleApplyRecommended}>↺ Reset to recommended</button>
-            </div>
-          )}
-        </div>
-      )}
-
-      <div className="rw-term-list">
-        {order.map((t, i) => (
-          <div
-            key={t.id}
-            className={`rw-term-row${selectedIds.includes(t.id) ? ' sel' : ' unsel'}${dragIdx === i ? ' drag' : ''}`}
-            draggable={mode === 'priority'}
-            onDragStart={e => handleDragStart(e, i)}
-            onDragOver={e => handleDragOver(e, i)}
-            onDragEnd={() => setDragIdx(null)}
-          >
-            <div className="rw-term-left">
-              <input type="checkbox" checked={selectedIds.includes(t.id)} onChange={() => setSelected(p => p.includes(t.id) ? p.filter(x => x !== t.id) : [...p, t.id])} />
-              {mode === 'priority' && <span className="rw-term-drag">⠿</span>}
-              <div>
-                <div className="rw-term-id">{t.displayId}</div>
-                <div className="rw-term-gw">{t.gatewayShort}</div>
+      {/* ── Priority mode: draggable list with SR thresholds ── */}
+      {mode === 'priority' && (
+        <div className="rw-term-list">
+          {order.map((t, i) => (
+            <div
+              key={t.id}
+              className={`rw-term-row${selectedIds.includes(t.id) ? ' sel' : ' unsel'}${dragIdx === i ? ' drag' : ''}`}
+              draggable
+              onDragStart={e => handleDragStart(e, i)}
+              onDragOver={e => handleDragOver(e, i)}
+              onDragEnd={() => setDragIdx(null)}
+            >
+              <div className="rw-term-left">
+                <input type="checkbox" checked={selectedIds.includes(t.id)} onChange={() => setSelected(p => p.includes(t.id) ? p.filter(x => x !== t.id) : [...p, t.id])} />
+                <span className="rw-term-drag">⠿</span>
+                <div>
+                  <div className="rw-term-id">{t.displayId}</div>
+                  <div className="rw-term-gw">{t.gatewayShort}</div>
+                </div>
+              </div>
+              <div className="rw-term-right">
+                <span className="rw-term-sr" style={{ color: t.successRate >= 90 ? '#059669' : '#d97706' }}>SR {t.successRate}%</span>
+                <span className="rw-term-cost">{t.costPerTxn === 0 ? <span style={{ color: '#059669' }}>₹0</span> : `₹${t.costPerTxn}`}</span>
+                {selectedIds.includes(t.id) && i < order.length - 1 && (
+                  <div className="rw-sr-wrap">
+                    <span className="rw-sr-lbl">Fallback if SR &lt;</span>
+                    <input type="number" min="50" max="99" className="rw-sr-inp" value={srThresh[t.id] || 90} onChange={e => setSrThresh(p => ({ ...p, [t.id]: +e.target.value }))} />
+                    <span>%</span>
+                  </div>
+                )}
+                {i === order.length - 1 && <span className="rw-final-badge">Final fallback</span>}
               </div>
             </div>
-            <div className="rw-term-right">
-              <span className="rw-term-sr" style={{ color: t.successRate >= 90 ? '#059669' : '#d97706' }}>SR {t.successRate}%</span>
-              <span className="rw-term-cost">{t.costPerTxn === 0 ? <span style={{ color: '#059669' }}>₹0</span> : `₹${t.costPerTxn}`}</span>
-              {mode === 'load' && selectedIds.includes(t.id) && (
-                <div className="rw-load-wrap">
-                  <input type="number" min="0" max="100" className="rw-load-inp" value={loads[t.id] || 0} onChange={e => setLoads(p => ({ ...p, [t.id]: Math.max(0, Math.min(100, +e.target.value)) }))} />
-                  <span>%</span>
-                </div>
-              )}
-              {mode === 'priority' && selectedIds.includes(t.id) && i < order.length - 1 && (
-                <div className="rw-sr-wrap">
-                  <span className="rw-sr-lbl">Fallback if SR &lt;</span>
-                  <input type="number" min="50" max="99" className="rw-sr-inp" value={srThresh[t.id] || 90} onChange={e => setSrThresh(p => ({ ...p, [t.id]: +e.target.value }))} />
-                  <span>%</span>
-                </div>
-              )}
-              {mode === 'priority' && i === order.length - 1 && <span className="rw-final-badge">Final fallback</span>}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {mode === 'load' && (
-        <div className={`rw-load-total${loadValid ? ' ok' : ' err'}`}>
-          Load total: <strong>{loadTotal}%</strong>
-          {loadValid ? ' ✓' : ' — must equal 100%'}
+          ))}
         </div>
       )}
 
-      {/* ── GMV projection (Meet GMV Target mode) ── */}
-      {mode === 'load' && effectiveGmvTarget > 0 && (
-        <div className={`rw-gmv-projection${projectedGMV >= effectiveGmvTarget ? ' ok' : ' warn'}`}>
-          <div className="rw-gmv-proj-row">
-            <span>At this split, projected monthly GMV:</span>
-            <strong>{formatGMV(projectedGMV)}</strong>
+      {/* ── GMV Target mode: per-terminal target table ── */}
+      {mode === 'load' && (
+        <>
+          <div className="rw-gmv-per-term-table">
+            {/* Header */}
+            <div className="rw-gmv-tbl-header">
+              <span className="rw-gmv-tbl-col-term">Terminal</span>
+              <span className="rw-gmv-tbl-col-sr">SR / Cost</span>
+              <span className="rw-gmv-tbl-col-target">GMV Target</span>
+              <span className="rw-gmv-tbl-col-traffic">Traffic Required</span>
+            </div>
+
+            {order.map(t => {
+              const isSelected = selectedIds.includes(t.id)
+              const traffic    = requiredTraffic[t.id]
+              const hasTarget  = traffic !== null
+              return (
+                <div key={t.id} className={`rw-gmv-tbl-row${isSelected ? '' : ' unsel'}`}>
+                  <div className="rw-gmv-tbl-col-term">
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      onChange={() => setSelected(p => p.includes(t.id) ? p.filter(x => x !== t.id) : [...p, t.id])}
+                    />
+                    <div>
+                      <div className="rw-term-id">{t.displayId}</div>
+                      <div className="rw-term-gw">{t.gatewayShort}</div>
+                    </div>
+                  </div>
+                  <div className="rw-gmv-tbl-col-sr">
+                    <span className="rw-term-sr" style={{ color: t.successRate >= 90 ? '#059669' : '#d97706' }}>SR {t.successRate}%</span>
+                    <span className="rw-term-cost">{t.costPerTxn === 0 ? <span style={{ color: '#059669' }}>₹0</span> : `₹${t.costPerTxn}`}</span>
+                  </div>
+                  <div className="rw-gmv-tbl-col-target">
+                    {isSelected ? (
+                      <div className="rw-gmv-input-row">
+                        <span className="rw-gmv-rupee">₹</span>
+                        <input
+                          className="rw-gmv-input"
+                          type="number"
+                          placeholder="e.g. 5000000"
+                          value={gmvTargets[t.id] || ''}
+                          onChange={e => setGmvTargets(p => ({ ...p, [t.id]: e.target.value }))}
+                        />
+                      </div>
+                    ) : (
+                      <span className="rw-gmv-tbl-na">—</span>
+                    )}
+                  </div>
+                  <div className="rw-gmv-tbl-col-traffic">
+                    {isSelected && hasTarget ? (
+                      <span className={`rw-gmv-traffic-pct${traffic > 100 ? ' over' : ''}`}>
+                        → {traffic}% traffic
+                      </span>
+                    ) : isSelected ? (
+                      <span className="rw-gmv-traffic-empty">Enter target above</span>
+                    ) : (
+                      <span className="rw-gmv-tbl-na">—</span>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+
+            {/* Total row */}
+            <div className={`rw-gmv-tbl-total${trafficOver ? ' over' : trafficExact ? ' exact' : ''}`}>
+              <span className="rw-gmv-tbl-total-label">Total traffic allocated</span>
+              <span className="rw-gmv-tbl-total-value">{trafficRounded > 0 ? `${trafficRounded}%` : '—'}</span>
+            </div>
           </div>
-          {projectedGMV < effectiveGmvTarget && (
-            <div className="rw-gmv-proj-warn">
-              ⚠ Target may not be achievable with current terminal capacity. Consider adding more terminals.
+
+          {/* Status message below table */}
+          {trafficRounded > 0 && (
+            <div className={`rw-gmv-traffic-status${trafficOver ? ' warn' : trafficExact ? ' ok' : ' info'}`}>
+              {trafficOver && <>⚠️ Total traffic allocation exceeds 100%. Reduce some terminal targets.</>}
+              {trafficExact && <>✓ Traffic fully allocated across selected terminals.</>}
+              {!trafficOver && !trafficExact && <>ℹ️ Remaining {trafficRemain}% traffic will be distributed to other terminals.</>}
             </div>
           )}
-        </div>
+        </>
       )}
 
       {mode === 'priority' && selectedTerminals.length > 1 && (
@@ -710,7 +706,7 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack }) {
         <button className="rw-btn ghost" onClick={onBack}>← Back</button>
         <button
           className="rw-btn primary"
-          disabled={selectedIds.length === 0 || (mode === 'load' && !loadValid)}
+          disabled={selectedIds.length === 0 || (mode === 'load' && trafficOver)}
           onClick={handleSave}
         >
           ✓ Save Rule
