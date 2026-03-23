@@ -874,60 +874,6 @@ function TracePipeline({ txn, merchant, rules }) {
 }
 
 // ---------------------------------------------------------------------------
-// Thesys AI Assist Widget (BYOI-ready)
-// ---------------------------------------------------------------------------
-function ThesysWidget({ merchantName, merchantId }) {
-  const containerRef = useRef(null)
-  const widgetInitialized = useRef(false)
-
-  useEffect(() => {
-    if (widgetInitialized.current || !containerRef.current) return
-    widgetInitialized.current = true
-
-    // Dynamic import to avoid SSR issues
-    import('agent-embed-widget').then(({ embedWidget }) => {
-      // Clear container before embedding
-      if (containerRef.current) containerRef.current.innerHTML = ''
-
-      embedWidget({
-        type: 'full-screen',
-        url: 'https://console.thesys.dev/app/LXBs_T8qKh-J2QkrFSiJc?hideLogin=true',
-        theme: 'light',
-        // BYOI: When backend is ready, uncomment and wire up JWT token
-        // identityToken: token,
-        // getIdentityToken: async () => {
-        //   const res = await fetch('/api/thesys-token')
-        //   const { token } = await res.json()
-        //   return token
-        // },
-        // hideLogin: true,
-        container: containerRef.current,
-      })
-    }).catch(err => {
-      console.warn('Thesys widget failed to load:', err)
-      // Fallback to iframe if SDK fails
-      if (containerRef.current) {
-        containerRef.current.innerHTML = `<iframe src="https://console.thesys.dev/app/LXBs_T8qKh-J2QkrFSiJc?hideLogin=true" style="width:100%;height:700px;border:none;border-radius:12px" title="AI Assist" allow="clipboard-write"></iframe>`
-      }
-    })
-
-    return () => { widgetInitialized.current = false }
-  }, [])
-
-  return (
-    <div
-      ref={containerRef}
-      className="kam-ai-assist-container"
-      style={{ width: '100%', minHeight: '600px', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--rzp-border)' }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px', color: '#94a3b8', fontSize: '14px' }}>
-        Loading AI Assist...
-      </div>
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 export default function KAMMerchantDetail() {
@@ -960,8 +906,8 @@ export default function KAMMerchantDetail() {
   const [expandedRecs, setExpandedRecs] = useState(new Set())
 
   // ---- Tab & scroll-based navigation ----
-  const TAB_ORDER = ['ai-recs', 'routing', 'terminals', 'metrics', 'sr-trend', 'transactions', 'ntfs', 'audit', 'ai-assist']
-  const TAB_LABELS = { 'ai-recs': 'AI Recommendations', routing: 'Routing', terminals: 'Terminals', metrics: 'Metrics', 'sr-trend': 'SR Trend', transactions: 'Transactions', ntfs: 'NTFs', audit: 'Audit Log', 'ai-assist': 'AI Assist' }
+  const TAB_ORDER = ['ai-recs', 'routing', 'terminals', 'metrics', 'sr-trend', 'transactions', 'ntfs', 'audit']
+  const TAB_LABELS = { 'ai-recs': 'AI Recommendations', routing: 'Routing', terminals: 'Terminals', metrics: 'Metrics', 'sr-trend': 'SR Trend', transactions: 'Transactions', ntfs: 'NTFs', audit: 'Audit Log' }
   const [activeTab, setActiveTab] = useState('ai-recs')
   const sectionRefs = useRef({})
   const tabsBarRef = useRef(null)
@@ -1436,22 +1382,6 @@ export default function KAMMerchantDetail() {
             )}
           </div>
         </div>
-        <Link
-          to={`/kam/agent/${merchantId}`}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            padding: '8px 16px', background: 'linear-gradient(135deg, #528FF0, #6C5CE7)',
-            color: '#fff', borderRadius: 8, fontSize: 13, fontWeight: 600,
-            textDecoration: 'none', whiteSpace: 'nowrap',
-            boxShadow: '0 1px 3px rgba(82,143,240,0.3)',
-          }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1.27A7 7 0 0 1 14 23h-4a7 7 0 0 1-6.73-4H2a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/>
-            <circle cx="9" cy="15" r="1" fill="currentColor"/><circle cx="15" cy="15" r="1" fill="currentColor"/>
-          </svg>
-          Try AI Agent
-        </Link>
       </div>
 
       {/* ── Tabs (sticky, scroll-based) ──────────────────────── */}
@@ -2813,25 +2743,6 @@ export default function KAMMerchantDetail() {
           </div>
         )}
       </div>
-      </div>
-
-      {/* ── AI Assist ─────────────────────── */}
-      <div ref={el => sectionRefs.current['ai-assist'] = el} className="kam-tab-section">
-        <div className="kam-section-header">
-          <h3>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a10 10 0 1 0 10 10H12V2z"/><path d="M12 2a10 10 0 0 1 10 10"/><circle cx="12" cy="12" r="3"/></svg>
-            AI Assist
-          </h3>
-          <span className="kam-badge info">Beta</span>
-        </div>
-        <div className="kam-ai-assist-container" style={{ width: '100%', minHeight: '600px', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--rzp-border)' }}>
-          <iframe
-            src="https://console.thesys.dev/app/LXBs_T8qKh-J2QkrFSiJc?hideLogin=true"
-            style={{ width: '100%', height: '700px', border: 'none', borderRadius: '12px' }}
-            title="AI Assist"
-            allow="clipboard-write"
-          />
-        </div>
       </div>
 
       {/* ── Transaction Routing Drawer ─────────────────────── */}
