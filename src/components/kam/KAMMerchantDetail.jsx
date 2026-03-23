@@ -1778,7 +1778,7 @@ export default function KAMMerchantDetail() {
         <RoutingCopilot
           merchant={merchant}
           rules={merchant.routingRulesV2 || []}
-          addRule={addRule}
+          addRule={(rule) => addRule(merchant.id, rule)}
           simOverrides={simOverrides}
         />
       </div>
