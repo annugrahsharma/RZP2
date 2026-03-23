@@ -1486,6 +1486,114 @@ function _OldCreateRuleWizard({ method, merchant, rules, addRule, onClose }) {
 }
 
 // ════════════════════════════════════════════
+// Cost Rules View — rules table + create button
+// ════════════════════════════════════════════
+function CostRulesView({ method, merchant, rules, onCreateRule }) {
+  const dk = methodToDataKey(method)
+  const methodLabel = method === 'UPIOnetime' ? 'UPI Onetime' : method === 'UPIRecurring' ? 'UPI Recurring' : method
+
+  // Filter rules that apply to this method
+  const methodRules = (rules || []).filter(rule => {
+    if (!rule.conditions || rule.conditions.length === 0) return true
+    const pmCond = rule.conditions.find(c => c.field === 'payment_method')
+    if (!pmCond) return true
+    const val = pmCond.value
+    if (Array.isArray(val)) return val.includes(dk)
+    return val === dk
+  })
+
+  const formatConditions = (conditions) => {
+    if (!conditions || conditions.length === 0) return <span className="gc-rules-cond-all">All transactions</span>
+    return conditions
+      .filter(c => c.field !== 'payment_method')
+      .map((c, i) => {
+        const fieldLabel = {
+          card_network: 'Network', card_type: 'Card type', issuer_bank: 'Issuer',
+          upi_flow: 'UPI flow', amount: 'Amount', international: 'Intl', emi_type: 'EMI type',
+        }[c.field] || c.field
+        const opLabel = { equals: '=', in: 'in', greater_than: '>', less_than: '<', between: 'btw' }[c.operator] || c.operator
+        const val = Array.isArray(c.value) ? c.value.join(', ') : String(c.value)
+        return <span key={i} className="gc-rules-cond-chip">{fieldLabel} {opLabel} {val}</span>
+      })
+  }
+
+  const formatTerminals = (action) => {
+    if (!action) return '—'
+    const terms = action.terminals || []
+    if (action.type === 'split' && action.splits?.length > 0) {
+      return action.splits.map((s, i) => (
+        <span key={i} className="gc-rules-term-chip">{s.terminalId?.replace('term-', '').toUpperCase()} {s.percentage}%</span>
+      ))
+    }
+    return terms.slice(0, 3).map((t, i) => (
+      <span key={i} className="gc-rules-term-chip">{t.replace('term-', '').toUpperCase()}</span>
+    ))
+  }
+
+  return (
+    <div className="gc-cost-rules-view">
+      <div className="gc-cost-rules-header">
+        <div>
+          <div className="gc-cost-rules-title">Custom Routing Rules — {methodLabel}</div>
+          <div className="gc-cost-rules-sub">{methodRules.length} rule{methodRules.length !== 1 ? 's' : ''} active for this method</div>
+        </div>
+        <button className="gc-create-rule-btn" onClick={onCreateRule}>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Create Rule
+        </button>
+      </div>
+
+      {methodRules.length === 0 ? (
+        <div className="gc-cost-rules-empty">
+          <div className="gc-cost-rules-empty-icon">📋</div>
+          <div className="gc-cost-rules-empty-title">No custom rules yet</div>
+          <div className="gc-cost-rules-empty-sub">Create a rule to define how {methodLabel} payments are routed for cost savings or specific terminal preferences.</div>
+          <button className="gc-create-rule-btn" style={{ marginTop: 12 }} onClick={onCreateRule}>
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Create First Rule
+          </button>
+        </div>
+      ) : (
+        <div className="gc-cost-rules-table-wrap">
+          <table className="gc-cost-rules-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Rule Name</th>
+                <th>Filters</th>
+                <th>Terminals</th>
+                <th>Type</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {methodRules.map((rule, i) => (
+                <tr key={rule.id || i}>
+                  <td className="gc-rules-priority">{rule.priority || i + 1}</td>
+                  <td className="gc-rules-name">{rule.name}</td>
+                  <td className="gc-rules-conds">{formatConditions(rule.conditions)}</td>
+                  <td className="gc-rules-terms">{formatTerminals(rule.action)}</td>
+                  <td>
+                    <span className={`gc-rules-type-badge gc-rules-type-${rule.type || 'conditional'}`}>
+                      {rule.type === 'volume_split' ? 'Split' : 'Route'}
+                    </span>
+                  </td>
+                  <td>
+                    <span className={`gc-rules-status ${rule.enabled !== false ? 'active' : 'disabled'}`}>
+                      {rule.enabled !== false ? 'Active' : 'Disabled'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════
 // Method Panel — cards + chat/simulate
 // ════════════════════════════════════════════
 // Cost-switch discouragement modal
@@ -1556,7 +1664,7 @@ function MethodPanel({ method, merchant, rules, addRule, simOverrides }) {
   const confirmCostSwitch = () => {
     setShowCostModal(false)
     setRoutingStrategy('cost')
-    setActiveView('sr_ranking')
+    setActiveView('rules_table')
   }
 
   return (
@@ -1629,19 +1737,6 @@ function MethodPanel({ method, merchant, rules, addRule, simOverrides }) {
           <div className="gc-l2-card-cta">Trace Payment →</div>
         </div>
 
-        {/* Card 4: Create Rule — only when cost strategy selected */}
-        {routingStrategy === 'cost' && (
-          <div className={`gc-l2-card gc-l2-card--clickable${activeView === 'create_rule' ? ' active' : ''}`} onClick={() => setActiveView('create_rule')}>
-            <div className="gc-l2-card-hdr">
-              <span className="gc-l2-card-icon" style={{ color: '#528FF0' }}>
-                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              </span>
-              <span className="gc-l2-card-title">Create Rule</span>
-            </div>
-            <div className="gc-l2-card-desc">Build a custom routing rule for {methodLabel}</div>
-            <div className="gc-l2-card-cta">+ New Rule →</div>
-          </div>
-        )}
       </div>
 
       {/* ── Content area ── */}
@@ -1651,7 +1746,9 @@ function MethodPanel({ method, merchant, rules, addRule, simOverrides }) {
           : activeView === 'historic'
           ? <HistoricView key={method} method={method} merchant={merchant} rules={rules} />
           : activeView === 'create_rule'
-          ? <CreateRuleWizard method={method} merchant={merchant} rules={rules} addRule={addRule} onClose={() => setActiveView('sr_ranking')} />
+          ? <CreateRuleWizard method={method} merchant={merchant} rules={rules} addRule={addRule} onClose={() => setActiveView(routingStrategy === 'cost' ? 'rules_table' : 'sr_ranking')} />
+          : activeView === 'rules_table'
+          ? <CostRulesView method={method} merchant={merchant} rules={rules} onCreateRule={() => setActiveView('create_rule')} />
           : activeView === 'sr_ranking'
           ? <SRRankingView method={method} merchant={merchant} strategy={routingStrategy} />
           : <MethodChat key={chatKey} method={method} merchant={merchant} rules={rules} addRule={addRule} simOverrides={simOverrides} triggerMsg={triggerMsg} />

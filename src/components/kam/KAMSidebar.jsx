@@ -1,9 +1,17 @@
 import { NavLink } from 'react-router-dom'
 import { kamProfile } from '../../data/kamMockData'
 
-export default function KAMSidebar() {
+export default function KAMSidebar({ collapsed, onToggle }) {
   return (
-    <aside className="kam-sidebar">
+    <aside className={`kam-sidebar${collapsed ? ' kam-sidebar--collapsed' : ''}`}>
+      {/* Toggle button */}
+      <button className="kam-sidebar-toggle" onClick={onToggle} title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
+        {collapsed
+          ? <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          : <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        }
+      </button>
+
       <div className="kam-sidebar-brand">
         <svg
           className="kam-sidebar-logo"
@@ -27,10 +35,12 @@ export default function KAMSidebar() {
             fill="#fff"
           />
         </svg>
-        <div className="kam-sidebar-brand-text">
-          <span className="kam-sidebar-brand-name">Razorpay</span>
-          <span className="kam-sidebar-brand-sub">KAM Dashboard</span>
-        </div>
+        {!collapsed && (
+          <div className="kam-sidebar-brand-text">
+            <span className="kam-sidebar-brand-name">Razorpay</span>
+            <span className="kam-sidebar-brand-sub">KAM Dashboard</span>
+          </div>
+        )}
       </div>
 
       <nav className="kam-sidebar-nav">
@@ -40,6 +50,7 @@ export default function KAMSidebar() {
           className={({ isActive }) =>
             `kam-nav-item ${isActive ? 'active' : ''}`
           }
+          title={collapsed ? 'Overview' : undefined}
         >
           <svg
             width="20"
@@ -53,13 +64,14 @@ export default function KAMSidebar() {
             <rect x="2" y="11" width="7" height="7" rx="1.5" fill="currentColor" />
             <rect x="11" y="11" width="7" height="7" rx="1.5" fill="currentColor" />
           </svg>
-          Overview
+          {!collapsed && 'Overview'}
         </NavLink>
         <NavLink
           to="/kam/merchants"
           className={({ isActive }) =>
             `kam-nav-item ${isActive ? 'active' : ''}`
           }
+          title={collapsed ? 'Merchants' : undefined}
         >
           <svg
             width="20"
@@ -85,7 +97,7 @@ export default function KAMSidebar() {
             <circle cx="6.5" cy="13.5" r="2" fill="currentColor" />
             <circle cx="13.5" cy="13.5" r="2" fill="currentColor" />
           </svg>
-          Merchants
+          {!collapsed && 'Merchants'}
         </NavLink>
       </nav>
 
@@ -93,10 +105,12 @@ export default function KAMSidebar() {
         <div className="kam-sidebar-avatar">
           {kamProfile.avatarInitials}
         </div>
-        <div className="kam-sidebar-profile-info">
-          <span className="kam-sidebar-profile-name">{kamProfile.name}</span>
-          <span className="kam-sidebar-profile-role">{kamProfile.role}</span>
-        </div>
+        {!collapsed && (
+          <div className="kam-sidebar-profile-info">
+            <span className="kam-sidebar-profile-name">{kamProfile.name}</span>
+            <span className="kam-sidebar-profile-role">{kamProfile.role}</span>
+          </div>
+        )}
       </div>
     </aside>
   )

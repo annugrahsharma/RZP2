@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
 import KAMSidebar from './KAMSidebar'
 import KAMTopbar from './KAMTopbar'
@@ -12,11 +13,12 @@ import '../../styles/kam-detail.css'
 
 export default function KAMLayout() {
   const { toast } = useKAM()
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
 
   return (
     <div className="kam-layout">
-      <KAMSidebar />
-      <div className="kam-main">
+      <KAMSidebar collapsed={sidebarCollapsed} onToggle={() => setSidebarCollapsed(v => !v)} />
+      <div className={`kam-main${sidebarCollapsed ? ' kam-main--collapsed' : ''}`}>
         <KAMTopbar />
         <div className="kam-content">
           <Outlet />

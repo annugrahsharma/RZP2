@@ -27,8 +27,9 @@
   background: var(--rzp-sidebar-bg);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
   z-index: 100;
+  transition: width 0.2s ease;
 }
 
 .kam-sidebar-brand {
@@ -151,11 +152,59 @@
 /* Main Content Area
    ========================================================================== */
 
+.kam-sidebar-toggle {
+  position: absolute;
+  top: 12px;
+  right: -14px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--rzp-sidebar-bg);
+  border: 2px solid rgba(255,255,255,0.15);
+  color: rgba(255,255,255,0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 101;
+  padding: 0;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.kam-sidebar-toggle:hover {
+  background: #1e3a5f;
+  border-color: rgba(255,255,255,0.35);
+  color: #fff;
+}
+
+.kam-sidebar--collapsed {
+  width: 56px;
+}
+.kam-sidebar--collapsed .kam-sidebar-brand {
+  padding: 12px 0;
+  justify-content: center;
+}
+.kam-sidebar--collapsed .kam-sidebar-logo {
+  margin: 0 auto;
+}
+.kam-sidebar--collapsed .kam-nav-item {
+  justify-content: center;
+  padding: 10px 0;
+  gap: 0;
+}
+.kam-sidebar--collapsed .kam-sidebar-profile {
+  justify-content: center;
+  padding: 12px 0;
+}
+
 .kam-main {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
   margin-left: 240px;
+  transition: margin-left 0.2s ease;
+}
+.kam-main--collapsed {
+  margin-left: 56px;
 }
 
 /* Top Bar
