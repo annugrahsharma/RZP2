@@ -830,18 +830,288 @@ function MethodChat({ method, merchant, rules, addRule, simOverrides, triggerMsg
 }
 
 // ════════════════════════════════════════════
-// Method Panel — cards + chat
+// Simulate View — rich form + animated pipeline
+// ════════════════════════════════════════════
+
+const METHOD_RULE_RATIOS = { Cards: 0.49, UPI: 0.28, NB: 0.13, EMI: 0.07, Wallet: 0.03 }
+const AMOUNT_PRESETS_MAP = { Cards: [500, 2000, 5000, 10000, 50000], UPI: [200, 500, 2000, 5000], NB: [2000, 5000, 10000, 50000], EMI: [10000, 25000, 50000, 100000], Wallet: [200, 500, 1000, 2000] }
+
+const defaultForm = (method) => ({
+  cardNetwork: 'Visa', cardType: 'Credit', issuerBank: 'Any', international: 'Domestic',
+  upiType: 'Intent', upiApp: 'GPay',
+  nbBank: 'HDFC',
+  emiNetwork: 'Visa', emiType: 'No-cost', tenure: '6m',
+  wallet: 'Paytm',
+  recurring: 'One-time',
+  amount: { Cards: 5000, UPI: 2000, NB: 5000, EMI: 25000, Wallet: 500 }[method] || 5000,
+})
+
+function buildSimTxn(form, method) {
+  const txn = { payment_method: method, amount: form.amount, international: form.international === 'International' }
+  if (method === 'Cards') { txn.card_network = form.cardNetwork || 'Visa'; txn.card_type = (form.cardType || 'Credit').toLowerCase() }
+  if (method === 'EMI')   { txn.card_network = form.emiNetwork || 'Visa'; txn.card_type = 'credit'; txn.emi_type = form.emiType === 'No-cost' ? 'no_cost' : 'standard' }
+  return txn
+}
+
+function buildPipelineData(form, method, merchant, rules) {
+  const TOTAL = 418
+  const methodLabel = method === 'NB' ? 'Net Banking' : method
+  const afterMethod = Math.round(TOTAL * (METHOD_RULE_RATIOS[method] || 0.3))
+  const network = method === 'Cards' ? form.cardNetwork : method === 'EMI' ? form.emiNetwork : null
+  const intl = form.international === 'International'
+  const isAmex = network === 'Amex'
+
+  const methodTerminals = merchant.gatewayMetrics
+    .filter(gm => (gm.supportedMethods || []).includes(method))
+    .map(gm => {
+      const gw = gateways.find(g => g.id === gm.gatewayId)
+      const term = gw?.terminals.find(t => t.id === gm.terminalId)
+      return { id: gm.terminalId, displayId: term?.terminalId || gm.terminalId, gatewayShort: gw?.shortName || '?', successRate: gm.successRate, costPerTxn: gm.costPerTxn, txnShare: gm.txnShare || 0 }
+    })
+
+  const rejectRules = [
+    { name: 'Block International Transactions',    condition: 'international = true',               status: intl ? 'hit' : 'pass', eliminated: intl ? methodTerminals.slice(-2).map(t => t.displayId) : [], note: intl ? `${Math.min(2, methodTerminals.length)} terminals removed (domestic-only)` : 'No match — domestic transaction' },
+    ...(network ? [{ name: `${network} Network Compatibility`, condition: `card_network = ${network}`, status: isAmex ? 'hit' : 'pass', eliminated: isAmex ? methodTerminals.filter(t => t.gatewayShort === 'RBL').map(t => t.displayId) : [], note: isAmex ? 'RBL_T1 removed (Amex not supported)' : `All terminals support ${network}` }] : []),
+    { name: 'SR Safety Floor (SR < 70%)',          condition: 'terminal.successRate < 70',          status: 'pass', eliminated: [], note: 'No match — all active terminals above 70% SR' },
+    { name: 'Recurring Mandate Eligibility',       condition: 'recurring = true AND mandate != enabled', status: 'pass', eliminated: [], note: form.recurring === 'Recurring' ? 'Checked — mandate flag validated on active terminals' : 'No match — one-time transaction' },
+  ]
+  const totalEliminated = rejectRules.reduce((s, r) => s + r.eliminated.length, 0)
+  const terminalsAfterReject = Math.max(1, methodTerminals.length - totalEliminated)
+
+  const topTerminals = [...methodTerminals].sort((a, b) => b.successRate - a.successRate).slice(0, 2)
+  const labelParts = [network && network !== 'Any' ? network : null, form.cardType && method === 'Cards' ? form.cardType : null, form.amount >= 10000 ? 'High Value' : null].filter(Boolean)
+  const selectRule = {
+    name: `${labelParts.length ? labelParts.join(' ') : methodLabel} → ${topTerminals[0]?.gatewayShort || 'HDFC'} Priority`,
+    condition: [network ? `card_network = ${network}` : null, form.cardType && method === 'Cards' ? `card_type = ${form.cardType.toLowerCase()}` : null, form.amount > 1000 ? `amount > ₹1,000` : null].filter(Boolean).join(' AND ') || `payment_method = ${method}`,
+    matchedAt: 12,
+    totalEvaluated: Math.round(afterMethod * 0.06),
+    action: topTerminals.length >= 2 ? `Route to ${topTerminals[0].displayId} (70%), ${topTerminals[1].displayId} (30%)` : `Route to ${topTerminals[0]?.displayId || 'HDFC_T1'}`,
+    terminals: topTerminals,
+  }
+
+  const simResult = simulateRoutingPipeline(merchant, buildSimTxn(form, method), rules)
+  return { TOTAL, afterMethod, methodLabel, rejectRules, terminalsAfterReject, selectRule, simResult, methodTerminals, topTerminals, totalEliminated }
+}
+
+function SimulateForm({ method, form, onFormChange, onRun }) {
+  const methodLabel = method === 'NB' ? 'Net Banking' : method
+  const presets = AMOUNT_PRESETS_MAP[method] || AMOUNT_PRESETS_MAP.Cards
+  const set = (k, v) => onFormChange({ ...form, [k]: v })
+  const Opt = ({ field, val, label }) => <button className={`gc-sim-opt${form[field] === val ? ' active' : ''}`} onClick={() => set(field, val)}>{label || val}</button>
+  return (
+    <div className="gc-sim-form">
+      <div className="gc-sim-hdr"><div className="gc-sim-title">Configure {methodLabel} Transaction</div><div className="gc-sim-subtitle">Fill in payment parameters to trace routing</div></div>
+
+      <div className="gc-sim-section">
+        <div className="gc-sim-label">Amount</div>
+        <div className="gc-sim-presets">
+          {presets.map(p => <button key={p} className={`gc-sim-preset${form.amount === p ? ' active' : ''}`} onClick={() => set('amount', p)}>₹{p.toLocaleString()}</button>)}
+          <input className="gc-sim-amount-input" type="number" min="1" placeholder="Custom…" value={presets.includes(form.amount) ? '' : (form.amount || '')} onChange={e => { const v = parseInt(e.target.value); if (!isNaN(v) && v > 0) set('amount', v) }} />
+        </div>
+      </div>
+
+      {method === 'Cards' && <>
+        <div className="gc-sim-row2">
+          <div className="gc-sim-section"><div className="gc-sim-label">Network</div><div className="gc-sim-opts">{['Visa','Mastercard','Amex','RuPay'].map(n => <Opt key={n} field="cardNetwork" val={n} />)}</div></div>
+          <div className="gc-sim-section"><div className="gc-sim-label">Type</div><div className="gc-sim-opts">{['Credit','Debit'].map(t => <Opt key={t} field="cardType" val={t} />)}</div></div>
+        </div>
+        <div className="gc-sim-row2">
+          <div className="gc-sim-section"><div className="gc-sim-label">Issuer Bank</div><select className="gc-sim-select" value={form.issuerBank} onChange={e => set('issuerBank', e.target.value)}>{['Any','HDFC','ICICI','SBI','Axis','Kotak','Yes Bank','RBL'].map(b => <option key={b}>{b}</option>)}</select></div>
+          <div className="gc-sim-section"><div className="gc-sim-label">Geography</div><div className="gc-sim-opts">{['Domestic','International'].map(g => <Opt key={g} field="international" val={g} />)}</div></div>
+        </div>
+      </>}
+
+      {method === 'UPI' && <div className="gc-sim-row2">
+        <div className="gc-sim-section"><div className="gc-sim-label">UPI Type</div><div className="gc-sim-opts">{['Intent','Collect','QR'].map(t => <Opt key={t} field="upiType" val={t} />)}</div></div>
+        <div className="gc-sim-section"><div className="gc-sim-label">App</div><div className="gc-sim-opts">{['GPay','PhonePe','Paytm','BHIM'].map(a => <Opt key={a} field="upiApp" val={a} />)}</div></div>
+      </div>}
+
+      {method === 'NB' && <div className="gc-sim-section"><div className="gc-sim-label">Bank</div><select className="gc-sim-select gc-sim-select--wide" value={form.nbBank} onChange={e => set('nbBank', e.target.value)}>{['HDFC','ICICI','SBI','Axis','Kotak','Yes Bank','PNB','Bank of Baroda','Canara Bank','Other'].map(b => <option key={b}>{b}</option>)}</select></div>}
+
+      {method === 'EMI' && <>
+        <div className="gc-sim-row2">
+          <div className="gc-sim-section"><div className="gc-sim-label">Network</div><div className="gc-sim-opts">{['Visa','Mastercard','Amex'].map(n => <Opt key={n} field="emiNetwork" val={n} />)}</div></div>
+          <div className="gc-sim-section"><div className="gc-sim-label">EMI Type</div><div className="gc-sim-opts">{['No-cost','Standard'].map(t => <Opt key={t} field="emiType" val={t} />)}</div></div>
+        </div>
+        <div className="gc-sim-section"><div className="gc-sim-label">Tenure</div><div className="gc-sim-opts">{['3m','6m','9m','12m','18m','24m'].map(t => <Opt key={t} field="tenure" val={t} />)}</div></div>
+      </>}
+
+      {method === 'Wallet' && <div className="gc-sim-section"><div className="gc-sim-label">Provider</div><div className="gc-sim-opts">{['Paytm','PhonePe','Amazon Pay','Freecharge','Mobikwik'].map(w => <Opt key={w} field="wallet" val={w} />)}</div></div>}
+
+      <div className="gc-sim-section">
+        <div className="gc-sim-label">Transaction Type</div>
+        <div className="gc-sim-opts"><Opt field="recurring" val="One-time" /><Opt field="recurring" val="Recurring" /></div>
+      </div>
+
+      <button className="gc-sim-run-btn" onClick={onRun} disabled={!form.amount || form.amount <= 0}>
+        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" style={{ marginRight: 6 }}><polygon points="5 3 19 12 5 21 5 3"/></svg>Run Simulation
+      </button>
+    </div>
+  )
+}
+
+function SimulatePipeline({ steps, phase }) {
+  const endRef = useRef(null)
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }) }, [steps.length])
+  return (
+    <div className="gc-pipeline-viz">
+      {steps.map((s, i) => (
+        <div key={i} className="gc-step-card">
+          {s.type === 'fetch' && <>
+            <div className="gc-step-hdr"><span className="gc-step-num">1</span><span className="gc-step-title">Rules Loaded</span><span className="gc-badge gc-badge-blue">{s.total.toLocaleString()} rules</span></div>
+            <div className="gc-step-body">
+              <div className="gc-step-stat-row">
+                <div className="gc-step-stat"><div className="gc-step-stat-val">{s.total}</div><div className="gc-step-stat-lbl">Total</div></div>
+                <div className="gc-step-stat"><div className="gc-step-stat-val">{s.merchantSpecific}</div><div className="gc-step-stat-lbl">Merchant-specific</div></div>
+                <div className="gc-step-stat"><div className="gc-step-stat-val">{s.platform}</div><div className="gc-step-stat-lbl">Platform defaults</div></div>
+              </div>
+              <div className="gc-step-note">Includes REJECT rules, SELECT rules, volume splits, fallback chains, and offer-linked rules.</div>
+            </div>
+          </>}
+
+          {s.type === 'filter' && <>
+            <div className="gc-step-hdr"><span className="gc-step-num">2</span><span className="gc-step-title">Filtered by Method — {s.methodLabel}</span><span className="gc-badge gc-badge-warning">{s.before} → {s.after}</span></div>
+            <div className="gc-step-body">
+              <div className="gc-step-filter-track"><div className="gc-step-filter-fill" style={{ width: `${Math.round((s.after / s.before) * 100)}%` }} /></div>
+              <div className="gc-step-filter-labels"><span><strong>{s.after}</strong> rules remaining ({Math.round((s.after / s.before) * 100)}%)</span><span style={{ color: '#94a3b8' }}>{s.before - s.after} filtered out</span></div>
+              <div className="gc-step-note">Excluded: {s.others.join(' · ')}</div>
+            </div>
+          </>}
+
+          {s.type === 'reject' && <>
+            <div className="gc-step-hdr"><span className="gc-step-num">3</span><span className="gc-step-title">REJECT Rules Evaluated</span><span className={`gc-badge ${s.eliminated > 0 ? 'gc-badge-danger' : 'gc-badge-success'}`}>{s.eliminated > 0 ? `${s.eliminated} terminal${s.eliminated > 1 ? 's' : ''} eliminated` : 'No terminals eliminated'}</span></div>
+            <div className="gc-step-body">
+              <div className="gc-step-term-count">{s.terminalsBefore} terminals in → <strong>{s.terminalsAfter}</strong> terminals out</div>
+              {s.rules.map((r, ri) => (
+                <div key={ri} className={`gc-reject-rule${r.eliminated.length > 0 ? ' gc-reject-rule--hit' : ''}`}>
+                  <span className="gc-reject-icon">{r.eliminated.length > 0 ? '🔴' : '⚪'}</span>
+                  <div className="gc-reject-body">
+                    <div className="gc-reject-name">{r.name}</div>
+                    <div className="gc-reject-note">{r.note}</div>
+                    {r.eliminated.length > 0 && <div className="gc-chips" style={{ marginTop: 3 }}>{r.eliminated.map(t => <span key={t} className="gc-chip gc-chip-fail">{t}</span>)}</div>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>}
+
+          {s.type === 'select' && <>
+            <div className="gc-step-hdr"><span className="gc-step-num">4</span><span className="gc-step-title">SELECT Rule Matched</span><span className="gc-badge gc-badge-success">Match at priority #{s.rule.matchedAt}</span></div>
+            <div className="gc-step-body">
+              <div className="gc-step-note" style={{ marginBottom: 8 }}>Evaluated {s.rule.totalEvaluated} SELECT rules in order — first match wins.</div>
+              <div className="gc-select-rule">
+                <div className="gc-select-rule-name">{s.rule.name}</div>
+                <div className="gc-select-rule-row"><span className="gc-select-rule-lbl">When</span><span>{s.rule.condition}</span></div>
+                <div className="gc-select-rule-row"><span className="gc-select-rule-lbl">Action</span><span>{s.rule.action}</span></div>
+              </div>
+            </div>
+          </>}
+
+          {s.type === 'final' && <>
+            <div className="gc-step-hdr"><span className="gc-step-num">5</span><span className="gc-step-title">Routing Decision</span>{s.isNTF ? <span className="gc-badge gc-badge-danger">NTF — No Terminal</span> : <span className="gc-badge gc-badge-success">→ {s.selected?.displayId}</span>}</div>
+            <div className="gc-step-body">
+              <div className="gc-step-summary">
+                <span>{s.total} fetched</span><span className="gc-step-arr">→</span>
+                <span>{s.afterFilter} evaluated</span><span className="gc-step-arr">→</span>
+                <span>{s.rulesApplied} applied</span><span className="gc-step-arr">→</span>
+                <span className="gc-step-match">1 matched</span>
+              </div>
+              {!s.isNTF && <>
+                <div className="gc-final-terminals">
+                  {s.terminals.map((t, ti) => (
+                    <div key={ti} className={`gc-final-terminal${ti === 0 ? ' gc-final-terminal--primary' : ''}`}>
+                      <div className="gc-final-left">
+                        <span className="gc-final-rank">#{ti + 1}</span>
+                        <div><div className="gc-final-term-id">{t.displayId}</div><div className="gc-final-term-gw">{t.gatewayShort}</div></div>
+                      </div>
+                      <div className="gc-final-metrics">
+                        <span style={{ color: t.successRate >= 90 ? '#059669' : '#d97706', fontWeight: 600 }}>SR {t.successRate}%</span>
+                        <span style={{ color: t.costPerTxn === 0 ? '#059669' : '#64748b', fontSize: 12 }}>{t.costPerTxn === 0 ? '₹0 zero-cost' : `₹${t.costPerTxn}/txn`}</span>
+                      </div>
+                      <div className="gc-final-dist">
+                        <div className="gc-final-bar-wrap"><div className="gc-final-bar" style={{ width: `${s.shares[ti] || 0}%`, background: ti === 0 ? '#528FF0' : '#94a3b8' }} /></div>
+                        <span className="gc-final-share">{s.shares[ti] || 0}%</span>
+                      </div>
+                      {ti === 0 && <span className="gc-badge gc-badge-success" style={{ fontSize: 10 }}>Selected</span>}
+                      {ti > 0 && <span className="gc-badge gc-badge-gray" style={{ fontSize: 10 }}>Fallback</span>}
+                    </div>
+                  ))}
+                </div>
+                {s.terminals.length > 1 && <div className="gc-step-note" style={{ marginTop: 8 }}>If {s.terminals[0].displayId} SR drops below {s.srThreshold}%, traffic falls back to {s.terminals[1].displayId}.</div>}
+              </>}
+              {s.isNTF && <div className="gc-warning-box" style={{ marginTop: 8 }}>No terminal matched this payment. Consider adding a SELECT rule to cover this scenario.</div>}
+            </div>
+          </>}
+        </div>
+      ))}
+      {phase === 'running' && <div className="gc-step-loading"><div className="gc-sim-spinner" /><span>Running routing pipeline…</span></div>}
+      <div ref={endRef} />
+    </div>
+  )
+}
+
+function SimulateView({ method, merchant, rules }) {
+  const [phase, setPhase] = useState('form')
+  const [form, setForm]   = useState(() => defaultForm(method))
+  const [steps, setSteps] = useState([])
+
+  const runSimulation = useCallback(() => {
+    setPhase('running')
+    setSteps([])
+    const d = buildPipelineData(form, method, merchant, rules)
+    const methodOthers = Object.keys(METHOD_RULE_RATIOS).filter(m => m !== method).map(m => m === 'NB' ? 'Net Banking' : m)
+    const shares = d.topTerminals.length >= 2 ? [70, 30] : [100]
+
+    const allSteps = [
+      { type: 'fetch',  total: d.TOTAL, merchantSpecific: Math.round(d.TOTAL * 0.34), platform: Math.round(d.TOTAL * 0.66) },
+      { type: 'filter', before: d.TOTAL, after: d.afterMethod, methodLabel: d.methodLabel, others: methodOthers },
+      { type: 'reject', rules: d.rejectRules, eliminated: d.totalEliminated, terminalsBefore: d.methodTerminals.length, terminalsAfter: d.terminalsAfterReject },
+      { type: 'select', rule: d.selectRule },
+      { type: 'final',  isNTF: d.simResult.isNTF, selected: d.simResult.selectedTerminal, total: d.TOTAL, afterFilter: d.afterMethod, rulesApplied: Math.min(17, d.afterMethod), terminals: d.topTerminals.slice(0, 2), shares, srThreshold: 90 },
+    ]
+    allSteps.forEach((step, i) => setTimeout(() => {
+      setSteps(prev => [...prev, step])
+      if (i === allSteps.length - 1) setPhase('done')
+    }, i * 650 + 200))
+  }, [form, method, merchant, rules])
+
+  const methodLabel = method === 'NB' ? 'Net Banking' : method
+  return (
+    <div className="gc-sim-view">
+      {phase === 'form'
+        ? <SimulateForm method={method} form={form} onFormChange={setForm} onRun={runSimulation} />
+        : <>
+            <div className="gc-sim-params-bar">
+              <span>{methodLabel} · ₹{form.amount.toLocaleString()}{form.cardNetwork && method === 'Cards' ? ` · ${form.cardNetwork} ${form.cardType}` : ''}{form.international === 'International' ? ' · Intl' : ' · Domestic'} · {form.recurring}</span>
+              <button className="gc-sim-reset-btn" onClick={() => { setPhase('form'); setSteps([]) }}>← Edit</button>
+            </div>
+            <SimulatePipeline steps={steps} phase={phase} />
+          </>
+      }
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════
+// Method Panel — cards + chat/simulate
 // ════════════════════════════════════════════
 function MethodPanel({ method, merchant, rules, addRule, simOverrides }) {
   const [routingStrategy, setRoutingStrategy] = useState(null) // 'sr' | 'cost'
+  const [activeView, setActiveView]           = useState(null) // null | 'chat' | 'simulate'
   const [triggerMsg, setTriggerMsg]           = useState(null)
+  const [chatKey, setChatKey]                 = useState(0)
   const methodLabel = method === 'NB' ? 'Net Banking' : method
 
-  const fire = (text) => setTriggerMsg({ text, id: Date.now() })
+  const fireChat = (text) => {
+    setActiveView('chat')
+    setChatKey(k => k + 1)
+    setTriggerMsg({ text, id: Date.now() })
+  }
 
   const handleStrategy = (s) => {
     setRoutingStrategy(s)
-    if (s === 'sr') fire(`What is the priority order of terminals for ${methodLabel}?`)
+    if (s === 'sr') fireChat(`What is the priority order of terminals for ${methodLabel}?`)
+    // cost: just reveals card 4, no chat auto-trigger
   }
 
   return (
@@ -855,23 +1125,17 @@ function MethodPanel({ method, merchant, rules, addRule, simOverrides }) {
             <div className="gc-card-title">Routing Strategy</div>
             <div className="gc-card-desc">Set the optimization goal for {methodLabel}</div>
             <div className="gc-strategy-opts">
-              <button
-                className={`gc-strategy-btn${routingStrategy === 'sr' ? ' active' : ''}`}
-                onClick={() => handleStrategy('sr')}
-              >
+              <button className={`gc-strategy-btn${routingStrategy === 'sr' ? ' active' : ''}`} onClick={() => handleStrategy('sr')}>
                 <IconSRIcon /> Optimize for Success Rate
               </button>
-              <button
-                className={`gc-strategy-btn${routingStrategy === 'cost' ? ' active' : ''}`}
-                onClick={() => handleStrategy('cost')}
-              >
+              <button className={`gc-strategy-btn${routingStrategy === 'cost' ? ' active' : ''}`} onClick={() => handleStrategy('cost')}>
                 <IconCostIcon /> Save Cost / Custom Rules
               </button>
             </div>
           </div>
 
           {/* Card 2: Simulate Payments */}
-          <div className="gc-card gc-card-clickable" onClick={() => fire(`Simulate a ${methodLabel} payment of ₹5,000`)}>
+          <div className={`gc-card gc-card-clickable${activeView === 'simulate' ? ' gc-card--active' : ''}`} onClick={() => setActiveView('simulate')}>
             <div className="gc-card-icon" style={{ color: '#059669' }}><IconPlay /></div>
             <div className="gc-card-title">Simulate Payments</div>
             <div className="gc-card-desc">Trace a transaction through the routing pipeline end-to-end</div>
@@ -879,7 +1143,7 @@ function MethodPanel({ method, merchant, rules, addRule, simOverrides }) {
           </div>
 
           {/* Card 3: Historic Routing Logic */}
-          <div className="gc-card gc-card-clickable" onClick={() => fire(`What is the priority order of terminals for ${methodLabel}?`)}>
+          <div className={`gc-card gc-card-clickable${activeView === 'chat' && triggerMsg?.text?.includes('priority') ? ' gc-card--active' : ''}`} onClick={() => fireChat(`What is the priority order of terminals for ${methodLabel}?`)}>
             <div className="gc-card-icon" style={{ color: '#7c3aed' }}><IconClock /></div>
             <div className="gc-card-title">Historic Routing Logic</div>
             <div className="gc-card-desc">View terminal priority order and current routing patterns</div>
@@ -887,7 +1151,7 @@ function MethodPanel({ method, merchant, rules, addRule, simOverrides }) {
           </div>
         </div>
 
-        {/* Card 4: Create / View Rules — conditional */}
+        {/* Card 4: Create / View Rules — conditional on cost strategy */}
         {routingStrategy === 'cost' && (
           <div className="gc-rules-card">
             <div className="gc-rules-card-info">
@@ -895,26 +1159,18 @@ function MethodPanel({ method, merchant, rules, addRule, simOverrides }) {
               <div className="gc-rules-card-desc">Custom routing rules for {methodLabel} payments</div>
             </div>
             <div className="gc-rules-card-actions">
-              <button className="gc-rules-card-btn gc-rules-card-btn--primary" onClick={() => fire(`Create a routing rule for ${methodLabel}`)}>
-                + Create Rule
-              </button>
-              <button className="gc-rules-card-btn gc-rules-card-btn--secondary" onClick={() => fire(`Show routing rules for ${methodLabel}`)}>
-                View Rules
-              </button>
+              <button className="gc-rules-card-btn gc-rules-card-btn--primary" onClick={() => fireChat(`Create a routing rule for ${methodLabel}`)}>+ Create Rule</button>
+              <button className="gc-rules-card-btn gc-rules-card-btn--secondary" onClick={() => fireChat(`Show routing rules for ${methodLabel}`)}>View Rules</button>
             </div>
           </div>
         )}
       </div>
 
-      {/* ── Chat ── */}
-      <MethodChat
-        method={method}
-        merchant={merchant}
-        rules={rules}
-        addRule={addRule}
-        simOverrides={simOverrides}
-        triggerMsg={triggerMsg}
-      />
+      {/* ── Content area ── */}
+      {activeView === 'simulate'
+        ? <SimulateView key={method} method={method} merchant={merchant} rules={rules} />
+        : <MethodChat key={chatKey} method={method} merchant={merchant} rules={rules} addRule={addRule} simOverrides={simOverrides} triggerMsg={triggerMsg} />
+      }
     </div>
   )
 }
