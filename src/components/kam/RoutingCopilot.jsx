@@ -890,7 +890,8 @@ function buildPipelineData(form, method, merchant, rules) {
   }
 
   const simResult = simulateRoutingPipeline(merchant, buildSimTxn(form, method), rules)
-  return { TOTAL, afterMethod, methodLabel, rejectRules, terminalsAfterReject, selectRule, simResult, methodTerminals, topTerminals, totalEliminated }
+  const rejectMatchCount = rejectRules.filter(r => r.status === 'hit').length
+  return { TOTAL, afterMethod, methodLabel, rejectRules, terminalsAfterReject, selectRule, simResult, methodTerminals, topTerminals, totalEliminated, rejectMatchCount }
 }
 
 function SimulateForm({ method, form, onFormChange, onRun }) {
@@ -965,7 +966,7 @@ function SimulatePipeline({ steps, phase }) {
                 <div className="gc-step-stat"><div className="gc-step-stat-val">{s.merchantSpecific}</div><div className="gc-step-stat-lbl">Merchant-specific</div></div>
                 <div className="gc-step-stat"><div className="gc-step-stat-val">{s.platform}</div><div className="gc-step-stat-lbl">Platform defaults</div></div>
               </div>
-              <div className="gc-step-note">Includes REJECT rules, SELECT rules, volume splits, fallback chains, and offer-linked rules.</div>
+              <div className="gc-step-note">Range: 1–5,627 across all merchants. Includes REJECT rules, SELECT rules, volume splits, fallback chains, and offer-linked rules.</div>
             </div>
           </>}
 
@@ -975,6 +976,7 @@ function SimulatePipeline({ steps, phase }) {
               <div className="gc-step-filter-track"><div className="gc-step-filter-fill" style={{ width: `${Math.round((s.after / s.before) * 100)}%` }} /></div>
               <div className="gc-step-filter-labels"><span><strong>{s.after}</strong> rules remaining ({Math.round((s.after / s.before) * 100)}%)</span><span style={{ color: '#94a3b8' }}>{s.before - s.after} filtered out</span></div>
               <div className="gc-step-note">Excluded: {s.others.join(' · ')}</div>
+              <div className="gc-step-insight">⚡ 49.9% of rules don't filter on payment method — they apply to <strong>ALL</strong> payments regardless of method.</div>
             </div>
           </>}
 
@@ -1013,9 +1015,9 @@ function SimulatePipeline({ steps, phase }) {
               <div className="gc-step-summary">
                 <span>{s.total} fetched</span><span className="gc-step-arr">→</span>
                 <span>{s.afterFilter} evaluated</span><span className="gc-step-arr">→</span>
-                <span>{s.rulesApplied} applied</span><span className="gc-step-arr">→</span>
-                <span className="gc-step-match">1 matched</span>
+                <span><strong>{s.rulesApplied}</strong> applied ({s.rejectMatchCount} REJECT + 1 SELECT)</span>
               </div>
+              <div className="gc-step-insight" style={{ marginTop: 8 }}>💡 <strong>Critical Insight:</strong> Rules Fetched ≠ Rules Applied. {s.total} fetched → ~{s.afterFilter} evaluated → {s.rulesApplied} actually applied to this payment.</div>
               {!s.isNTF && <>
                 <div className="gc-final-terminals">
                   {s.terminals.map((t, ti) => (
@@ -1067,7 +1069,7 @@ function SimulateView({ method, merchant, rules }) {
       { type: 'filter', before: d.TOTAL, after: d.afterMethod, methodLabel: d.methodLabel, others: methodOthers },
       { type: 'reject', rules: d.rejectRules, eliminated: d.totalEliminated, terminalsBefore: d.methodTerminals.length, terminalsAfter: d.terminalsAfterReject },
       { type: 'select', rule: d.selectRule },
-      { type: 'final',  isNTF: d.simResult.isNTF, selected: d.simResult.selectedTerminal, total: d.TOTAL, afterFilter: d.afterMethod, rulesApplied: Math.min(17, d.afterMethod), terminals: d.topTerminals.slice(0, 2), shares, srThreshold: 90 },
+      { type: 'final',  isNTF: d.simResult.isNTF, selected: d.simResult.selectedTerminal, total: d.TOTAL, afterFilter: d.afterMethod, rejectMatchCount: d.rejectMatchCount, rulesApplied: d.rejectMatchCount + 1, terminals: d.topTerminals.slice(0, 2), shares, srThreshold: 90 },
     ]
     allSteps.forEach((step, i) => setTimeout(() => {
       setSteps(prev => [...prev, step])
@@ -1087,6 +1089,146 @@ function SimulateView({ method, merchant, rules }) {
             </div>
             <SimulatePipeline steps={steps} phase={phase} />
           </>
+      }
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════
+// Historic Routing — payment ID tracer
+// ════════════════════════════════════════════
+
+const MOCK_HISTORIC_PAYMENTS = [
+  { id: 'pay_9x8y7z', amount: 15000, method: 'Cards', card_network: 'Visa',       card_type: 'credit', international: false, timestamp: '2026-03-22 14:32:07', label: 'Visa Credit · ₹15,000 · Domestic'       },
+  { id: 'pay_4a5b6c', amount: 2500,  method: 'UPI',   card_network: null,         card_type: null,     international: false, timestamp: '2026-03-22 11:18:43', label: 'UPI Intent · ₹2,500'                    },
+  { id: 'pay_1m2n3o', amount: 5000,  method: 'Cards', card_network: 'Mastercard', card_type: 'debit',  international: false, timestamp: '2026-03-21 09:55:21', label: 'Mastercard Debit · ₹5,000 · Domestic'  },
+]
+
+function buildHistoricSteps(mock, method, merchant, rules) {
+  const txnMethod = mock?.method || method
+  const form = {
+    ...defaultForm(txnMethod),
+    amount: mock?.amount || 5000,
+    cardNetwork: mock?.card_network || 'Visa',
+    cardType: mock?.card_type === 'debit' ? 'Debit' : 'Credit',
+    international: mock?.international ? 'International' : 'Domestic',
+  }
+  const d = buildPipelineData(form, txnMethod, merchant, rules)
+  const txn = { payment_method: txnMethod, amount: form.amount, card_network: form.cardNetwork, card_type: form.cardType.toLowerCase(), international: mock?.international || false }
+  const simResult = simulateRoutingPipeline(merchant, txn, rules)
+  const shares = d.topTerminals.length >= 2 ? [70, 30] : [100]
+  const methodOthers = Object.keys(METHOD_RULE_RATIOS).filter(m => m !== txnMethod).map(m => m === 'NB' ? 'Net Banking' : m)
+  const steps = [
+    { type: 'fetch',  total: d.TOTAL, merchantSpecific: Math.round(d.TOTAL * 0.34), platform: Math.round(d.TOTAL * 0.66) },
+    { type: 'filter', before: d.TOTAL, after: d.afterMethod, methodLabel: d.methodLabel, others: methodOthers },
+    { type: 'reject', rules: d.rejectRules, eliminated: d.totalEliminated, terminalsBefore: d.methodTerminals.length, terminalsAfter: d.terminalsAfterReject },
+    { type: 'select', rule: d.selectRule },
+    { type: 'final',  isNTF: simResult.isNTF, selected: simResult.selectedTerminal, total: d.TOTAL, afterFilter: d.afterMethod, rejectMatchCount: d.rejectMatchCount, rulesApplied: d.rejectMatchCount + 1, terminals: d.topTerminals.slice(0, 2), shares, srThreshold: 90 },
+  ]
+  return { steps, simResult, txn }
+}
+
+function HistoricView({ method, merchant, rules }) {
+  const [inputIds, setInputIds] = useState('')
+  const [results,  setResults]  = useState(null)
+  const [tracing,  setTracing]  = useState(false)
+  const [expanded, setExpanded] = useState({})
+
+  const addChip = (id) => {
+    setInputIds(prev => {
+      const existing = prev.split(/[\s,]+/).filter(Boolean)
+      if (existing.includes(id)) return prev
+      return prev ? `${prev}, ${id}` : id
+    })
+  }
+
+  const trace = () => {
+    const ids = inputIds.split(/[\s,]+/).filter(Boolean)
+    if (ids.length === 0) return
+    setTracing(true)
+    setTimeout(() => {
+      const traced = ids.map(id => {
+        const mock = MOCK_HISTORIC_PAYMENTS.find(p => p.id === id)
+        const { steps, simResult, txn } = buildHistoricSteps(mock, method, merchant, rules)
+        return { id, mock, txn, simResult, steps }
+      })
+      const exp = {}
+      traced.forEach(r => { exp[r.id] = true })
+      setResults(traced)
+      setExpanded(exp)
+      setTracing(false)
+    }, 700)
+  }
+
+  return (
+    <div className="gc-historic-view">
+      {!results
+        ? (
+          <div className="gc-historic-form">
+            <div className="gc-historic-hdr">
+              <div className="gc-historic-title">Trace Payment Routing</div>
+              <div className="gc-historic-sub">Enter one or more Payment IDs to see exactly how each payment was routed through the pipeline — which rules fired, which terminal was chosen, and why.</div>
+            </div>
+
+            <div className="gc-historic-input-wrap">
+              <textarea
+                className="gc-historic-input"
+                placeholder="pay_abc123, pay_def456"
+                value={inputIds}
+                onChange={e => setInputIds(e.target.value)}
+                rows={2}
+              />
+            </div>
+
+            <div className="gc-historic-chips-label">Try a demo payment:</div>
+            <div className="gc-historic-chips">
+              {MOCK_HISTORIC_PAYMENTS.map(p => (
+                <button key={p.id} className="gc-historic-chip" onClick={() => addChip(p.id)}>
+                  <span className="gc-historic-chip-id">{p.id}</span>
+                  <span className="gc-historic-chip-meta">{p.label} · {p.timestamp}</span>
+                </button>
+              ))}
+            </div>
+
+            <button className="gc-historic-trace-btn" onClick={trace} disabled={!inputIds.trim() || tracing}>
+              {tracing
+                ? <><div className="gc-sim-spinner" style={{ width: 14, height: 14, borderWidth: 2, marginRight: 6 }} />Tracing…</>
+                : '→ Trace Routing'
+              }
+            </button>
+          </div>
+        )
+        : (
+          <div className="gc-historic-results">
+            <div className="gc-historic-results-hdr">
+              <span>{results.length} payment{results.length !== 1 ? 's' : ''} traced</span>
+              <button className="gc-sim-reset-btn" onClick={() => { setResults(null); setInputIds('') }}>← New Trace</button>
+            </div>
+            {results.map(r => (
+              <div key={r.id} className="gc-historic-accordion">
+                <button className="gc-historic-acc-hdr" onClick={() => setExpanded(e => ({ ...e, [r.id]: !e[r.id] }))}>
+                  <div className="gc-historic-acc-left">
+                    <span className="gc-historic-acc-id">{r.id}</span>
+                    {r.mock && <span className="gc-historic-acc-meta">{r.mock.label} · {r.mock.timestamp}</span>}
+                    {!r.mock && <span className="gc-historic-acc-meta">{r.txn.payment_method} · ₹{r.txn.amount?.toLocaleString()}</span>}
+                  </div>
+                  <div className="gc-historic-acc-right">
+                    {r.simResult.isNTF
+                      ? <span className="gc-badge gc-badge-danger">NTF — No Terminal</span>
+                      : <span className="gc-badge gc-badge-success">→ {r.simResult.selectedTerminal?.displayId}</span>
+                    }
+                    <span className="gc-historic-chevron">{expanded[r.id] ? '▲' : '▼'}</span>
+                  </div>
+                </button>
+                {expanded[r.id] && (
+                  <div className="gc-historic-acc-body">
+                    <SimulatePipeline steps={r.steps} phase="done" />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )
       }
     </div>
   )
@@ -1511,11 +1653,11 @@ function MethodPanel({ method, merchant, rules, addRule, simOverrides }) {
           </div>
 
           {/* Card 3: Historic Routing Logic */}
-          <div className={`gc-card gc-card-clickable${activeView === 'chat' && triggerMsg?.text?.includes('priority') ? ' gc-card--active' : ''}`} onClick={() => fireChat(`What is the priority order of terminals for ${methodLabel}?`)}>
+          <div className={`gc-card gc-card-clickable${activeView === 'historic' ? ' gc-card--active' : ''}`} onClick={() => setActiveView('historic')}>
             <div className="gc-card-icon" style={{ color: '#7c3aed' }}><IconClock /></div>
             <div className="gc-card-title">Historic Routing Logic</div>
-            <div className="gc-card-desc">View terminal priority order and current routing patterns</div>
-            <div className="gc-card-cta">View Routing →</div>
+            <div className="gc-card-desc">Trace a past payment — see exactly which rules fired and why it routed there</div>
+            <div className="gc-card-cta">Trace Payment →</div>
           </div>
         </div>
 
@@ -1536,6 +1678,8 @@ function MethodPanel({ method, merchant, rules, addRule, simOverrides }) {
       {/* ── Content area ── */}
       {activeView === 'simulate'
         ? <SimulateView key={method} method={method} merchant={merchant} rules={rules} />
+        : activeView === 'historic'
+        ? <HistoricView key={method} method={method} merchant={merchant} rules={rules} />
         : activeView === 'create_rule'
         ? <CreateRuleWizard method={method} merchant={merchant} rules={rules} addRule={addRule} onClose={() => setActiveView(null)} />
         : activeView === 'sr_ranking'
