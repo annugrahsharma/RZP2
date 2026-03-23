@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react'
-import { gateways } from '../../data/kamMockData'
+import { gateways, simulateRoutingPipeline } from '../../data/kamMockData'
 
 // ════════════════════════════════════════════
 // DATA CONSTANTS
@@ -426,7 +426,260 @@ function FilterSummary({ method, f }) {
   )
 }
 
-function TerminalStep({ merchant, method, filters, rules, addRule, onBack }) {
+// ════════════════════════════════════════════
+// RULE IMPACT ANALYSIS HELPERS
+// ════════════════════════════════════════════
+
+function generateImpactedFlows(method, filters, monthlyTxns) {
+  const dailyTxns = Math.round(monthlyTxns / 30)
+  const flows = []
+
+  if (method === 'Cards') {
+    const nets  = filters.networks?.length   ? filters.networks   : ['Visa', 'Mastercard', 'RuPay']
+    const types = filters.cardTypes?.length  ? filters.cardTypes  : ['credit', 'debit']
+    const intls = filters.international === 'Domestic'      ? [false]
+                : filters.international === 'International' ? [true]
+                : [false, true]
+
+    let count = 0
+    for (const net of nets) {
+      for (const ct of types) {
+        for (const intl of intls) {
+          if (count >= 6) break
+          if (net === 'RuPay' && intl) continue
+          const netShare  = net === 'Visa' ? 0.34 : net === 'Mastercard' ? 0.34 : net === 'RuPay' ? 0.21 : 0.05
+          const typeShare = ct === 'credit' ? 0.39 : ct === 'debit' ? 0.37 : 0.04
+          const intlShare = intl ? 0.23 : 0.77
+          const volEst = Math.round(dailyTxns * netShare * typeShare * intlShare)
+          flows.push({
+            id: `flow-${flows.length}`,
+            label: `${net} ${ct.charAt(0).toUpperCase() + ct.slice(1)} ${intl ? 'International' : 'Domestic'}`,
+            txn: {
+              payment_method: 'Cards',
+              card_network: net,
+              card_type: ct,
+              international: intl,
+              amount: intl ? 25000 : 5000,
+              issuer_bank: filters.issuerBanks?.[0] || null,
+            },
+            dailyVol: Math.max(volEst, 1),
+          })
+          count++
+        }
+      }
+    }
+  } else if (method === 'UPIOnetime' || method === 'UPIRecurring') {
+    const subtype = method === 'UPIRecurring' ? 'recurring' : 'onetime'
+    const upiTypes = filters.upiType && filters.upiType !== 'Any' ? [filters.upiType] : ['Collect', 'Intent', 'QR']
+    for (const ut of upiTypes.slice(0, 4)) {
+      const share = ut === 'Collect' ? 0.36 : ut === 'Intent' ? 0.27 : ut === 'QR' ? 0.22 : 0.15
+      flows.push({
+        id: `flow-${flows.length}`,
+        label: `UPI ${ut} (${subtype})`,
+        txn: { payment_method: 'UPI', upi_subtype: subtype, upi_type: ut, amount: 2500 },
+        dailyVol: Math.max(Math.round(dailyTxns * share), 1),
+      })
+    }
+  } else if (method === 'EMI') {
+    const nets = filters.emiNetworks?.length ? filters.emiNetworks : ['Visa', 'Mastercard']
+    for (const net of nets.slice(0, 3)) {
+      flows.push({
+        id: `flow-${flows.length}`,
+        label: `EMI ${net} Credit`,
+        txn: { payment_method: 'EMI', card_network: net, card_type: 'credit', international: false, amount: 25000 },
+        dailyVol: Math.max(Math.round(dailyTxns * 0.08), 1),
+      })
+    }
+  } else {
+    flows.push({
+      id: 'flow-0',
+      label: `${method} (all)`,
+      txn: { payment_method: method, amount: 5000 },
+      dailyVol: dailyTxns,
+    })
+  }
+
+  return flows.length ? flows : [{
+    id: 'flow-0',
+    label: `${method} (all)`,
+    txn: { payment_method: dataKey(method), amount: 5000 },
+    dailyVol: dailyTxns,
+  }]
+}
+
+function RuleImpactAnalysis({ rule, savedTerminals, merchant, filters, method, monthlyTxns, avgTxnValue, allTerminals, rules, srThresh, onDone, onEditRule, onDisableRule }) {
+  const flows = useMemo(() => generateImpactedFlows(method, filters, monthlyTxns), [method, filters, monthlyTxns])
+  const [simulated, setSimulated] = useState({}) // flowId → { before, after }
+  const [simulating, setSimulating] = useState(null) // flowId currently loading
+
+  const runSim = useCallback((flow) => {
+    setSimulating(flow.id)
+    setTimeout(() => {
+      const rulesWithout = (rules || []).filter(r => r.id !== rule.id)
+      const rulesWith    = [rule, ...rulesWithout].sort((a, b) => (a.priority || 99) - (b.priority || 99))
+      const before = simulateRoutingPipeline(merchant, flow.txn, rulesWithout)
+      const after  = simulateRoutingPipeline(merchant, flow.txn, rulesWith)
+      setSimulated(p => ({ ...p, [flow.id]: { before, after } }))
+      setSimulating(null)
+    }, 120)
+  }, [rules, rule, merchant])
+
+  const formatRev = (amt) => {
+    const abs = Math.abs(amt)
+    if (abs >= 100000) return `₹${(abs / 100000).toFixed(1)}L`
+    if (abs >= 1000)   return `₹${(abs / 1000).toFixed(1)}K`
+    return `₹${abs}`
+  }
+
+  const aggregateSummary = useMemo(() => {
+    const keys = Object.keys(simulated)
+    if (!keys.length) return null
+    let ntfRisks = 0, totalSRDelta = 0, totalRevDelta = 0
+    const dailyAvgTxn = avgTxnValue
+    keys.forEach(flowId => {
+      const { before, after } = simulated[flowId]
+      const flow = flows.find(f => f.id === flowId)
+      if (!flow) return
+      if (after.isNTF && !before.isNTF) ntfRisks++
+      const beforeSR = before.isNTF ? 0 : (before.selectedTerminal?.successRate || 0)
+      const afterSR  = after.isNTF  ? 0 : (after.selectedTerminal?.successRate  || 0)
+      const srDelta  = afterSR - beforeSR
+      totalSRDelta  += srDelta
+      totalRevDelta += (srDelta / 100) * flow.dailyVol * dailyAvgTxn
+    })
+    const simCount = keys.length
+    return { ntfRisks, avgSRDelta: simCount ? Math.round(totalSRDelta / simCount * 10) / 10 : 0, totalRevDelta: Math.round(totalRevDelta), simCount }
+  }, [simulated, flows, avgTxnValue])
+
+  return (
+    <div className="rw-impact">
+      {/* Success banner */}
+      <div className="rw-impact-banner">
+        <span className="rw-impact-check">✓</span>
+        <div>
+          <div className="rw-impact-title">Rule Created</div>
+          <div className="rw-impact-name">{rule.name}</div>
+        </div>
+        <span className="rw-impact-enabled-badge">Active</span>
+      </div>
+
+      {/* Impacted flows section */}
+      <div className="rw-impact-section-label">Impacted Payment Flows ({flows.length})</div>
+      <div className="rw-impact-flows">
+        {flows.map(flow => {
+          const sim = simulated[flow.id]
+          const isSimming = simulating === flow.id
+
+          const beforeTerm = sim ? (sim.before.isNTF ? null : sim.before.selectedTerminal) : null
+          const afterTerm  = sim ? (sim.after.isNTF  ? null : sim.after.selectedTerminal)  : null
+          const beforeSR   = beforeTerm?.successRate || 0
+          const afterSR    = afterTerm?.successRate  || 0
+          const srDelta    = sim ? (afterSR - beforeSR) : 0
+          const ntfRisk    = sim && sim.after.isNTF && !sim.before.isNTF
+          const revDelta   = sim ? Math.round((srDelta / 100) * flow.dailyVol * avgTxnValue) : 0
+
+          return (
+            <div key={flow.id} className="rw-impact-flow-card">
+              <div className="rw-impact-flow-header">
+                <div className="rw-impact-flow-meta">
+                  <span className="rw-impact-flow-label">{flow.label}</span>
+                  <span className="rw-impact-flow-vol">~{flow.dailyVol.toLocaleString()} txns/day</span>
+                </div>
+                {!sim && (
+                  <button
+                    className="rw-impact-sim-btn"
+                    onClick={() => runSim(flow)}
+                    disabled={isSimming}
+                  >
+                    {isSimming ? 'Simulating…' : '▷ Simulate'}
+                  </button>
+                )}
+                {sim && <span className="rw-impact-sim-done">✓ Simulated</span>}
+              </div>
+
+              {!sim && (
+                <div className="rw-impact-flow-hint">Click Simulate to see routing impact</div>
+              )}
+
+              {sim && (
+                <div className="rw-impact-sim-results">
+                  <div className="rw-impact-route-compare">
+                    <div className="rw-impact-route-side">
+                      <span className="rw-impact-route-label">Before</span>
+                      {beforeTerm
+                        ? <span className="rw-impact-route-term">{beforeTerm.displayId} · {beforeTerm.gatewayShort} · SR {beforeTerm.successRate}% · ₹{beforeTerm.costPerTxn}/txn</span>
+                        : <span className="rw-impact-route-ntf">NTF (no terminal)</span>
+                      }
+                    </div>
+                    <span className="rw-impact-route-arrow">→</span>
+                    <div className="rw-impact-route-side">
+                      <span className="rw-impact-route-label">After</span>
+                      {afterTerm
+                        ? <span className="rw-impact-route-term">{afterTerm.displayId} · {afterTerm.gatewayShort} · SR {afterTerm.successRate}% · ₹{afterTerm.costPerTxn}/txn</span>
+                        : <span className="rw-impact-route-ntf">NTF — no terminal matches</span>
+                      }
+                    </div>
+                  </div>
+
+                  <div className="rw-impact-badges">
+                    {ntfRisk && (
+                      <span className="rw-impact-badge ntf">
+                        ⚠️ NTF Risk: {savedTerminals.map(t => t.displayId).join(', ')} selected, no fallback available
+                      </span>
+                    )}
+                    {!ntfRisk && Math.abs(srDelta) >= 0.1 && (
+                      <span className={`rw-impact-badge ${srDelta > 0 ? 'sr-up' : 'sr-down'}`}>
+                        {srDelta > 0 ? '↑' : '↓'} SR {srDelta > 0 ? 'improves' : 'drops'} {Math.abs(srDelta).toFixed(1)}% ({beforeSR}% → {afterSR}%)
+                      </span>
+                    )}
+                    {!ntfRisk && Math.abs(revDelta) >= 100 && (
+                      <span className={`rw-impact-badge ${revDelta >= 0 ? 'rev-up' : 'rev-down'}`}>
+                        {revDelta >= 0 ? '↑' : '↓'} Est. {formatRev(revDelta)}/day revenue {revDelta >= 0 ? 'gain' : 'reduction'}
+                      </span>
+                    )}
+                    {!ntfRisk && Math.abs(srDelta) < 0.1 && (
+                      <span className="rw-impact-badge neutral">No routing change for this flow</span>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Aggregate summary */}
+      {aggregateSummary && (
+        <div className={`rw-impact-summary ${aggregateSummary.ntfRisks > 0 ? 'danger' : aggregateSummary.avgSRDelta < -0.5 ? 'warn' : 'ok'}`}>
+          <div className="rw-impact-summary-title">Impact Summary ({aggregateSummary.simCount} flows simulated)</div>
+          <div className="rw-impact-summary-rows">
+            {aggregateSummary.ntfRisks > 0 && (
+              <div className="rw-impact-summary-row red">⚠️ {aggregateSummary.ntfRisks} flow{aggregateSummary.ntfRisks > 1 ? 's' : ''} at NTF risk — no fallback terminal</div>
+            )}
+            <div className={`rw-impact-summary-row ${aggregateSummary.avgSRDelta >= 0 ? 'green' : 'amber'}`}>
+              {aggregateSummary.avgSRDelta >= 0 ? '↑' : '↓'} Avg SR change: {aggregateSummary.avgSRDelta >= 0 ? '+' : ''}{aggregateSummary.avgSRDelta}% across simulated flows
+            </div>
+            {Math.abs(aggregateSummary.totalRevDelta) >= 100 && (
+              <div className={`rw-impact-summary-row ${aggregateSummary.totalRevDelta >= 0 ? 'green' : 'amber'}`}>
+                {aggregateSummary.totalRevDelta >= 0 ? '↑' : '↓'} Net est. revenue impact: {aggregateSummary.totalRevDelta >= 0 ? '+' : ''}{formatRev(aggregateSummary.totalRevDelta)}/day
+              </div>
+            )}
+          </div>
+          <div className="rw-impact-summary-note">Review each flow's simulation above before enabling this rule in production.</div>
+        </div>
+      )}
+
+      {/* Action buttons */}
+      <div className="rw-impact-actions">
+        <button className="rw-btn ghost" onClick={onEditRule}>← Edit Rule</button>
+        <button className="rw-btn secondary" onClick={onDisableRule}>⏸ Disable Rule</button>
+        <button className="rw-btn primary" onClick={onDone}>Done ✓</button>
+      </div>
+    </div>
+  )
+}
+
+function TerminalStep({ merchant, method, filters, rules, addRule, onBack, onClose }) {
   const allTerminals = useMemo(() =>
     merchant.gatewayMetrics
       .filter(gm => (gm.supportedMethods || []).includes(dataKey(method)))
@@ -523,35 +776,22 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack }) {
   }
 
   if (saved) {
-    const dailyVol = Math.round(monthlyTxns / 30)
-    const zeroCost = selectedTerminals.filter(t => t.costPerTxn === 0)
-    const paid     = selectedTerminals.filter(t => t.costPerTxn > 0)
-    const savings  = zeroCost.length && paid.length
-      ? `Routing to ${zeroCost[0].displayId} first saves ₹${paid[0].costPerTxn}/txn vs ${paid[0].displayId} — ~₹${(paid[0].costPerTxn * dailyVol).toLocaleString()}/day at current volume.`
-      : null
     return (
-      <div className="rw-success">
-        <div className="rw-success-icon">✓</div>
-        <div className="rw-success-title">Rule Saved</div>
-        <div className="rw-success-name">{saved.name}</div>
-        <div className="rw-cascade-preview">
-          {selectedTerminals.map((t, i) => (
-            <React.Fragment key={t.id}>
-              <div className={`rw-cascade-row${i === 0 ? ' primary' : ''}`}>
-                <span className="rw-cascade-rank">#{i + 1}</span>
-                <span className="rw-cascade-term">{t.displayId}</span>
-                <span className="rw-cascade-gw">{t.gatewayShort}</span>
-                <span style={{ color: t.successRate >= 90 ? '#059669' : '#d97706', fontWeight: 600, fontSize: 12 }}>SR {t.successRate}%</span>
-                <span style={{ fontSize: 11, color: t.costPerTxn === 0 ? '#059669' : '#64748b' }}>{t.costPerTxn === 0 ? '₹0' : `₹${t.costPerTxn}/txn`}</span>
-              </div>
-              {i < selectedTerminals.length - 1 && (
-                <div className="rw-cascade-arrow">↓ fallback if SR &lt; {srThresh[t.id] || 90}%</div>
-              )}
-            </React.Fragment>
-          ))}
-        </div>
-        {savings && <div className="rw-savings-note">💰 {savings}</div>}
-      </div>
+      <RuleImpactAnalysis
+        rule={saved}
+        savedTerminals={selectedTerminals}
+        merchant={merchant}
+        filters={filters}
+        method={method}
+        monthlyTxns={monthlyTxns}
+        avgTxnValue={avgTxnValue}
+        allTerminals={allTerminals}
+        rules={rules}
+        srThresh={srThresh}
+        onDone={onClose || (() => setSaved(null))}
+        onEditRule={() => setSaved(null)}
+        onDisableRule={onClose || (() => setSaved(null))}
+      />
     )
   }
 
@@ -742,7 +982,7 @@ function CardsWizard({ merchant, method, rules, addRule, onClose }) {
       <div className="rw-wizard">
         <WizardStepper steps={steps} currentStep={step} />
         <div className="rw-wz-body">
-          <TerminalStep merchant={merchant} method={method} filters={f} rules={rules} addRule={addRule} onBack={() => setStep(step - 1)} />
+          <TerminalStep merchant={merchant} method={method} filters={f} rules={rules} addRule={addRule} onBack={() => setStep(step - 1)} onClose={onClose} />
         </div>
       </div>
     )
@@ -872,7 +1112,7 @@ function UPIOnetimeWizard({ merchant, method, rules, addRule, onClose }) {
       <div className="rw-wizard">
         <WizardStepper steps={steps} currentStep={step} />
         <div className="rw-wz-body">
-          <TerminalStep merchant={merchant} method={method} filters={f} rules={rules} addRule={addRule} onBack={() => setStep(step - 1)} />
+          <TerminalStep merchant={merchant} method={method} filters={f} rules={rules} addRule={addRule} onBack={() => setStep(step - 1)} onClose={onClose} />
         </div>
       </div>
     )
@@ -964,7 +1204,7 @@ function UPIRecurringWizard({ merchant, method, rules, addRule, onClose }) {
       <div className="rw-wizard">
         <WizardStepper steps={steps} currentStep={step} />
         <div className="rw-wz-body">
-          <TerminalStep merchant={merchant} method={method} filters={f} rules={rules} addRule={addRule} onBack={() => setStep(step - 1)} />
+          <TerminalStep merchant={merchant} method={method} filters={f} rules={rules} addRule={addRule} onBack={() => setStep(step - 1)} onClose={onClose} />
         </div>
       </div>
     )
@@ -1063,7 +1303,7 @@ function EMIWizard({ merchant, method, rules, addRule, onClose }) {
       <div className="rw-wizard">
         <WizardStepper steps={steps} currentStep={step} />
         <div className="rw-wz-body">
-          <TerminalStep merchant={merchant} method={method} filters={f} rules={rules} addRule={addRule} onBack={() => setStep(step - 1)} />
+          <TerminalStep merchant={merchant} method={method} filters={f} rules={rules} addRule={addRule} onBack={() => setStep(step - 1)} onClose={onClose} />
         </div>
       </div>
     )
