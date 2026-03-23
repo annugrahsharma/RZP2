@@ -1095,7 +1095,7 @@ function SimulateView({ method, merchant, rules }) {
 // ════════════════════════════════════════════
 // SR Ranking View — read-only terminal ranking
 // ════════════════════════════════════════════
-function SRRankingView({ method, merchant }) {
+function SRRankingView({ method, merchant, strategy }) {
   const methodLabel = method === 'NB' ? 'Net Banking' : method
 
   const terminals = useMemo(() =>
@@ -1161,9 +1161,11 @@ function SRRankingView({ method, merchant }) {
         ))}
       </div>
 
-      <div className="gc-sr-note">
-        Terminals are ranked by success rate. To customize priority or optimize for cost, select <strong>Save Cost / Custom Rules</strong>.
-      </div>
+      {strategy !== 'cost' && (
+        <div className="gc-sr-note">
+          Terminals are ranked by success rate. To customize priority or optimize for cost, select <strong>Save Cost / Custom Rules</strong>.
+        </div>
+      )}
     </div>
   )
 }
@@ -1477,8 +1479,7 @@ function MethodPanel({ method, merchant, rules, addRule, simOverrides }) {
 
   const handleStrategy = (s) => {
     setRoutingStrategy(s)
-    if (s === 'sr') setActiveView('sr_ranking')
-    // cost: just reveals card 4, no auto-trigger
+    setActiveView('sr_ranking') // always show terminal ranking when a strategy is selected
   }
 
   return (
@@ -1538,7 +1539,7 @@ function MethodPanel({ method, merchant, rules, addRule, simOverrides }) {
         : activeView === 'create_rule'
         ? <CreateRuleWizard method={method} merchant={merchant} rules={rules} addRule={addRule} onClose={() => setActiveView(null)} />
         : activeView === 'sr_ranking'
-        ? <SRRankingView method={method} merchant={merchant} />
+        ? <SRRankingView method={method} merchant={merchant} strategy={routingStrategy} />
         : <MethodChat key={chatKey} method={method} merchant={merchant} rules={rules} addRule={addRule} simOverrides={simOverrides} triggerMsg={triggerMsg} />
       }
     </div>
