@@ -79,7 +79,6 @@ function classifyIntent(input) {
   if (/priority.*order|routing.*order|order.*terminal|which.*first|how.*routed|cascade|terminal.*priority/i.test(q)) return { type: 'priority_cascade', raw: input }
   if (/what happens|simulate|send|trace|if i send|payment of/i.test(q)) return { type: 'simulate', raw: input }
   if (/ntf|no terminal|why.*(fail|ntf|block)|failure|failing|ntf risk/i.test(q)) return { type: 'ntf_analysis', raw: input }
-  if (/show|list|display|view|current|existing|what are/.test(q) && /rule|routing|config/i.test(q)) return { type: 'show_rules', raw: input }
   if (/what if|if i disable|if i remove|if.*drops?|if.*down/i.test(q)) return { type: 'what_if', raw: input }
   if (/coverage|gap|uncovered|missing|blind spot/i.test(q)) return { type: 'coverage', raw: input }
   if (/help|what can you|how do i|guide/i.test(q)) return { type: 'help', raw: input }
@@ -204,61 +203,6 @@ function PipelineTrace({ result, txn }) {
   )
 }
 
-function RuleTable({ rules, merchant }) {
-  const activeRules = rules.filter(r => r.enabled && !r.isDefault && !r.isMethodDefault)
-  const defaults    = rules.filter(r => r.isDefault || r.isMethodDefault)
-  const formatConditions = r => {
-    if (!r.conditions || r.conditions.length === 0) return 'All transactions'
-    return r.conditions.map(c => {
-      const field = c.field.replace(/_/g, ' ')
-      const val   = Array.isArray(c.value) ? c.value.join(', ') : c.value
-      return `${field} ${c.operator.replace(/_/g, ' ')} ${val}`
-    }).join(' AND ')
-  }
-  const getTermLabel = termId => {
-    for (const gw of gateways) {
-      const t = gw.terminals.find(t => t.id === termId)
-      if (t) return `${t.terminalId} (${gw.shortName})`
-    }
-    return termId
-  }
-  if (activeRules.length === 0 && defaults.length === 0) return <div className="gc-info-box">No rules configured for this method.</div>
-  return (
-    <div className="gc-rules">
-      <div className="gc-rules-title">{activeRules.length} active rule{activeRules.length !== 1 ? 's' : ''}, {defaults.length} default{defaults.length !== 1 ? 's' : ''}</div>
-      <table className="gc-table">
-        <thead><tr><th>#</th><th>Name</th><th>Conditions</th><th>Routes To</th><th>Type</th></tr></thead>
-        <tbody>
-          {activeRules.map((r, i) => (
-            <tr key={r.id}>
-              <td><span className="gc-badge gc-badge-blue">{i + 1}</span></td>
-              <td><strong>{r.name}</strong></td>
-              <td style={{ fontSize: 12 }}>{formatConditions(r)}</td>
-              <td>
-                <div className="gc-chips" style={{ flexWrap: 'wrap' }}>
-                  {r.action.type === 'split'
-                    ? r.action.splits.map(s => <span key={s.terminalId} className="gc-chip gc-chip-pass">{getTermLabel(s.terminalId)} ({s.percentage}%)</span>)
-                    : (r.action.terminals || []).map(tid => <span key={tid} className="gc-chip gc-chip-pass">{getTermLabel(tid)}</span>)
-                  }
-                </div>
-              </td>
-              <td><span className={`gc-badge ${r.type === 'volume_split' ? 'gc-badge-purple' : 'gc-badge-blue'}`}>{r.type === 'volume_split' ? 'Split' : 'Conditional'}</span></td>
-            </tr>
-          ))}
-          {defaults.map(r => (
-            <tr key={r.id} style={{ opacity: 0.6 }}>
-              <td><span className="gc-badge gc-badge-gray">D</span></td>
-              <td>{r.name}</td>
-              <td style={{ fontSize: 12 }}>{formatConditions(r)}</td>
-              <td><div className="gc-chips" style={{ flexWrap: 'wrap' }}>{(r.action.terminals || []).map(tid => <span key={tid} className="gc-chip gc-chip-pass">{getTermLabel(tid)}</span>)}</div></td>
-              <td><span className="gc-badge gc-badge-gray">Default</span></td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  )
-}
 
 function TerminalInfo({ merchant, method }) {
   const dk = methodToDataKey(method)
@@ -617,12 +561,6 @@ function MethodChat({ method, merchant, rules, addRule, simOverrides, triggerMsg
           response = { type: 'bot', content: 'pipeline', data: { result, txn }, ts: Date.now() }
           break
         }
-        case 'show_rules': {
-          const dk = methodToDataKey(method)
-          const methodRules = rules.filter(r => r.conditions?.some(c => c.field === 'payment_method' && c.value === dk))
-          response = { type: 'bot', content: 'rule_table', data: { rules: methodRules, merchant }, ts: Date.now() }
-          break
-        }
         case 'create_rule': {
           const prefill = parseRuleIntent(userMsg, method)
           response = { type: 'bot', content: 'rule_form', data: { merchant, rules, prefill }, ts: Date.now() }
@@ -736,7 +674,6 @@ function MethodChat({ method, merchant, rules, addRule, simOverrides, triggerMsg
           )}
           {msg.content === 'text'          && <div style={{ whiteSpace: 'pre-wrap' }}>{msg.text}</div>}
           {msg.content === 'pipeline'      && <PipelineTrace result={msg.data.result} txn={msg.data.txn} />}
-          {msg.content === 'rule_table'    && <RuleTable rules={msg.data.rules} merchant={msg.data.merchant} />}
           {msg.content === 'terminal_info' && <TerminalInfo merchant={msg.data.merchant} method={msg.data.method} />}
           {msg.content === 'priority_cascade' && (
             <RoutingCascadeCard merchant={msg.data.merchant} method={msg.data.method} terminals={msg.data.terminals} srThreshold={90} />
