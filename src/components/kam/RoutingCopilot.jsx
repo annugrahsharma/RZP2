@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
 import { gateways, simulateRoutingPipeline } from '../../data/kamMockData'
+import CreateRuleWizard from './RuleWizard'
 
 // ════════════════════════════════════════════
 // RoutingCopilot — Method sidebar + scoped chat
@@ -7,12 +8,16 @@ import { gateways, simulateRoutingPipeline } from '../../data/kamMockData'
 
 // ── Payment Method Definitions ──────────────
 const ALL_PAYMENT_METHODS = [
-  { key: 'Cards',  label: 'Cards',       Icon: IconCards  },
-  { key: 'UPI',    label: 'UPI',         Icon: IconUPI    },
-  { key: 'NB',     label: 'Net Banking', Icon: IconNB     },
-  { key: 'EMI',    label: 'EMI',         Icon: IconEMI    },
-  { key: 'Wallet', label: 'Wallet',      Icon: IconWallet },
+  { key: 'Cards',        label: 'Cards',         Icon: IconCards        },
+  { key: 'UPIOnetime',   label: 'UPI Onetime',   Icon: IconUPI          },
+  { key: 'UPIRecurring', label: 'UPI Recurring',  Icon: IconUPIRecurring },
+  { key: 'EMI',          label: 'EMI',            Icon: IconEMI          },
 ]
+
+// Map wizard method key → data key used in supportedMethods / terminal filtering
+function methodToDataKey(method) {
+  return (method === 'UPIOnetime' || method === 'UPIRecurring') ? 'UPI' : method
+}
 
 // ── Smart Suggest Chips per Method ──────────
 const SMART_SUGGESTS = {
@@ -24,7 +29,7 @@ const SMART_SUGGESTS = {
     'Which terminal has the best SR for Mastercard?',
     'Create a rule for RuPay debit cards',
   ],
-  UPI: [
+  UPIOnetime: [
     'List all available terminals',
     'Cost of all available terminals',
     'What is the priority order of terminals for UPI intent up to ₹2,000',
@@ -32,13 +37,13 @@ const SMART_SUGGESTS = {
     'Which UPI terminal has the highest SR?',
     'Create a rule for UPI payments',
   ],
-  NB: [
+  UPIRecurring: [
     'List all available terminals',
-    'Which banks have the highest SR?',
-    'Priority order for SBI net banking',
-    'Show NTF risk for net banking',
+    'Which terminals support recurring mandates?',
+    'Priority order for UPI auto-debit',
+    'Show NTF risk for recurring payments',
     'Cost of all available terminals',
-    'Create a rule for net banking',
+    'Create a rule for UPI recurring',
   ],
   EMI: [
     'List all available terminals',
@@ -48,21 +53,13 @@ const SMART_SUGGESTS = {
     'Priority order for Visa EMI',
     'Create a rule for no-cost EMI',
   ],
-  Wallet: [
-    'List all available terminals',
-    'Which wallet providers are supported?',
-    'Show routing rules for wallets',
-    'What happens to wallet payments currently?',
-    'Create a routing rule for wallets',
-  ],
 }
 
 // ── Icons ────────────────────────────────────
-function IconCards()  { return <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> }
-function IconUPI()    { return <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> }
-function IconNB()     { return <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="3" y1="22" x2="21" y2="22"/><line x1="6" y1="18" x2="6" y2="11"/><line x1="10" y1="18" x2="10" y2="11"/><line x1="14" y1="18" x2="14" y2="11"/><line x1="18" y1="18" x2="18" y2="11"/><polygon points="12 2 20 7 4 7"/></svg> }
-function IconEMI()    { return <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> }
-function IconWallet() { return <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 12V22H4a2 2 0 0 1-2-2V6a2 2 0 0 0 2 2h16v4z"/><path d="M22 12H4"/><path d="M6 6V4a2 2 0 0 1 2-2h12"/><circle cx="17" cy="17" r="1" fill="currentColor"/></svg> }
+function IconCards()        { return <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg> }
+function IconUPI()          { return <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> }
+function IconUPIRecurring() { return <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg> }
+function IconEMI()          { return <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> }
 
 // ── Card icons ───────────────────────────────
 function IconRoute()   { return <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7"/><line x1="6" y1="9" x2="6" y2="21"/></svg> }
@@ -93,11 +90,10 @@ function classifyIntent(input) {
 // ── Parse transaction from natural language ──
 function parseTxnFromInput(input, defaultMethod = 'Cards') {
   const q = input.toLowerCase()
-  const txn = { payment_method: defaultMethod, amount: 5000, card_network: 'Visa', card_type: 'credit', international: false }
+  const dk = methodToDataKey(defaultMethod)
+  const txn = { payment_method: dk, amount: 5000, card_network: 'Visa', card_type: 'credit', international: false }
   if (/upi/i.test(q)) txn.payment_method = 'UPI'
-  else if (/net\s*banking|nb/i.test(q)) txn.payment_method = 'NB'
   else if (/emi/i.test(q)) txn.payment_method = 'EMI'
-  else if (/wallet/i.test(q)) txn.payment_method = 'Wallet'
   if (/master/i.test(q)) txn.card_network = 'Mastercard'
   else if (/rupay/i.test(q)) txn.card_network = 'RuPay'
   if (/debit/i.test(q)) txn.card_type = 'debit'
@@ -111,8 +107,8 @@ function parseTxnFromInput(input, defaultMethod = 'Cards') {
 function parseRuleIntent(input, defaultMethod = null) {
   const q = input.toLowerCase()
   const intent = { method: defaultMethod, network: null, gatewayShort: null }
-  if (/upi/i.test(q)) intent.method = 'UPI'
-  else if (/nb|net\s*banking/i.test(q)) intent.method = 'NB'
+  if (/recurring|mandate|auto.?debit/i.test(q)) intent.method = 'UPIRecurring'
+  else if (/upi/i.test(q)) intent.method = 'UPIOnetime'
   else if (/emi/i.test(q)) intent.method = 'EMI'
   else if (/card/i.test(q)) intent.method = 'Cards'
   if (/visa/i.test(q)) intent.network = 'Visa'
@@ -265,8 +261,9 @@ function RuleTable({ rules, merchant }) {
 }
 
 function TerminalInfo({ merchant, method }) {
+  const dk = methodToDataKey(method)
   const terminals = merchant.gatewayMetrics
-    .filter(gm => !method || (gm.supportedMethods || []).includes(method))
+    .filter(gm => !method || (gm.supportedMethods || []).includes(dk))
     .map(gm => {
       const gw   = gateways.find(g => g.id === gm.gatewayId)
       const term = gw?.terminals.find(t => t.id === gm.terminalId)
@@ -274,7 +271,7 @@ function TerminalInfo({ merchant, method }) {
     })
   return (
     <div className="gc-rules">
-      <div className="gc-rules-title">{terminals.length} terminal{terminals.length !== 1 ? 's' : ''} supporting {method || 'all methods'}</div>
+      <div className="gc-rules-title">{terminals.length} terminal{terminals.length !== 1 ? 's' : ''} supporting {method === 'UPIOnetime' ? 'UPI Onetime' : method === 'UPIRecurring' ? 'UPI Recurring' : method || 'all methods'}</div>
       <table className="gc-table">
         <thead><tr><th>Terminal</th><th>Gateway</th><th>SR</th><th>Cost/Txn</th><th>Methods</th><th>Traffic</th></tr></thead>
         <tbody>
@@ -296,7 +293,7 @@ function TerminalInfo({ merchant, method }) {
 
 function RoutingCascadeCard({ merchant, method, terminals, srThreshold = 90 }) {
   if (!terminals || terminals.length === 0) return null
-  const methodLabel = method === 'NB' ? 'Net Banking' : method
+  const methodLabel = method === 'UPIOnetime' ? 'UPI Onetime' : method === 'UPIRecurring' ? 'UPI Recurring' : method
   const sorted = [...terminals].sort((a, b) => b.successRate - a.successRate)
   const dailyVol = Math.round((merchant?.txnVolumeHistory?.currentMonth || 30000) / 30)
   const maxCost = Math.max(...sorted.map(t => t.costPerTxn))
@@ -431,7 +428,7 @@ function RuleForm({ merchant, rules, onRuleCreated, prefill }) {
       const gw   = gateways.find(g => g.id === gm.gatewayId)
       const term = gw?.terminals.find(t => t.id === gm.terminalId)
       return { id: gm.terminalId, displayId: term?.terminalId || gm.terminalId, gatewayShort: gw?.shortName || '??', successRate: gm.successRate, costPerTxn: gm.costPerTxn, supportedMethods: gm.supportedMethods || [] }
-    }).filter(t => t.supportedMethods.includes(method))
+    }).filter(t => t.supportedMethods.includes(methodToDataKey(method)))
   }, [merchant, selections.method])
 
   useEffect(() => {
@@ -584,7 +581,7 @@ function MethodChat({ method, merchant, rules, addRule, simOverrides, triggerMsg
   const [messages, setMessages] = useState([])
   const [input, setInput]       = useState('')
   const chatEndRef              = useRef(null)
-  const methodLabel = method === 'NB' ? 'Net Banking' : method
+  const methodLabel = method === 'UPIOnetime' ? 'UPI Onetime' : method === 'UPIRecurring' ? 'UPI Recurring' : method
 
   // Reset chat when method changes
   useEffect(() => {
@@ -621,7 +618,8 @@ function MethodChat({ method, merchant, rules, addRule, simOverrides, triggerMsg
           break
         }
         case 'show_rules': {
-          const methodRules = rules.filter(r => r.conditions?.some(c => c.field === 'payment_method' && c.value === method))
+          const dk = methodToDataKey(method)
+          const methodRules = rules.filter(r => r.conditions?.some(c => c.field === 'payment_method' && c.value === dk))
           response = { type: 'bot', content: 'rule_table', data: { rules: methodRules, merchant }, ts: Date.now() }
           break
         }
@@ -636,23 +634,25 @@ function MethodChat({ method, merchant, rules, addRule, simOverrides, triggerMsg
         }
         case 'ntf_analysis': {
           const testCases = {
-            Cards:  [
+            Cards:       [
               { payment_method: 'Cards', card_network: 'Visa',       card_type: 'credit', amount: 5000,  international: false },
               { payment_method: 'Cards', card_network: 'Mastercard', card_type: 'credit', amount: 5000,  international: false },
               { payment_method: 'Cards', card_network: 'RuPay',      card_type: 'debit',  amount: 2000,  international: false },
               { payment_method: 'Cards', card_network: 'Visa',       card_type: 'credit', amount: 5000,  international: true  },
             ],
-            UPI:    [
+            UPIOnetime:  [
               { payment_method: 'UPI', amount: 500,  international: false },
               { payment_method: 'UPI', amount: 2000, international: false },
               { payment_method: 'UPI', amount: 5000, international: false },
             ],
-            NB:     [{ payment_method: 'NB', amount: 5000, international: false }],
-            EMI:    [
+            UPIRecurring:[
+              { payment_method: 'UPI', amount: 2000, international: false },
+              { payment_method: 'UPI', amount: 5000, international: false },
+            ],
+            EMI:         [
               { payment_method: 'EMI', card_network: 'Visa', emi_type: 'no_cost', amount: 15000 },
               { payment_method: 'EMI', card_network: 'Visa', emi_type: 'standard', amount: 10000 },
             ],
-            Wallet: [{ payment_method: 'Wallet', amount: 500 }],
           }
           const cases   = testCases[method] || testCases.Cards
           const results = cases.map(txn => ({ txn, result: simulateRoutingPipeline(merchant, txn, rules, simOverrides) }))
@@ -663,7 +663,7 @@ function MethodChat({ method, merchant, rules, addRule, simOverrides, triggerMsg
         }
         case 'priority_cascade': {
           const methodTerminals = merchant.gatewayMetrics
-            .filter(gm => (gm.supportedMethods || []).includes(method))
+            .filter(gm => (gm.supportedMethods || []).includes(methodToDataKey(method)))
             .map(gm => {
               const gw   = gateways.find(g => g.id === gm.gatewayId)
               const term = gw?.terminals.find(t => t.id === gm.terminalId)
@@ -833,21 +833,20 @@ function MethodChat({ method, merchant, rules, addRule, simOverrides, triggerMsg
 // Simulate View — rich form + animated pipeline
 // ════════════════════════════════════════════
 
-const METHOD_RULE_RATIOS = { Cards: 0.49, UPI: 0.28, NB: 0.13, EMI: 0.07, Wallet: 0.03 }
-const AMOUNT_PRESETS_MAP = { Cards: [500, 2000, 5000, 10000, 50000], UPI: [200, 500, 2000, 5000], NB: [2000, 5000, 10000, 50000], EMI: [10000, 25000, 50000, 100000], Wallet: [200, 500, 1000, 2000] }
+const METHOD_RULE_RATIOS = { Cards: 0.49, UPIOnetime: 0.20, UPIRecurring: 0.12, EMI: 0.19 }
+const AMOUNT_PRESETS_MAP = { Cards: [500, 2000, 5000, 10000, 50000], UPIOnetime: [200, 500, 2000, 5000], UPIRecurring: [500, 2000, 5000, 10000], EMI: [10000, 25000, 50000, 100000] }
 
 const defaultForm = (method) => ({
   cardNetwork: 'Visa', cardType: 'Credit', issuerBank: 'Any', international: 'Domestic',
   upiType: 'Intent', upiApp: 'GPay',
-  nbBank: 'HDFC',
   emiNetwork: 'Visa', emiType: 'No-cost', tenure: '6m',
-  wallet: 'Paytm',
   recurring: 'One-time',
-  amount: { Cards: 5000, UPI: 2000, NB: 5000, EMI: 25000, Wallet: 500 }[method] || 5000,
+  amount: { Cards: 5000, UPIOnetime: 2000, UPIRecurring: 2000, EMI: 25000 }[method] || 5000,
 })
 
 function buildSimTxn(form, method) {
-  const txn = { payment_method: method, amount: form.amount, international: form.international === 'International' }
+  const dk = methodToDataKey(method)
+  const txn = { payment_method: dk, amount: form.amount, international: form.international === 'International' }
   if (method === 'Cards') { txn.card_network = form.cardNetwork || 'Visa'; txn.card_type = (form.cardType || 'Credit').toLowerCase() }
   if (method === 'EMI')   { txn.card_network = form.emiNetwork || 'Visa'; txn.card_type = 'credit'; txn.emi_type = form.emiType === 'No-cost' ? 'no_cost' : 'standard' }
   return txn
@@ -855,14 +854,14 @@ function buildSimTxn(form, method) {
 
 function buildPipelineData(form, method, merchant, rules) {
   const TOTAL = 418
-  const methodLabel = method === 'NB' ? 'Net Banking' : method
+  const methodLabel = method === 'UPIOnetime' ? 'UPI Onetime' : method === 'UPIRecurring' ? 'UPI Recurring' : method
   const afterMethod = Math.round(TOTAL * (METHOD_RULE_RATIOS[method] || 0.3))
   const network = method === 'Cards' ? form.cardNetwork : method === 'EMI' ? form.emiNetwork : null
   const intl = form.international === 'International'
   const isAmex = network === 'Amex'
 
   const methodTerminals = merchant.gatewayMetrics
-    .filter(gm => (gm.supportedMethods || []).includes(method))
+    .filter(gm => (gm.supportedMethods || []).includes(methodToDataKey(method)))
     .map(gm => {
       const gw = gateways.find(g => g.id === gm.gatewayId)
       const term = gw?.terminals.find(t => t.id === gm.terminalId)
@@ -895,7 +894,7 @@ function buildPipelineData(form, method, merchant, rules) {
 }
 
 function SimulateForm({ method, form, onFormChange, onRun }) {
-  const methodLabel = method === 'NB' ? 'Net Banking' : method
+  const methodLabel = method === 'UPIOnetime' ? 'UPI Onetime' : method === 'UPIRecurring' ? 'UPI Recurring' : method
   const presets = AMOUNT_PRESETS_MAP[method] || AMOUNT_PRESETS_MAP.Cards
   const set = (k, v) => onFormChange({ ...form, [k]: v })
   const Opt = ({ field, val, label }) => <button className={`gc-sim-opt${form[field] === val ? ' active' : ''}`} onClick={() => set(field, val)}>{label || val}</button>
@@ -922,12 +921,10 @@ function SimulateForm({ method, form, onFormChange, onRun }) {
         </div>
       </>}
 
-      {method === 'UPI' && <div className="gc-sim-row2">
+      {(method === 'UPIOnetime' || method === 'UPIRecurring') && <div className="gc-sim-row2">
         <div className="gc-sim-section"><div className="gc-sim-label">UPI Type</div><div className="gc-sim-opts">{['Intent','Collect','QR'].map(t => <Opt key={t} field="upiType" val={t} />)}</div></div>
         <div className="gc-sim-section"><div className="gc-sim-label">App</div><div className="gc-sim-opts">{['GPay','PhonePe','Paytm','BHIM'].map(a => <Opt key={a} field="upiApp" val={a} />)}</div></div>
       </div>}
-
-      {method === 'NB' && <div className="gc-sim-section"><div className="gc-sim-label">Bank</div><select className="gc-sim-select gc-sim-select--wide" value={form.nbBank} onChange={e => set('nbBank', e.target.value)}>{['HDFC','ICICI','SBI','Axis','Kotak','Yes Bank','PNB','Bank of Baroda','Canara Bank','Other'].map(b => <option key={b}>{b}</option>)}</select></div>}
 
       {method === 'EMI' && <>
         <div className="gc-sim-row2">
@@ -936,8 +933,6 @@ function SimulateForm({ method, form, onFormChange, onRun }) {
         </div>
         <div className="gc-sim-section"><div className="gc-sim-label">Tenure</div><div className="gc-sim-opts">{['3m','6m','9m','12m','18m','24m'].map(t => <Opt key={t} field="tenure" val={t} />)}</div></div>
       </>}
-
-      {method === 'Wallet' && <div className="gc-sim-section"><div className="gc-sim-label">Provider</div><div className="gc-sim-opts">{['Paytm','PhonePe','Amazon Pay','Freecharge','Mobikwik'].map(w => <Opt key={w} field="wallet" val={w} />)}</div></div>}
 
       <div className="gc-sim-section">
         <div className="gc-sim-label">Transaction Type</div>
@@ -1061,7 +1056,7 @@ function SimulateView({ method, merchant, rules }) {
     setPhase('running')
     setSteps([])
     const d = buildPipelineData(form, method, merchant, rules)
-    const methodOthers = Object.keys(METHOD_RULE_RATIOS).filter(m => m !== method).map(m => m === 'NB' ? 'Net Banking' : m)
+    const methodOthers = Object.keys(METHOD_RULE_RATIOS).filter(m => m !== method).map(m => m === 'UPIOnetime' ? 'UPI Onetime' : m === 'UPIRecurring' ? 'UPI Recurring' : m)
     const shares = d.topTerminals.length >= 2 ? [70, 30] : [100]
 
     const allSteps = [
@@ -1077,7 +1072,7 @@ function SimulateView({ method, merchant, rules }) {
     }, i * 650 + 200))
   }, [form, method, merchant, rules])
 
-  const methodLabel = method === 'NB' ? 'Net Banking' : method
+  const methodLabel = method === 'UPIOnetime' ? 'UPI Onetime' : method === 'UPIRecurring' ? 'UPI Recurring' : method
   return (
     <div className="gc-sim-view">
       {phase === 'form'
@@ -1117,7 +1112,7 @@ function buildHistoricSteps(mock, method, merchant, rules) {
   const txn = { payment_method: txnMethod, amount: form.amount, card_network: form.cardNetwork, card_type: form.cardType.toLowerCase(), international: mock?.international || false }
   const simResult = simulateRoutingPipeline(merchant, txn, rules)
   const shares = d.topTerminals.length >= 2 ? [70, 30] : [100]
-  const methodOthers = Object.keys(METHOD_RULE_RATIOS).filter(m => m !== txnMethod).map(m => m === 'NB' ? 'Net Banking' : m)
+  const methodOthers = Object.keys(METHOD_RULE_RATIOS).filter(m => m !== txnMethod).map(m => m === 'UPIOnetime' ? 'UPI Onetime' : m === 'UPIRecurring' ? 'UPI Recurring' : m)
   const steps = [
     { type: 'fetch',  total: d.TOTAL, merchantSpecific: Math.round(d.TOTAL * 0.34), platform: Math.round(d.TOTAL * 0.66) },
     { type: 'filter', before: d.TOTAL, after: d.afterMethod, methodLabel: d.methodLabel, others: methodOthers },
@@ -1238,11 +1233,11 @@ function HistoricView({ method, merchant, rules }) {
 // SR Ranking View — read-only terminal ranking
 // ════════════════════════════════════════════
 function SRRankingView({ method, merchant, strategy }) {
-  const methodLabel = method === 'NB' ? 'Net Banking' : method
+  const methodLabel = method === 'UPIOnetime' ? 'UPI Onetime' : method === 'UPIRecurring' ? 'UPI Recurring' : method
 
   const terminals = useMemo(() =>
     merchant.gatewayMetrics
-      .filter(gm => (gm.supportedMethods || []).includes(method))
+      .filter(gm => (gm.supportedMethods || []).includes(methodToDataKey(method)))
       .map(gm => {
         const gw = gateways.find(g => g.id === gm.gatewayId)
         const term = gw?.terminals.find(t => t.id === gm.terminalId)
@@ -1312,60 +1307,10 @@ function SRRankingView({ method, merchant, strategy }) {
   )
 }
 
-// ════════════════════════════════════════════
-// Create Rule Wizard — multi-step flow
-// ════════════════════════════════════════════
+// CreateRuleWizard is imported from ./RuleWizard
 
-const PAYMENT_FLOWS = {
-  Cards: [
-    { id: 'visa_credit_dom',  label: 'Visa Credit',       sub: 'Domestic',      params: { card_network: 'Visa',       card_type: 'credit', international: false } },
-    { id: 'visa_debit_dom',   label: 'Visa Debit',        sub: 'Domestic',      params: { card_network: 'Visa',       card_type: 'debit',  international: false } },
-    { id: 'mc_credit_dom',    label: 'Mastercard Credit', sub: 'Domestic',      params: { card_network: 'Mastercard', card_type: 'credit', international: false } },
-    { id: 'mc_debit_dom',     label: 'Mastercard Debit',  sub: 'Domestic',      params: { card_network: 'Mastercard', card_type: 'debit',  international: false } },
-    { id: 'rupay_debit_dom',  label: 'RuPay Debit',       sub: 'Domestic',      params: { card_network: 'RuPay',      card_type: 'debit',  international: false } },
-    { id: 'amex_credit_dom',  label: 'Amex Credit',       sub: 'Domestic',      params: { card_network: 'Amex',       card_type: 'credit', international: false } },
-    { id: 'visa_credit_intl', label: 'Visa Credit',       sub: 'International', params: { card_network: 'Visa',       card_type: 'credit', international: true  } },
-    { id: 'mc_credit_intl',   label: 'Mastercard Credit', sub: 'International', params: { card_network: 'Mastercard', card_type: 'credit', international: true  } },
-  ],
-  UPI: [
-    { id: 'upi_intent',  label: 'UPI Intent',  sub: 'Pay via app',  params: { upi_type: 'intent'  } },
-    { id: 'upi_collect', label: 'UPI Collect', sub: 'Pull payment', params: { upi_type: 'collect' } },
-    { id: 'upi_qr',      label: 'UPI QR',      sub: 'Scan & pay',  params: { upi_type: 'qr'      } },
-  ],
-  NB: [
-    { id: 'nb_hdfc',  label: 'HDFC Bank',       sub: 'Net Banking', params: { bank: 'HDFC'  } },
-    { id: 'nb_icici', label: 'ICICI Bank',      sub: 'Net Banking', params: { bank: 'ICICI' } },
-    { id: 'nb_sbi',   label: 'SBI',             sub: 'Net Banking', params: { bank: 'SBI'   } },
-    { id: 'nb_axis',  label: 'Axis Bank',       sub: 'Net Banking', params: { bank: 'Axis'  } },
-    { id: 'nb_kotak', label: 'Kotak Bank',      sub: 'Net Banking', params: { bank: 'Kotak' } },
-    { id: 'nb_other', label: 'All Other Banks', sub: 'Net Banking', params: { bank: 'Other' } },
-  ],
-  EMI: [
-    { id: 'emi_nc_visa',  label: 'No-cost EMI',  sub: 'Visa',       params: { emi_type: 'no_cost',  card_network: 'Visa'       } },
-    { id: 'emi_nc_mc',    label: 'No-cost EMI',  sub: 'Mastercard', params: { emi_type: 'no_cost',  card_network: 'Mastercard' } },
-    { id: 'emi_std_visa', label: 'Standard EMI', sub: 'Visa',       params: { emi_type: 'standard', card_network: 'Visa'       } },
-    { id: 'emi_std_mc',   label: 'Standard EMI', sub: 'Mastercard', params: { emi_type: 'standard', card_network: 'Mastercard' } },
-  ],
-  Wallet: [
-    { id: 'w_paytm',   label: 'Paytm',      sub: 'Wallet', params: { wallet: 'Paytm'      } },
-    { id: 'w_phonepe', label: 'PhonePe',    sub: 'Wallet', params: { wallet: 'PhonePe'    } },
-    { id: 'w_amazon',  label: 'Amazon Pay', sub: 'Wallet', params: { wallet: 'Amazon Pay' } },
-    { id: 'w_free',    label: 'Freecharge', sub: 'Wallet', params: { wallet: 'Freecharge' } },
-    { id: 'w_mobi',    label: 'Mobikwik',   sub: 'Wallet', params: { wallet: 'Mobikwik'   } },
-  ],
-}
-
-const AMOUNT_RANGES = [
-  { id: 'any',      label: 'Any amount',        conditions: [] },
-  { id: 'low',      label: 'Below ₹1,000',      conditions: [{ field: 'amount', operator: 'less_than', value: 1000 }] },
-  { id: 'mid',      label: '₹1K – ₹10K',        conditions: [{ field: 'amount', operator: 'greater_than', value: 1000 }, { field: 'amount', operator: 'less_than', value: 10000 }] },
-  { id: 'high',     label: 'Above ₹10,000',     conditions: [{ field: 'amount', operator: 'greater_than', value: 10000 }] },
-  { id: 'very_high',label: 'Above ₹1,00,000',   conditions: [{ field: 'amount', operator: 'greater_than', value: 100000 }] },
-]
-
-const WIZARD_STEPS = ['Select Flow', 'Configure', 'Set Priority', 'Preview Rule', 'Confirm']
-
-function CreateRuleWizard({ method, merchant, rules, addRule, onClose }) {
+// Legacy wizard placeholder (kept for RuleForm inline chat usage)
+function _OldCreateRuleWizard({ method, merchant, rules, addRule, onClose }) {
   const [step, setStep]               = useState(1)
   const [selectedFlow, setSelectedFlow] = useState(null)
   const [amountRange, setAmountRange] = useState('any')
@@ -1373,11 +1318,11 @@ function CreateRuleWizard({ method, merchant, rules, addRule, onClose }) {
   const [srThresholds, setSrThresholds]   = useState({})
   const [dragIdx, setDragIdx]         = useState(null)
   const [confirmed, setConfirmed]     = useState(false)
-  const methodLabel = method === 'NB' ? 'Net Banking' : method
+  const methodLabel = method === 'UPIOnetime' ? 'UPI Onetime' : method === 'UPIRecurring' ? 'UPI Recurring' : method
 
   const methodTerminals = useMemo(() =>
     merchant.gatewayMetrics
-      .filter(gm => (gm.supportedMethods || []).includes(method))
+      .filter(gm => (gm.supportedMethods || []).includes(methodToDataKey(method)))
       .map(gm => {
         const gw = gateways.find(g => g.id === gm.gatewayId)
         const term = gw?.terminals.find(t => t.id === gm.terminalId)
@@ -1611,7 +1556,7 @@ function MethodPanel({ method, merchant, rules, addRule, simOverrides }) {
   const [activeView, setActiveView]           = useState(null) // null | 'chat' | 'simulate'
   const [triggerMsg, setTriggerMsg]           = useState(null)
   const [chatKey, setChatKey]                 = useState(0)
-  const methodLabel = method === 'NB' ? 'Net Banking' : method
+  const methodLabel = method === 'UPIOnetime' ? 'UPI Onetime' : method === 'UPIRecurring' ? 'UPI Recurring' : method
 
   const fireChat = (text) => {
     setActiveView('chat')
@@ -1699,9 +1644,10 @@ export default function RoutingCopilot({ merchant, rules, addRule, simOverrides 
   const ruleCount = useMemo(() => {
     const counts = {}
     ALL_PAYMENT_METHODS.forEach(({ key }) => {
+      const dk = methodToDataKey(key)
       counts[key] = rules.filter(r =>
         !r.isDefault && !r.isMethodDefault &&
-        r.conditions?.some(c => c.field === 'payment_method' && c.value === key)
+        r.conditions?.some(c => c.field === 'payment_method' && c.value === dk)
       ).length
     })
     return counts
