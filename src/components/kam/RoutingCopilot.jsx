@@ -1688,26 +1688,9 @@ function MethodPanel({ method, merchant, rules, addRule, simOverrides }) {
           <div className="gc-strategy-opts">
             <button className={`gc-strategy-btn gc-strategy-btn--sr${routingStrategy === 'sr' ? ' active' : ''}`} onClick={() => handleStrategy('sr')}>
               <div className="gc-strategy-btn-top">
-                <span className="gc-strategy-btn-label"><IconSRIcon /> Optimize for SR</span>
-                <span className="gc-strategy-badge-rec">Rec.</span>
+                <span className="gc-strategy-btn-label"><IconSRIcon /> Optimize for Success Rate</span>
+                <span className="gc-strategy-badge-rec">Recommended</span>
               </div>
-              {routingStrategy === 'sr' && (
-                <>
-                  <div className="gc-strategy-desc">
-                    Routes to highest-SR terminal automatically. Protects wallet share.
-                  </div>
-                  <div className="gc-strategy-stats">
-                    <div className="gc-strategy-stat gc-strategy-stat--good">
-                      <span className="gc-strategy-stat-arrow">↑</span>
-                      +2.1% higher SR vs cost-optimized
-                    </div>
-                    <div className="gc-strategy-stat">
-                      <span className="gc-strategy-stat-dot" />
-                      Failover across {merchant?.gatewayMetrics?.filter(gm => (gm.supportedMethods || []).includes(methodToDataKey(method))).length || 0} terminals
-                    </div>
-                  </div>
-                </>
-              )}
             </button>
             <button className={`gc-strategy-btn gc-strategy-btn--cost${routingStrategy === 'cost' ? ' active' : ''}`} onClick={() => handleStrategy('cost')}>
               <div className="gc-strategy-btn-top">
