@@ -72,7 +72,8 @@ function classifyIntent(input) {
   if (/list|available.*terminal|terminal.*available|all terminal/i.test(q)) return { type: 'terminal_info', raw: input }
   if (/cost.*terminal|terminal.*cost|cost comparison|cheapest|pricing/i.test(q)) return { type: 'terminal_info', raw: input }
   if (/sr.*highest|highest.*sr|best.*sr|which.*bank|which.*terminal.*sr|which.*provider/i.test(q)) return { type: 'terminal_info', raw: input }
-  if (/what happens|simulate|send|trace|if i send|payment of|priority.*order|order.*terminal/i.test(q)) return { type: 'simulate', raw: input }
+  if (/priority.*order|routing.*order|order.*terminal|which.*first|how.*routed|cascade|terminal.*priority/i.test(q)) return { type: 'priority_cascade', raw: input }
+  if (/what happens|simulate|send|trace|if i send|payment of/i.test(q)) return { type: 'simulate', raw: input }
   if (/ntf|no terminal|why.*(fail|ntf|block)|failure|failing|ntf risk/i.test(q)) return { type: 'ntf_analysis', raw: input }
   if (/show|list|display|view|current|existing|what are/.test(q) && /rule|routing|config/i.test(q)) return { type: 'show_rules', raw: input }
   if (/what if|if i disable|if i remove|if.*drops?|if.*down/i.test(q)) return { type: 'what_if', raw: input }
@@ -286,6 +287,103 @@ function TerminalInfo({ merchant, method }) {
   )
 }
 
+function RoutingCascadeCard({ merchant, method, terminals, srThreshold = 90 }) {
+  if (!terminals || terminals.length === 0) return null
+  const methodLabel = method === 'NB' ? 'Net Banking' : method
+  const sorted = [...terminals].sort((a, b) => b.successRate - a.successRate)
+  const dailyVol = Math.round((merchant?.txnVolumeHistory?.currentMonth || 30000) / 30)
+  const maxCost = Math.max(...sorted.map(t => t.costPerTxn))
+  const zeroCostTerms = sorted.filter(t => t.costPerTxn === 0)
+  const paidTerms = sorted.filter(t => t.costPerTxn > 0)
+
+  const narrative = (() => {
+    if (sorted.length === 0) return ''
+    const primary = sorted[0]
+    const parts = []
+    const costNote = primary.costPerTxn === 0 ? ' at zero cost' : ` at ₹${primary.costPerTxn}/txn`
+    parts.push(`Payments first try ${primary.displayId} — ${primary.gatewayShort}'s terminal — with a ${primary.successRate}% success rate${costNote}.`)
+    for (let i = 1; i < sorted.length; i++) {
+      const t = sorted[i]
+      const condition = srThreshold > 0 ? `If SR drops below ${srThreshold}%` : 'On failure'
+      const tNote = t.costPerTxn === 0 ? '₹0' : `₹${t.costPerTxn}/txn`
+      if (i === sorted.length - 1 && sorted.length > 2) {
+        parts.push(`${condition}, remaining payments fall back to ${t.displayId} (SR ${t.successRate}%, ${tNote}) as the final safety net.`)
+      } else {
+        parts.push(`${condition}, traffic shifts to ${t.displayId} (SR ${t.successRate}%, ${tNote}).`)
+      }
+    }
+    return parts.join(' ')
+  })()
+
+  const costNarrative = (() => {
+    if (zeroCostTerms.length > 0 && paidTerms.length > 0) {
+      const saving = Math.round(paidTerms[0].costPerTxn * dailyVol)
+      const names = zeroCostTerms.map(t => t.displayId).join(', ')
+      return `${names} ${zeroCostTerms.length > 1 ? 'are' : 'is a'} zero-cost terminal${zeroCostTerms.length > 1 ? 's' : ''} under a bulk deal. Routing here first saves ₹${paidTerms[0].costPerTxn}/txn vs ${paidTerms[0].displayId}. At ~${dailyVol.toLocaleString()} daily ${methodLabel} transactions, this can save up to ₹${saving.toLocaleString()}/day.`
+    }
+    if (zeroCostTerms.length === sorted.length) {
+      return `All ${sorted.length} terminals are zero-cost deal terminals. Priority order is determined purely by success rate — highest SR goes first.`
+    }
+    const best = sorted[0]
+    const last = sorted[sorted.length - 1]
+    const delta = best.costPerTxn - last.costPerTxn
+    if (delta !== 0) {
+      const saving = Math.round(Math.abs(delta) * dailyVol)
+      return `Priority order balances SR and cost. ${best.displayId} leads on SR (${best.successRate}%) — the fallback chain shifts cost exposure only when primary SR degrades. Net: best success rate with up to ₹${saving.toLocaleString()}/day in cost delta.`
+    }
+    return `Terminals are ranked by success rate. Higher SR = fewer failed payments = lower recovery cost for ${merchant?.name || 'this merchant'}.`
+  })()
+
+  return (
+    <div className="gc-cascade-card">
+      <div className="gc-cascade-section">
+        <div className="gc-cascade-title">Priority Order — {methodLabel}</div>
+        <div className="gc-cascade-chain">
+          {sorted.map((t, i) => (
+            <React.Fragment key={t.id || t.terminalId || i}>
+              <div className={`gc-cascade-row${i === 0 ? ' gc-cascade-row--primary' : ''}`}>
+                <span className="gc-cascade-rank">#{i + 1}</span>
+                <div className="gc-cascade-term">
+                  <span className="gc-cascade-term-id">{t.displayId}</span>
+                  <span className="gc-cascade-term-gw">{t.gatewayShort}</span>
+                </div>
+                <div className="gc-cascade-metrics">
+                  <span style={{ color: t.successRate >= 90 ? '#059669' : t.successRate >= 80 ? '#d97706' : '#dc2626', fontWeight: 600, fontSize: 13 }}>SR {t.successRate}%</span>
+                  <span style={{ color: t.costPerTxn === 0 ? '#059669' : '#64748b', fontSize: 12 }}>{t.costPerTxn === 0 ? '₹0 zero-cost' : `₹${t.costPerTxn}/txn`}</span>
+                </div>
+                <span className={`gc-badge ${i === 0 ? 'gc-badge-blue' : 'gc-badge-gray'}`} style={{ fontSize: 10, whiteSpace: 'nowrap' }}>
+                  {i === 0 ? 'Primary' : `Fallback ${i}`}
+                </span>
+              </div>
+              {i < sorted.length - 1 && (
+                <div className="gc-cascade-connector">↓ {srThreshold > 0 ? `if SR < ${srThreshold}%` : 'on failure'}</div>
+              )}
+            </React.Fragment>
+          ))}
+        </div>
+        <div className="gc-cascade-narrative">{narrative}</div>
+      </div>
+      <div className="gc-cascade-section gc-cascade-cost-section">
+        <div className="gc-cascade-subtitle">Why this order</div>
+        <div className="gc-cascade-cost-text">{costNarrative}</div>
+        {maxCost > 0 && (
+          <div className="gc-cascade-cost-bars">
+            {sorted.map((t, i) => (
+              <div key={i} className="gc-cascade-cost-bar-row">
+                <span className="gc-cascade-cost-name">{t.displayId}</span>
+                <div className="gc-cascade-cost-bar-wrap">
+                  <div className="gc-cascade-cost-bar-fill" style={{ width: maxCost > 0 ? `${Math.max(4, (t.costPerTxn / maxCost) * 100)}%` : '4%', background: t.costPerTxn === 0 ? '#059669' : '#94a3b8' }} />
+                </div>
+                <span className="gc-cascade-cost-val">{t.costPerTxn === 0 ? '₹0' : `₹${t.costPerTxn}`}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 const RULE_STEPS = [
   { id: 'method',      q: 'What payment method should this rule apply to?',    options: ['Cards', 'UPI', 'NB', 'EMI'] },
   { id: 'network',     q: 'Which card network?',                               options: ['Any', 'Visa', 'Mastercard', 'RuPay'], showIf: s => s.method === 'Cards' || s.method === 'EMI' },
@@ -458,6 +556,12 @@ function RuleForm({ merchant, rules, onRuleCreated, prefill }) {
                 <div className="gc-info-box" style={{ marginTop: 8 }}>Routing changes from <strong>{simResult.withoutRule.selectedTerminal?.displayId}</strong> to <strong>{simResult.withRule.selectedTerminal?.displayId}</strong>.</div>
               )}
             </div>
+            <RoutingCascadeCard
+              merchant={merchant}
+              method={selections.method || 'Cards'}
+              terminals={selectedTerminals.map(tid => merchantTerminals.find(t => t.id === tid)).filter(Boolean)}
+              srThreshold={srThreshold}
+            />
           </div>
         </div>
       )}
@@ -550,6 +654,17 @@ function MethodChat({ method, merchant, rules, addRule, simOverrides }) {
           response = { type: 'bot', content: 'ntf_analysis', data: { ntfs, passing, method: methodLabel }, ts: Date.now() }
           break
         }
+        case 'priority_cascade': {
+          const methodTerminals = merchant.gatewayMetrics
+            .filter(gm => (gm.supportedMethods || []).includes(method))
+            .map(gm => {
+              const gw   = gateways.find(g => g.id === gm.gatewayId)
+              const term = gw?.terminals.find(t => t.id === gm.terminalId)
+              return { id: gm.terminalId, displayId: term?.terminalId || gm.terminalId, gatewayShort: gw?.shortName || '??', successRate: gm.successRate, costPerTxn: gm.costPerTxn }
+            })
+          response = { type: 'bot', content: 'priority_cascade', data: { merchant, method, terminals: methodTerminals }, ts: Date.now() }
+          break
+        }
         case 'what_if': {
           const parsed = parseWhatIf(userMsg)
           if (parsed?.type === 'disable_terminal') {
@@ -611,6 +726,9 @@ function MethodChat({ method, merchant, rules, addRule, simOverrides }) {
           {msg.content === 'pipeline'      && <PipelineTrace result={msg.data.result} txn={msg.data.txn} />}
           {msg.content === 'rule_table'    && <RuleTable rules={msg.data.rules} merchant={msg.data.merchant} />}
           {msg.content === 'terminal_info' && <TerminalInfo merchant={msg.data.merchant} method={msg.data.method} />}
+          {msg.content === 'priority_cascade' && (
+            <RoutingCascadeCard merchant={msg.data.merchant} method={msg.data.method} terminals={msg.data.terminals} srThreshold={90} />
+          )}
           {msg.content === 'ntf_analysis'  && (
             <div className="gc-ntf-analysis">
               <div className="gc-ntf-summary">

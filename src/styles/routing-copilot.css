@@ -299,3 +299,163 @@
 .gc-pq-options { margin: 6px 0 2px 0; clear: both; }
 .gc-pq-result  { clear: both; margin-top: 12px; }
 .gc-progressive { display: flex; flex-direction: column; gap: 2px; }
+
+/* ══════════════════════════════════════
+   Routing Cascade Card
+   ══════════════════════════════════════ */
+.gc-cascade-card {
+  margin-top: 12px;
+  border: 1px solid var(--rzp-border);
+  border-radius: 10px;
+  overflow: hidden;
+  font-size: 13.5px;
+}
+
+.gc-cascade-section {
+  padding: 12px 14px;
+}
+
+.gc-cascade-cost-section {
+  border-top: 1px solid var(--rzp-border);
+  background: #f8fafc;
+}
+
+.gc-cascade-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 10px;
+}
+
+.gc-cascade-subtitle {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 8px;
+}
+
+.gc-cascade-chain {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 10px;
+}
+
+.gc-cascade-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 6px;
+  background: #fff;
+  border: 1px solid var(--rzp-border);
+}
+
+.gc-cascade-row--primary {
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+
+.gc-cascade-rank {
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
+  width: 22px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.gc-cascade-term {
+  flex: 1;
+  min-width: 0;
+}
+
+.gc-cascade-term-id {
+  display: block;
+  font-family: 'Menlo', 'Consolas', monospace;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.gc-cascade-term-gw {
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.gc-cascade-metrics {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1px;
+  flex-shrink: 0;
+}
+
+.gc-cascade-connector {
+  font-size: 11px;
+  color: #94a3b8;
+  text-align: center;
+  padding: 3px 0;
+  font-style: italic;
+}
+
+.gc-cascade-narrative {
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.55;
+  padding: 8px 10px;
+  background: #f1f5f9;
+  border-radius: 6px;
+}
+
+.gc-cascade-cost-text {
+  font-size: 13px;
+  color: #374151;
+  line-height: 1.55;
+  margin-bottom: 10px;
+}
+
+.gc-cascade-cost-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.gc-cascade-cost-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gc-cascade-cost-name {
+  font-family: 'Menlo', monospace;
+  font-size: 11.5px;
+  color: #475569;
+  width: 80px;
+  flex-shrink: 0;
+}
+
+.gc-cascade-cost-bar-wrap {
+  flex: 1;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.gc-cascade-cost-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s;
+}
+
+.gc-cascade-cost-val {
+  width: 40px;
+  text-align: right;
+  font-size: 12px;
+  color: #475569;
+  font-weight: 600;
+}
