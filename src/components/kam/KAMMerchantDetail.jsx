@@ -965,6 +965,9 @@ export default function KAMMerchantDetail() {
   const [approvedRecs, setApprovedRecs] = useState(new Set())
   const [dismissedRecs, setDismissedRecs] = useState(new Set())
 
+  // ---- Routing Copilot state ----
+  const [simOverrides, setSimOverrides] = useState({})
+
 
   // ---- Computed values (hooks must be unconditional — guard is below) ----
   const tspCompliance = useMemo(() => merchant ? computeTSPCompliance(merchant) : null, [merchant])
@@ -1762,6 +1765,23 @@ export default function KAMMerchantDetail() {
           </div>
         </div>
       )}
+
+      {/* ── Routing Copilot ──────────────────────────────────────── */}
+      <div className="kam-detail-card" style={{ marginTop: 16 }}>
+        <div className="kam-card-header">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="#528FF0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <h3 style={{ margin: 0 }}>Routing Copilot</h3>
+          <span className="kam-badge info" style={{ fontSize: 10 }}>AI</span>
+          <span style={{ flex: 1 }} />
+          <span style={{ fontSize: 12, color: 'var(--rzp-text-muted)' }}>Ask about rules, simulate payments, create routing rules</span>
+        </div>
+        <RoutingCopilot
+          merchant={merchant}
+          rules={merchant.routingRulesV2 || []}
+          addRule={addRule}
+          simOverrides={simOverrides}
+        />
+      </div>
 
       </div>
 
