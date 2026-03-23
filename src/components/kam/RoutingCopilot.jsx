@@ -1568,90 +1568,95 @@ function MethodPanel({ method, merchant, rules, addRule, simOverrides }) {
           onConfirm={confirmCostSwitch}
         />
       )}
-      {/* ── Top: action cards ── */}
-      <div className="gc-panel-top">
-        <div className="gc-panel-cards">
-          {/* Card 1: Routing Strategy */}
-          <div className="gc-card">
-            <div className="gc-card-icon"><IconRoute /></div>
-            <div className="gc-card-title">Routing Strategy</div>
-            <div className="gc-card-desc">Set the optimization goal for {methodLabel}</div>
-            <div className="gc-strategy-opts">
-              {/* SR option — rich when active */}
-              <button className={`gc-strategy-btn gc-strategy-btn--sr${routingStrategy === 'sr' ? ' active' : ''}`} onClick={() => handleStrategy('sr')}>
-                <div className="gc-strategy-btn-top">
-                  <span className="gc-strategy-btn-label"><IconSRIcon /> Optimize for Success Rate</span>
-                  <span className="gc-strategy-badge-rec">Recommended</span>
-                </div>
-                {routingStrategy === 'sr' && (
-                  <>
-                    <div className="gc-strategy-desc">
-                      Routes to the highest-SR terminal automatically. Protects wallet share by maximizing payment experience.
-                    </div>
-                    <div className="gc-strategy-stats">
-                      <div className="gc-strategy-stat gc-strategy-stat--good">
-                        <span className="gc-strategy-stat-arrow">↑</span>
-                        +2.1% higher SR than cost-optimized merchants in same MCC
-                      </div>
-                      <div className="gc-strategy-stat">
-                        <span className="gc-strategy-stat-dot" />
-                        Auto-failover across {merchant?.gatewayMetrics?.filter(gm => (gm.supportedMethods || []).includes(methodToDataKey(method))).length || 0} terminals — keeps volume on Razorpay
-                      </div>
-                    </div>
-                  </>
-                )}
-              </button>
-              {/* Cost option — always plain */}
-              <button className={`gc-strategy-btn gc-strategy-btn--cost${routingStrategy === 'cost' ? ' active' : ''}`} onClick={() => handleStrategy('cost')}>
-                <div className="gc-strategy-btn-top">
-                  <span className="gc-strategy-btn-label"><IconCostIcon /> Save Cost / Custom Rules</span>
-                </div>
-              </button>
-            </div>
-          </div>
 
-          {/* Card 2: Simulate Payments */}
-          <div className={`gc-card gc-card-clickable${activeView === 'simulate' ? ' gc-card--active' : ''}`} onClick={() => setActiveView('simulate')}>
-            <div className="gc-card-icon" style={{ color: '#059669' }}><IconPlay /></div>
-            <div className="gc-card-title">Simulate Payments</div>
-            <div className="gc-card-desc">Trace a transaction through the routing pipeline end-to-end</div>
-            <div className="gc-card-cta">Run Simulation →</div>
+      {/* ── L2: action nav panel ── */}
+      <div className="gc-l2-panel">
+        {/* Card 1: Routing Strategy */}
+        <div className="gc-l2-card">
+          <div className="gc-l2-card-hdr">
+            <span className="gc-l2-card-icon"><IconRoute /></span>
+            <span className="gc-l2-card-title">Routing Strategy</span>
           </div>
-
-          {/* Card 3: Historic Routing Logic */}
-          <div className={`gc-card gc-card-clickable${activeView === 'historic' ? ' gc-card--active' : ''}`} onClick={() => setActiveView('historic')}>
-            <div className="gc-card-icon" style={{ color: '#7c3aed' }}><IconClock /></div>
-            <div className="gc-card-title">Historic Routing Logic</div>
-            <div className="gc-card-desc">Trace a past payment — see exactly which rules fired and why it routed there</div>
-            <div className="gc-card-cta">Trace Payment →</div>
+          <div className="gc-strategy-opts">
+            <button className={`gc-strategy-btn gc-strategy-btn--sr${routingStrategy === 'sr' ? ' active' : ''}`} onClick={() => handleStrategy('sr')}>
+              <div className="gc-strategy-btn-top">
+                <span className="gc-strategy-btn-label"><IconSRIcon /> Optimize for SR</span>
+                <span className="gc-strategy-badge-rec">Rec.</span>
+              </div>
+              {routingStrategy === 'sr' && (
+                <>
+                  <div className="gc-strategy-desc">
+                    Routes to highest-SR terminal automatically. Protects wallet share.
+                  </div>
+                  <div className="gc-strategy-stats">
+                    <div className="gc-strategy-stat gc-strategy-stat--good">
+                      <span className="gc-strategy-stat-arrow">↑</span>
+                      +2.1% higher SR vs cost-optimized
+                    </div>
+                    <div className="gc-strategy-stat">
+                      <span className="gc-strategy-stat-dot" />
+                      Failover across {merchant?.gatewayMetrics?.filter(gm => (gm.supportedMethods || []).includes(methodToDataKey(method))).length || 0} terminals
+                    </div>
+                  </div>
+                </>
+              )}
+            </button>
+            <button className={`gc-strategy-btn gc-strategy-btn--cost${routingStrategy === 'cost' ? ' active' : ''}`} onClick={() => handleStrategy('cost')}>
+              <div className="gc-strategy-btn-top">
+                <span className="gc-strategy-btn-label"><IconCostIcon /> Save Cost / Custom</span>
+              </div>
+            </button>
           </div>
         </div>
 
-        {/* Card 4: Create Rule — conditional on cost strategy */}
+        {/* Card 2: Simulate Payments */}
+        <div className={`gc-l2-card gc-l2-card--clickable${activeView === 'simulate' ? ' active' : ''}`} onClick={() => setActiveView('simulate')}>
+          <div className="gc-l2-card-hdr">
+            <span className="gc-l2-card-icon" style={{ color: '#059669' }}><IconPlay /></span>
+            <span className="gc-l2-card-title">Simulate Payments</span>
+          </div>
+          <div className="gc-l2-card-desc">Trace a transaction through the routing pipeline</div>
+          <div className="gc-l2-card-cta">Run Simulation →</div>
+        </div>
+
+        {/* Card 3: Historic Routing */}
+        <div className={`gc-l2-card gc-l2-card--clickable${activeView === 'historic' ? ' active' : ''}`} onClick={() => setActiveView('historic')}>
+          <div className="gc-l2-card-hdr">
+            <span className="gc-l2-card-icon" style={{ color: '#7c3aed' }}><IconClock /></span>
+            <span className="gc-l2-card-title">Historic Routing</span>
+          </div>
+          <div className="gc-l2-card-desc">Replay past payments — see which rules fired and why</div>
+          <div className="gc-l2-card-cta">Trace Payment →</div>
+        </div>
+
+        {/* Card 4: Create Rule — only when cost strategy selected */}
         {routingStrategy === 'cost' && (
-          <div className="gc-rules-card">
-            <div className="gc-rules-card-info">
-              <div className="gc-rules-card-title">Create Rule</div>
-              <div className="gc-rules-card-desc">Build a custom routing rule for {methodLabel} payments with terminal priority and SR fallback thresholds.</div>
+          <div className={`gc-l2-card gc-l2-card--clickable${activeView === 'create_rule' ? ' active' : ''}`} onClick={() => setActiveView('create_rule')}>
+            <div className="gc-l2-card-hdr">
+              <span className="gc-l2-card-icon" style={{ color: '#528FF0' }}>
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </span>
+              <span className="gc-l2-card-title">Create Rule</span>
             </div>
-            <div className="gc-rules-card-actions">
-              <button className="gc-rules-card-btn gc-rules-card-btn--primary" onClick={() => setActiveView('create_rule')}>+ Create Rule</button>
-            </div>
+            <div className="gc-l2-card-desc">Build a custom routing rule for {methodLabel}</div>
+            <div className="gc-l2-card-cta">+ New Rule →</div>
           </div>
         )}
       </div>
 
       {/* ── Content area ── */}
-      {activeView === 'simulate'
-        ? <SimulateView key={method} method={method} merchant={merchant} rules={rules} />
-        : activeView === 'historic'
-        ? <HistoricView key={method} method={method} merchant={merchant} rules={rules} />
-        : activeView === 'create_rule'
-        ? <CreateRuleWizard method={method} merchant={merchant} rules={rules} addRule={addRule} onClose={() => setActiveView(null)} />
-        : activeView === 'sr_ranking'
-        ? <SRRankingView method={method} merchant={merchant} strategy={routingStrategy} />
-        : <MethodChat key={chatKey} method={method} merchant={merchant} rules={rules} addRule={addRule} simOverrides={simOverrides} triggerMsg={triggerMsg} />
-      }
+      <div className="gc-content-area">
+        {activeView === 'simulate'
+          ? <SimulateView key={method} method={method} merchant={merchant} rules={rules} />
+          : activeView === 'historic'
+          ? <HistoricView key={method} method={method} merchant={merchant} rules={rules} />
+          : activeView === 'create_rule'
+          ? <CreateRuleWizard method={method} merchant={merchant} rules={rules} addRule={addRule} onClose={() => setActiveView('sr_ranking')} />
+          : activeView === 'sr_ranking'
+          ? <SRRankingView method={method} merchant={merchant} strategy={routingStrategy} />
+          : <MethodChat key={chatKey} method={method} merchant={merchant} rules={rules} addRule={addRule} simOverrides={simOverrides} triggerMsg={triggerMsg} />
+        }
+      </div>
     </div>
   )
 }
