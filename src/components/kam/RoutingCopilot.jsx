@@ -78,7 +78,7 @@ function classifyIntent(input) {
   if (/sr.*highest|highest.*sr|best.*sr|which.*bank|which.*terminal.*sr|which.*provider/i.test(q)) return { type: 'terminal_info', raw: input }
   if (/priority.*order|routing.*order|order.*terminal|which.*first|how.*routed|cascade|terminal.*priority/i.test(q)) return { type: 'priority_cascade', raw: input }
   if (/what happens|simulate|send|trace|if i send|payment of/i.test(q)) return { type: 'simulate', raw: input }
-  if (/ntf|no terminal|why.*(fail|ntf|block)|failure|failing|ntf risk/i.test(q)) return { type: 'ntf_analysis', raw: input }
+  if (/ntf|no terminal|why.*(fail|ntf|block)|failure|failing|ntf risk|routing health/i.test(q)) return { type: 'routing_health', raw: input }
   if (/what if|if i disable|if i remove|if.*drops?|if.*down/i.test(q)) return { type: 'what_if', raw: input }
   if (/coverage|gap|uncovered|missing|blind spot/i.test(q)) return { type: 'coverage', raw: input }
   if (/help|what can you|how do i|guide/i.test(q)) return { type: 'help', raw: input }
@@ -570,7 +570,7 @@ function MethodChat({ method, merchant, rules, addRule, simOverrides, triggerMsg
           response = { type: 'bot', content: 'terminal_info', data: { merchant, method }, ts: Date.now() }
           break
         }
-        case 'ntf_analysis': {
+        case 'routing_health': {
           const testCases = {
             Cards:       [
               { payment_method: 'Cards', card_network: 'Visa',       card_type: 'credit', amount: 5000,  international: false },
@@ -596,7 +596,7 @@ function MethodChat({ method, merchant, rules, addRule, simOverrides, triggerMsg
           const results = cases.map(txn => ({ txn, result: simulateRoutingPipeline(merchant, txn, rules, simOverrides) }))
           const ntfs    = results.filter(r => r.result.isNTF)
           const passing = results.filter(r => !r.result.isNTF)
-          response = { type: 'bot', content: 'ntf_analysis', data: { ntfs, passing, method: methodLabel }, ts: Date.now() }
+          response = { type: 'bot', content: 'routing_health', data: { ntfs, passing, method: methodLabel }, ts: Date.now() }
           break
         }
         case 'priority_cascade': {
@@ -678,8 +678,8 @@ function MethodChat({ method, merchant, rules, addRule, simOverrides, triggerMsg
           {msg.content === 'priority_cascade' && (
             <RoutingCascadeCard merchant={msg.data.merchant} method={msg.data.method} terminals={msg.data.terminals} srThreshold={90} />
           )}
-          {msg.content === 'ntf_analysis'  && (
-            <div className="gc-ntf-analysis">
+          {msg.content === 'routing_health'  && (
+            <div className="gc-routing-health">
               <div className="gc-ntf-summary">
                 {msg.data.ntfs.length === 0
                   ? <div className="gc-info-box">✅ No NTF risk detected for {msg.data.method}. All tested payment types route successfully.</div>

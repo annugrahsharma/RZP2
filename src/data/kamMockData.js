@@ -3724,7 +3724,7 @@ export function getTerminalGatewayInfo(terminalId) {
   return null
 }
 
-// ── NTF Analysis ───────────────
+// ── Routing Health ───────────────
 
 export function generateNTFAnalysis(merchant, ntfTransactions, rules) {
   if (!ntfTransactions || ntfTransactions.length === 0) {

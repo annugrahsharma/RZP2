@@ -731,7 +731,7 @@ For any payment type, trace through the full pipeline:
 
 Example simulation input: "Visa Credit Card, Rs 8,000, domestic"
 
-### 7.4 NTF Analysis
+### 7.4 Routing Health
 Identify rule combinations that cause NTF:
 - Orphan terminals (referenced in rules but not in merchant's active set)
 - Method-terminal mismatches (routing UPI to Cards-only terminal)

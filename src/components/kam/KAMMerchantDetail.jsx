@@ -2298,7 +2298,7 @@ export default function KAMMerchantDetail() {
           <div className="kam-card-header">
             <h3 className="kam-card-title">
               <WarningIcon style={{ display: 'inline', verticalAlign: '-3px', marginRight: 6 }} />
-              {ntfViewMode === 'ntf' ? 'NTF Analysis' : 'Routing Health'}
+              Routing Health
             </h3>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div className="kam-ntfa-layer-tabs" style={{ marginBottom: 0 }}>
@@ -2306,7 +2306,7 @@ export default function KAMMerchantDetail() {
                   className={`kam-ntfa-layer-tab ${ntfViewMode === 'ntf' ? 'active' : ''}`}
                   onClick={() => setNtfViewMode('ntf')}
                 >
-                  NTF Analysis
+                  Routing Health
                 </button>
                 <button
                   className={`kam-ntfa-layer-tab ${ntfViewMode === 'health' ? 'active' : ''}`}
