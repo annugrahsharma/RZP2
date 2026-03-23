@@ -1,5 +1,22 @@
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useCallback } from 'react'
 import { gateways } from '../../data/kamMockData'
+
+// ── GMV target presets ──────────────────────
+const GMV_PRESETS = [
+  { id: '10L',  label: '₹10L',  value: 1_000_000  },
+  { id: '25L',  label: '₹25L',  value: 2_500_000  },
+  { id: '50L',  label: '₹50L',  value: 5_000_000  },
+  { id: '1Cr',  label: '₹1Cr',  value: 10_000_000 },
+  { id: '5Cr',  label: '₹5Cr',  value: 50_000_000 },
+  { id: '10Cr', label: '₹10Cr', value: 100_000_000 },
+]
+
+function formatGMV(amount) {
+  if (!amount || amount <= 0) return '₹0'
+  if (amount >= 10_000_000) return `₹${(amount / 10_000_000).toFixed(1).replace(/\.0$/, '')}Cr`
+  if (amount >= 100_000)    return `₹${(amount / 100_000).toFixed(1).replace(/\.0$/, '')}L`
+  return `₹${Math.round(amount).toLocaleString('en-IN')}`
+}
 
 // ════════════════════════════════════════════
 // DATA CONSTANTS
@@ -433,15 +450,42 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack }) {
       .map(gm => {
         const gw   = gateways.find(g => g.id === gm.gatewayId)
         const term = gw?.terminals.find(t => t.id === gm.terminalId)
-        return { id: gm.terminalId, displayId: term?.terminalId || gm.terminalId, gatewayShort: gw?.shortName || '?', successRate: gm.successRate, costPerTxn: gm.costPerTxn }
+        return {
+          id: gm.terminalId,
+          displayId: term?.terminalId || gm.terminalId,
+          gatewayShort: gw?.shortName || '?',
+          successRate: gm.successRate,
+          costPerTxn: gm.costPerTxn,
+          txnShare: gm.txnShare || 0,
+        }
       }), [merchant, method])
+
+  // Monthly transactions + assumed avg transaction value for GMV projection
+  const monthlyTxns  = merchant?.txnVolumeHistory?.currentMonth || 30000
+  const avgTxnValue  = 850 // ₹850 default avg order value
+
+  // Compute recommended split from historical txnShare (SR-weighted)
+  const computeRecommendedSplit = useCallback((terminals) => {
+    if (!terminals.length) return {}
+    const weights     = terminals.map(t => (t.txnShare || 0) * (t.successRate / 100))
+    const totalWeight = weights.reduce((s, w) => s + w, 0)
+    const m = {}
+    if (totalWeight === 0) {
+      const eq = Math.floor(100 / terminals.length)
+      terminals.forEach((t, i) => { m[t.id] = eq + (i === 0 ? 100 - eq * terminals.length : 0) })
+      return m
+    }
+    terminals.forEach((t, i) => { m[t.id] = Math.round((weights[i] / totalWeight) * 100) })
+    // Fix rounding drift
+    const sum = Object.values(m).reduce((s, v) => s + v, 0)
+    if (sum !== 100) m[terminals[0].id] += (100 - sum)
+    return m
+  }, [])
 
   const [mode, setMode]           = useState('priority')
   const [order, setOrder]         = useState(() => [...allTerminals].sort((a, b) => b.successRate - a.successRate))
   const [selectedIds, setSelected] = useState(() => allTerminals.map(t => t.id))
-  const [loads, setLoads]         = useState(() => {
-    const m = {}; allTerminals.forEach((t, i) => { m[t.id] = i === 0 ? 100 : 0 }); return m
-  })
+  const [loads, setLoads]         = useState(() => computeRecommendedSplit(allTerminals))
   const [srThresh, setSrThresh]   = useState(() => {
     const m = {}; allTerminals.forEach(t => { m[t.id] = Math.max(70, Math.floor(t.successRate - 3)) }); return m
   })
@@ -452,9 +496,32 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack }) {
   const [dragIdx, setDragIdx]     = useState(null)
   const [saved, setSaved]         = useState(null)
 
+  // GMV target state
+  const [gmvTarget, setGmvTarget] = useState('')
+  const [gmvPreset, setGmvPreset] = useState(null)
+
   const selectedTerminals = order.filter(t => selectedIds.includes(t.id))
   const loadTotal = selectedIds.reduce((s, id) => s + (loads[id] || 0), 0)
   const loadValid = Math.abs(loadTotal - 100) < 1
+
+  // Effective GMV target (from preset or typed input)
+  const effectiveGmvTarget = useMemo(() => {
+    if (gmvPreset) return GMV_PRESETS.find(p => p.id === gmvPreset)?.value || 0
+    const parsed = parseFloat(gmvTarget.replace(/,/g, ''))
+    return isNaN(parsed) ? 0 : parsed
+  }, [gmvPreset, gmvTarget])
+
+  // Projected GMV based on current load % and terminal SR
+  const projectedGMV = useMemo(() => {
+    return selectedTerminals.reduce((total, t) => {
+      const load = loads[t.id] || 0
+      return total + (load / 100) * monthlyTxns * avgTxnValue * (t.successRate / 100)
+    }, 0)
+  }, [selectedTerminals, loads, monthlyTxns])
+
+  const handleApplyRecommended = () => {
+    setLoads(computeRecommendedSplit(selectedTerminals))
+  }
 
   const handleDragStart = (e, i) => { setDragIdx(i); e.dataTransfer.effectAllowed = 'move' }
   const handleDragOver  = (e, i) => {
@@ -489,7 +556,7 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack }) {
   }
 
   if (saved) {
-    const dailyVol = Math.round((merchant?.txnVolumeHistory?.currentMonth || 30000) / 30)
+    const dailyVol = Math.round(monthlyTxns / 30)
     const zeroCost = selectedTerminals.filter(t => t.costPerTxn === 0)
     const paid     = selectedTerminals.filter(t => t.costPerTxn > 0)
     const savings  = zeroCost.length && paid.length
@@ -531,8 +598,42 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack }) {
 
       <div className="rw-mode-row">
         <button className={`rw-mode-btn${mode === 'priority' ? ' on' : ''}`} onClick={() => setMode('priority')}>Priority-based</button>
-        <button className={`rw-mode-btn${mode === 'load' ? ' on' : ''}`} onClick={() => setMode('load')}>Load-balanced</button>
+        <button className={`rw-mode-btn${mode === 'load' ? ' on' : ''}`} onClick={() => setMode('load')}>Meet GMV Target</button>
       </div>
+
+      {/* ── GMV Target input (Meet GMV Target mode only) ── */}
+      {mode === 'load' && (
+        <div className="rw-gmv-section">
+          <div className="rw-gmv-label">Monthly GMV target for this method</div>
+          <div className="rw-gmv-presets">
+            {GMV_PRESETS.map(p => (
+              <button
+                key={p.id}
+                className={`rw-gmv-preset${gmvPreset === p.id ? ' on' : ''}`}
+                onClick={() => { setGmvPreset(p.id); setGmvTarget('') }}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+          <div className="rw-gmv-input-row">
+            <span className="rw-gmv-rupee">₹</span>
+            <input
+              className="rw-gmv-input"
+              type="number"
+              placeholder="Enter custom amount…"
+              value={gmvTarget}
+              onChange={e => { setGmvTarget(e.target.value); setGmvPreset(null) }}
+            />
+          </div>
+          {effectiveGmvTarget > 0 && (
+            <div className="rw-gmv-rec-row">
+              <span className="rw-gmv-rec-note">Recommended split based on past 30-day merchant data</span>
+              <button className="rw-gmv-apply-btn" onClick={handleApplyRecommended}>↺ Reset to recommended</button>
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="rw-term-list">
         {order.map((t, i) => (
@@ -578,6 +679,21 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack }) {
         <div className={`rw-load-total${loadValid ? ' ok' : ' err'}`}>
           Load total: <strong>{loadTotal}%</strong>
           {loadValid ? ' ✓' : ' — must equal 100%'}
+        </div>
+      )}
+
+      {/* ── GMV projection (Meet GMV Target mode) ── */}
+      {mode === 'load' && effectiveGmvTarget > 0 && (
+        <div className={`rw-gmv-projection${projectedGMV >= effectiveGmvTarget ? ' ok' : ' warn'}`}>
+          <div className="rw-gmv-proj-row">
+            <span>At this split, projected monthly GMV:</span>
+            <strong>{formatGMV(projectedGMV)}</strong>
+          </div>
+          {projectedGMV < effectiveGmvTarget && (
+            <div className="rw-gmv-proj-warn">
+              ⚠ Target may not be achievable with current terminal capacity. Consider adding more terminals.
+            </div>
+          )}
         </div>
       )}
 
