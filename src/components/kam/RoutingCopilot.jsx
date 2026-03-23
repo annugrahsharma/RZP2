@@ -1489,8 +1489,8 @@ function _OldCreateRuleWizard({ method, merchant, rules, addRule, onClose }) {
 // Method Panel — cards + chat/simulate
 // ════════════════════════════════════════════
 function MethodPanel({ method, merchant, rules, addRule, simOverrides }) {
-  const [routingStrategy, setRoutingStrategy] = useState(null) // 'sr' | 'cost'
-  const [activeView, setActiveView]           = useState(null) // null | 'chat' | 'simulate'
+  const [routingStrategy, setRoutingStrategy] = useState('sr')       // 'sr' | 'cost'
+  const [activeView, setActiveView]           = useState('sr_ranking') // default: show terminal ranking
   const [triggerMsg, setTriggerMsg]           = useState(null)
   const [chatKey, setChatKey]                 = useState(0)
   const methodLabel = method === 'UPIOnetime' ? 'UPI Onetime' : method === 'UPIRecurring' ? 'UPI Recurring' : method
