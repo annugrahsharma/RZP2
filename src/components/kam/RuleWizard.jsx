@@ -789,8 +789,45 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack, onClo
       const supportsMethod = (gm.supportedMethods || []).includes(dataKey(method))
       const bankDisabled = term?.bankStatus === 'disabled'
       let ineligibleReason = null
-      if (bankDisabled) ineligibleReason = term.bankStatusReason || 'Terminal disabled by bank'
-      else if (!supportsMethod) ineligibleReason = `Does not support ${method}`
+
+      // Check in order: method -> bank disabled -> network -> issuer -> card type
+      if (!supportsMethod) {
+        ineligibleReason = `Does not support ${method}`
+      } else if (bankDisabled) {
+        ineligibleReason = term.bankStatusReason || 'Terminal disabled by bank'
+      } else if (method === 'Cards' && filters?.networks?.length > 0) {
+        // Check network support
+        const terminalNetworks = gm.supportedNetworks || []
+        if (terminalNetworks.length > 0) {
+          const hasMatchingNetwork = filters.networks.some(n => terminalNetworks.includes(n))
+          if (!hasMatchingNetwork) {
+            ineligibleReason = `Does not support ${filters.networks.join(', ')}`
+          }
+        }
+      }
+
+      if (!ineligibleReason && method === 'Cards' && filters?.issuerBanks?.length > 0) {
+        // Check issuer support
+        const terminalIssuers = gm.supportedIssuers || []
+        if (terminalIssuers.length > 0 && !terminalIssuers.includes('ALL')) {
+          const hasMatchingIssuer = filters.issuerBanks.some(i => terminalIssuers.includes(i))
+          if (!hasMatchingIssuer) {
+            ineligibleReason = `Issuer ${filters.issuerBanks.join(', ')} not supported`
+          }
+        }
+      }
+
+      if (!ineligibleReason && method === 'Cards' && filters?.cardTypes?.length > 0) {
+        // Check card type support
+        const terminalCardTypes = gm.supportedCardTypes || []
+        if (terminalCardTypes.length > 0) {
+          const hasMatchingCardType = filters.cardTypes.some(ct => terminalCardTypes.includes(ct))
+          if (!hasMatchingCardType) {
+            ineligibleReason = `${filters.cardTypes.join(', ')} cards not supported`
+          }
+        }
+      }
+
       return {
         id: gm.terminalId,
         displayId: term?.terminalId || gm.terminalId,
@@ -801,7 +838,7 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack, onClo
         eligible: !ineligibleReason,
         ineligibleReason,
       }
-    }), [merchant, method])
+    }), [merchant, method, filters])
 
   const eligibleTerminals = allMerchantTerminals.filter(t => t.eligible)
   const ineligibleTerminals = allMerchantTerminals.filter(t => !t.eligible)

@@ -1041,6 +1041,9 @@ export default function KAMMerchantDetail() {
         bankStatus: term?.bankStatus || 'active',
         bankStatusReason: term?.bankStatusReason || null,
         bankStatusSince: term?.bankStatusSince || null,
+        supportedNetworks: gm.supportedNetworks || [],
+        supportedIssuers: gm.supportedIssuers || [],
+        supportedCardTypes: gm.supportedCardTypes || [],
       }
     })
   }, [merchant?.gatewayMetrics, gateways])
@@ -1847,6 +1850,7 @@ export default function KAMMerchantDetail() {
                       <tr>
                         <th>Terminal ID</th>
                         <th>Provider</th>
+                        <th>Capabilities</th>
                         <th>Current SR</th>
                         <th>Daily Volume</th>
                         <th>Txn Share</th>
@@ -1879,6 +1883,25 @@ export default function KAMMerchantDetail() {
                                 )}
                               </td>
                               <td>{t.provider}</td>
+                              <td style={{ fontSize: 11 }}>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
+                                  {t.supportedNetworks?.length > 0 && t.supportedNetworks.map((net) => (
+                                    <span key={net} style={{ fontSize: 9, background: '#eff6ff', color: '#2563eb', padding: '1px 5px', borderRadius: 8, whiteSpace: 'nowrap' }}>
+                                      {net}
+                                    </span>
+                                  ))}
+                                  {t.supportedIssuers?.length > 0 && (
+                                    <span style={{ fontSize: 9, background: '#f5f3ff', color: '#7c3aed', padding: '1px 5px', borderRadius: 8, whiteSpace: 'nowrap' }}>
+                                      {t.supportedIssuers.includes('ALL') ? 'All Issuers' : t.supportedIssuers.length <= 3 ? t.supportedIssuers.join(', ') : `${t.supportedIssuers.length} Issuers`}
+                                    </span>
+                                  )}
+                                  {t.supportedCardTypes?.length > 0 && t.supportedCardTypes.map((ct) => (
+                                    <span key={ct} style={{ fontSize: 9, background: '#fffbeb', color: '#d97706', padding: '1px 5px', borderRadius: 8, whiteSpace: 'nowrap' }}>
+                                      {ct.charAt(0).toUpperCase() + ct.slice(1)}
+                                    </span>
+                                  ))}
+                                </div>
+                              </td>
                               <td>
                                 <span style={{ fontWeight: 600 }}>{t.successRate}%</span>
                                 {' '}
@@ -1939,7 +1962,7 @@ export default function KAMMerchantDetail() {
                         </tr>
                         {isExpanded && pricingData.length > 0 && (
                           <tr className="kam-pricing-expanded-row">
-                            <td colSpan={8} style={{ padding: 0 }}>
+                            <td colSpan={9} style={{ padding: 0 }}>
                               <div className="kam-pricing-breakdown">
                                 <div className="kam-pricing-breakdown-title">Backward Pricing Schedule</div>
                                 <table className="kam-pricing-table">
