@@ -4221,9 +4221,23 @@ const COMPASS_TO_KAM_FIELD = Object.fromEntries(
   Object.entries(KAM_TO_COMPASS_FIELD).map(([k, v]) => [v, k])
 )
 
-function compassMethodKey(method) {
+export function compassMethodKey(method) {
   const map = { Cards: 'card', UPIOnetime: 'upi', UPIRecurring: 'upi', UPI: 'upi', Netbanking: 'netbanking', NB: 'netbanking', EMI: 'emi' }
   return map[method] || (method || '').toLowerCase()
+}
+
+/** Flatten KAM conditions to COMPASS conditions object */
+export function flattenConditions(conditions) {
+  const result = {}
+  for (const c of (conditions || [])) {
+    if (c.field === 'payment_method') continue
+    const key = KAM_TO_COMPASS_FIELD[c.field] || c.field
+    const v = c.value
+    if (Array.isArray(v)) result[key] = v.join(',')
+    else if (typeof v === 'boolean') result[key] = String(v)
+    else if (v != null && v !== '') result[key] = String(v)
+  }
+  return Object.keys(result).length > 0 ? result : null
 }
 
 function kamMethodFromCompass(compassMethod, conditions) {

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react'
-import { gateways, simulateRoutingPipeline, toCompassDocument, buildCompassESQuery, buildCompassRuntimeAnnotation } from '../../data/kamMockData'
+import { gateways, simulateRoutingPipeline, toCompassDocument, buildCompassESQuery, buildCompassRuntimeAnnotation, compassMethodKey, flattenConditions } from '../../data/kamMockData'
 
 // ════════════════════════════════════════════
 // DATA CONSTANTS
@@ -781,123 +781,154 @@ function RuleImpactAnalysis({ rule, savedTerminals, merchant, filters, method, m
 }
 
 function TerminalStep({ merchant, method, filters, rules, addRule, onBack, onClose }) {
-  const allTerminals = useMemo(() =>
-    merchant.gatewayMetrics
-      .filter(gm => (gm.supportedMethods || []).includes(dataKey(method)))
-      .map(gm => {
-        const gw   = gateways.find(g => g.id === gm.gatewayId)
-        const term = gw?.terminals.find(t => t.id === gm.terminalId)
-        return {
-          id: gm.terminalId,
-          displayId: term?.terminalId || gm.terminalId,
-          gatewayShort: gw?.shortName || '?',
-          successRate: gm.successRate,
-          costPerTxn: gm.costPerTxn,
-          txnShare: gm.txnShare || 0,
-        }
-      }), [merchant, method])
+  // Get ALL terminals for the merchant (for showing ineligible ones)
+  const allMerchantTerminals = useMemo(() =>
+    merchant.gatewayMetrics.map(gm => {
+      const gw = gateways.find(g => g.id === gm.gatewayId)
+      const term = gw?.terminals.find(t => t.id === gm.terminalId)
+      const supportsMethod = (gm.supportedMethods || []).includes(dataKey(method))
+      const bankDisabled = term?.bankStatus === 'disabled'
+      let ineligibleReason = null
+      if (bankDisabled) ineligibleReason = term.bankStatusReason || 'Terminal disabled by bank'
+      else if (!supportsMethod) ineligibleReason = `Does not support ${method}`
+      return {
+        id: gm.terminalId,
+        displayId: term?.terminalId || gm.terminalId,
+        gatewayShort: gw?.shortName || '?',
+        successRate: gm.successRate,
+        costPerTxn: gm.costPerTxn,
+        txnShare: gm.txnShare || 0,
+        eligible: !ineligibleReason,
+        ineligibleReason,
+      }
+    }), [merchant, method])
+
+  const eligibleTerminals = allMerchantTerminals.filter(t => t.eligible)
+  const ineligibleTerminals = allMerchantTerminals.filter(t => !t.eligible)
 
   // Monthly transactions + assumed avg transaction value
   const monthlyTxns = merchant?.txnVolumeHistory?.currentMonth || 30000
   const avgTxnValue = 850 // ₹850 default avg order value
 
-  // COMPASS action & priority state
-  const [compassAction, setCompassAction] = useState('include')  // include | prefer | exclude
-  const [compassPriorityLevel, setCompassPriorityLevel] = useState('normal') // high | normal | low
+  // State
+  const [order, setOrder] = useState(() => [...eligibleTerminals].sort((a, b) => b.successRate - a.successRate))
+  const [avoidedIds, setAvoidedIds] = useState(new Set())
   const [compassExpiry, setCompassExpiry] = useState('')
   const [showCompassPreview, setShowCompassPreview] = useState(false)
+  const [dragIdx, setDragIdx] = useState(null)
+  const [saved, setSaved] = useState(null)
 
-  const [mode, setMode]            = useState('priority')
-  const [order, setOrder]          = useState(() => [...allTerminals].sort((a, b) => b.successRate - a.successRate))
-  const [selectedIds, setSelected] = useState(() => allTerminals.map(t => t.id))
-  const [srThresh, setSrThresh]    = useState(() => {
-    const m = {}; allTerminals.forEach(t => { m[t.id] = Math.max(70, Math.floor(t.successRate - 3)) }); return m
-  })
-  const [fallbackId, setFallback]  = useState(() => {
-    const sorted = [...allTerminals].sort((a, b) => b.successRate - a.successRate)
-    return sorted[sorted.length - 1]?.id || null
-  })
-  const [dragIdx, setDragIdx]      = useState(null)
-  const [saved, setSaved]          = useState(null)
+  const activeTerminals = order.filter(t => !avoidedIds.has(t.id))
+  const priorityTerminal = activeTerminals[0] || null
 
-  // Per-terminal GMV targets (Meet GMV Target mode)
-  const [gmvTargets, setGmvTargets] = useState({})
-
-  const selectedTerminals = order.filter(t => selectedIds.includes(t.id))
-
-  // Compute required traffic % for each terminal from its GMV target
-  // Formula: requiredTxns = gmvTarget / avgTxnValue / (SR/100)
-  //          trafficPct   = requiredTxns / monthlyTxns × 100
-  const requiredTraffic = useMemo(() => {
-    const m = {}
-    allTerminals.forEach(t => {
-      const raw = gmvTargets[t.id] || ''
-      const amt = parseFloat(raw.replace(/,/g, ''))
-      if (!isNaN(amt) && amt > 0 && monthlyTxns > 0 && t.successRate > 0) {
-        const requiredTxns = amt / avgTxnValue / (t.successRate / 100)
-        m[t.id] = Math.round((requiredTxns / monthlyTxns) * 1000) / 10 // 1 decimal
-      } else {
-        m[t.id] = null
+  const toggleAvoid = (id) => {
+    setAvoidedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) { next.delete(id) }
+      else {
+        // Block if it would leave zero active
+        if (activeTerminals.length <= 1) return prev
+        next.add(id)
       }
+      return next
     })
-    return m
-  }, [gmvTargets, allTerminals, monthlyTxns, avgTxnValue])
+  }
 
-  const totalRequiredTraffic = useMemo(() =>
-    selectedIds.reduce((sum, id) => sum + (requiredTraffic[id] ?? 0), 0),
-    [selectedIds, requiredTraffic])
-
+  // Drag handlers
   const handleDragStart = (e, i) => { setDragIdx(i); e.dataTransfer.effectAllowed = 'move' }
-  const handleDragOver  = (e, i) => {
+  const handleDragOver = (e, i) => {
     e.preventDefault()
     if (dragIdx === null || dragIdx === i) return
     const next = [...order]; const [m] = next.splice(dragIdx, 1); next.splice(i, 0, m)
     setOrder(next); setDragIdx(i)
   }
 
+  // Generate COMPASS documents
+  const generateCompassDocs = () => {
+    const docs = []
+    const conditions = buildConditions(method, filters)
+
+    // Doc 1: Priority terminal (#1 active)
+    if (priorityTerminal) {
+      let gwId = ''
+      for (const gw of gateways) {
+        if (gw.terminals?.find(t => t.id === priorityTerminal.id)) {
+          gwId = gw.shortName?.toLowerCase() || gw.id.replace('gw-', '')
+          break
+        }
+      }
+      docs.push({
+        namespace: 'merchant_routing',
+        scope_merchant_id: merchant.id,
+        scope: { merchant_id: merchant.id },
+        target: { gateway: gwId, method: compassMethodKey(method) },
+        action: 'include',
+        priority: 2000,
+        conditions: flattenConditions(conditions),
+        enabled: true,
+        expires_at: null,
+      })
+    }
+
+    // Docs for avoided terminals (deduplicated by gateway)
+    const avoidedGws = new Map()
+    order.filter(t => avoidedIds.has(t.id)).forEach(t => {
+      let gwId = ''
+      for (const gw of gateways) {
+        if (gw.terminals?.find(tm => tm.id === t.id)) {
+          gwId = gw.shortName?.toLowerCase() || gw.id.replace('gw-', '')
+          break
+        }
+      }
+      if (gwId && !avoidedGws.has(gwId)) avoidedGws.set(gwId, t)
+    })
+
+    for (const [gwId, t] of avoidedGws) {
+      docs.push({
+        namespace: 'merchant_routing',
+        scope_merchant_id: merchant.id,
+        scope: { merchant_id: merchant.id },
+        target: { gateway: gwId, method: compassMethodKey(method) },
+        action: 'exclude',
+        priority: 0,
+        conditions: flattenConditions(conditions),
+        enabled: true,
+        expires_at: compassExpiry ? `${compassExpiry}T00:00:00Z` : null,
+      })
+    }
+
+    return docs
+  }
+
   const handleSave = () => {
     const conditions = buildConditions(method, filters)
-    const splits = mode === 'load'
-      ? selectedTerminals.map(t => ({ terminalId: t.id, percentage: Math.min(Math.round(requiredTraffic[t.id] ?? 0), 100) }))
-      : []
-
-    // Map COMPASS priority level → numeric
-    const compassPriorityMap = { high: 2000, normal: 1500, low: 1000 }
-    const compassPri = compassAction === 'prefer' ? 9000
-      : compassAction === 'exclude' ? 0
-      : compassPriorityMap[compassPriorityLevel] || 1500
+    const compassDocs = generateCompassDocs()
 
     const rule = {
       id: `rule-${merchant.id}-rw-${Date.now()}`,
-      name: buildRuleName(method, filters, selectedTerminals),
-      type: mode === 'load' ? 'volume_split' : 'conditional',
+      name: buildRuleName(method, filters, activeTerminals),
+      type: 'conditional',
       enabled: true,
       priority: (rules?.filter(r => !r.isDefault && !r.isMethodDefault).length || 0) + 1,
       conditions, conditionLogic: 'AND',
       action: {
-        type: mode === 'load' ? 'split' : 'route',
-        terminals: selectedTerminals.map(t => t.id),
-        splits,
-        srThreshold: srThresh[selectedTerminals[0]?.id] || 90,
-        fallbackTerminal: fallbackId,
+        type: 'route',
+        terminals: activeTerminals.map(t => t.id),
+        splits: [],
+        srThreshold: 70,
+        fallbackTerminal: activeTerminals[activeTerminals.length - 1]?.id || null,
       },
       isDefault: false,
       createdAt: new Date().toISOString(),
       createdBy: 'anugrah.sharma@razorpay.com',
-      // ── COMPASS fields ──
-      compassAction,
-      compassPriority: compassPri,
+      // COMPASS fields
+      compassAction: 'include',
+      compassPriority: 2000,
       expiresAt: compassExpiry || null,
+      _compassDocs: compassDocs,
+      _compassDoc: compassDocs[0] || null,
+      _compassNamespace: 'merchant_routing',
     }
-
-    // Generate COMPASS document alongside the rule
-    const compassDoc = toCompassDocument(rule, merchant, {
-      compassAction,
-      compassPriority: compassPri,
-      expiresAt: compassExpiry || null,
-    })
-    rule._compassDoc = compassDoc
-    rule._compassNamespace = compassDoc.namespace
 
     addRule?.(rule)
     setSaved(rule)
@@ -907,15 +938,15 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack, onClo
     return (
       <RuleImpactAnalysis
         rule={saved}
-        savedTerminals={selectedTerminals}
+        savedTerminals={activeTerminals}
         merchant={merchant}
         filters={filters}
         method={method}
         monthlyTxns={monthlyTxns}
         avgTxnValue={avgTxnValue}
-        allTerminals={allTerminals}
+        allTerminals={eligibleTerminals}
         rules={rules}
-        srThresh={srThresh}
+        srThresh={{}}
         onDone={onClose || (() => setSaved(null))}
         onEditRule={() => setSaved(null)}
         onDisableRule={onClose || (() => setSaved(null))}
@@ -923,250 +954,204 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack, onClo
     )
   }
 
-  // ── Total traffic status for GMV mode ──
-  const trafficRounded = Math.round(totalRequiredTraffic * 10) / 10
-  const trafficOver    = trafficRounded > 100
-  const trafficExact   = Math.abs(trafficRounded - 100) < 0.5
-  const trafficRemain  = Math.round((100 - trafficRounded) * 10) / 10
-
   return (
     <div className="rw-term-step">
       <FilterSummary method={method} f={filters} />
-      <div className="rw-match" style={{ marginBottom: 10 }}>
+      <div style={{ fontSize: 12, color: '#666', marginBottom: 14 }}>
+        Drag to set priority order. <strong>#1 is your priority terminal.</strong> Mark terminals you want to exclude as "Avoid."
+      </div>
+
+      {/* ── Eligible terminals: draggable with avoid ── */}
+      <div className="rw-match" style={{ marginBottom: 8 }}>
         <span className="rw-match-dot" />
-        <span><strong>{allTerminals.length}</strong> matching terminals</span>
+        <span><strong>{eligibleTerminals.length}</strong> eligible terminals</span>
       </div>
 
-      <div className="rw-mode-row">
-        <button className={`rw-mode-btn${mode === 'priority' ? ' on' : ''}`} onClick={() => setMode('priority')}>Priority-based</button>
-        <button className={`rw-mode-btn${mode === 'load' ? ' on' : ''}`} onClick={() => setMode('load')}>Meet GMV Target</button>
-      </div>
+      <div className="rw-term-list">
+        {order.map((t, i) => {
+          const isAvoided = avoidedIds.has(t.id)
+          const isPriority = !isAvoided && activeTerminals[0]?.id === t.id
+          const activeRank = isAvoided ? null : activeTerminals.indexOf(t) + 1
 
-      {/* ── Priority mode: draggable list with SR thresholds ── */}
-      {mode === 'priority' && (
-        <div className="rw-term-list">
-          {order.map((t, i) => (
+          return (
             <div
               key={t.id}
-              className={`rw-term-row${selectedIds.includes(t.id) ? ' sel' : ' unsel'}${dragIdx === i ? ' drag' : ''}`}
-              draggable
+              className={`rw-term-row${isPriority ? ' priority' : ''}${isAvoided ? ' avoided' : ' sel'}${dragIdx === i ? ' drag' : ''}`}
+              draggable={!isAvoided}
               onDragStart={e => handleDragStart(e, i)}
               onDragOver={e => handleDragOver(e, i)}
               onDragEnd={() => setDragIdx(null)}
+              style={{
+                borderLeft: isPriority ? '4px solid #059669' : isAvoided ? '4px solid #fca5a5' : '4px solid transparent',
+                background: isPriority ? '#ecfdf5' : isAvoided ? '#fef2f2' : 'white',
+                opacity: isAvoided ? 0.5 : 1,
+              }}
             >
               <div className="rw-term-left">
-                <input type="checkbox" checked={selectedIds.includes(t.id)} onChange={() => setSelected(p => p.includes(t.id) ? p.filter(x => x !== t.id) : [...p, t.id])} />
-                <span className="rw-term-drag">⠿</span>
+                <span className="rw-term-drag" style={{ opacity: isAvoided ? 0.3 : 1 }}>⠿</span>
+                <div style={{
+                  width: 24, height: 24, borderRadius: '50%',
+                  background: isPriority ? '#059669' : isAvoided ? '#dc2626' : '#e5e7eb',
+                  color: isPriority || isAvoided ? 'white' : '#6b7280',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, fontWeight: 700, flexShrink: 0,
+                }}>
+                  {isAvoided ? '✕' : isPriority ? '★' : activeRank}
+                </div>
                 <div>
-                  <div className="rw-term-id">{t.displayId}</div>
-                  <div className="rw-term-gw">{t.gatewayShort}</div>
+                  <div className="rw-term-id" style={{ textDecoration: isAvoided ? 'line-through' : 'none', color: isAvoided ? '#9ca3af' : undefined }}>
+                    {t.displayId}
+                    {isPriority && (
+                      <span style={{ fontSize: 9, fontWeight: 700, background: '#059669', color: 'white', padding: '1px 6px', borderRadius: 3, marginLeft: 6 }}>PRIORITY</span>
+                    )}
+                  </div>
+                  <div className="rw-term-gw">{t.gatewayShort}{t.costPerTxn === 0 ? ' · zero-cost' : ''}</div>
                 </div>
               </div>
-              <div className="rw-term-right">
-                <span className="rw-term-sr" style={{ color: t.successRate >= 90 ? '#059669' : '#d97706' }}>SR {t.successRate}%</span>
+              <div className="rw-term-right" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span className="rw-term-sr" style={{ color: isAvoided ? '#9ca3af' : (t.successRate >= 90 ? '#059669' : '#d97706') }}>
+                  {t.successRate}%
+                </span>
                 <span className="rw-term-cost">{t.costPerTxn === 0 ? <span style={{ color: '#059669' }}>₹0</span> : `₹${t.costPerTxn}`}</span>
-                {selectedIds.includes(t.id) && i < order.length - 1 && (
-                  <div className="rw-sr-wrap">
-                    <span className="rw-sr-lbl">Fallback if SR &lt;</span>
-                    <input type="number" min="50" max="99" className="rw-sr-inp" value={srThresh[t.id] || 90} onChange={e => setSrThresh(p => ({ ...p, [t.id]: +e.target.value }))} />
-                    <span>%</span>
-                  </div>
-                )}
-                {i === order.length - 1 && <span className="rw-final-badge">Final fallback</span>}
+                <span style={{ fontSize: 10, color: '#9ca3af' }}>{t.txnShare}%</span>
+                <button
+                  onClick={() => toggleAvoid(t.id)}
+                  style={{
+                    padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                    cursor: 'pointer', border: '1.5px solid',
+                    background: isAvoided ? '#dc2626' : 'white',
+                    color: isAvoided ? 'white' : '#6b7280',
+                    borderColor: isAvoided ? '#dc2626' : '#e5e7eb',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {isAvoided ? '↩ Undo' : '🚫 Avoid'}
+                </button>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* NTF warnings */}
+      {activeTerminals.length === 1 && avoidedIds.size > 0 && (
+        <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 8, padding: '8px 12px', margin: '8px 0', fontSize: 12, color: '#92400e' }}>
+          ⚠️ Only <strong>1</strong> active terminal remaining. If it goes down, payments will NTF.
+        </div>
+      )}
+
+      {avoidedIds.size === 0 && (
+        <div style={{ fontSize: 11, color: '#9ca3af', fontStyle: 'italic', padding: '6px 0' }}>
+          All terminals active — #1 gets priority, rest are Doppler-managed fallbacks.
+        </div>
+      )}
+
+      {/* ── Ineligible terminals ── */}
+      {ineligibleTerminals.length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
+            Ineligible Terminals ({ineligibleTerminals.length})
+          </div>
+          {ineligibleTerminals.map(t => (
+            <div key={t.id} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '8px 12px', border: '1px dashed #e5e7eb', borderRadius: 8, marginBottom: 4,
+              opacity: 0.45, background: '#f9fafb',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{
+                  width: 22, height: 22, borderRadius: '50%', background: '#e5e7eb', color: '#9ca3af',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10,
+                }}>—</div>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#9ca3af' }}>{t.displayId}</div>
+                  <div style={{ fontSize: 10, color: '#d1d5db' }}>{t.gatewayShort}</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 11, color: '#d1d5db' }}>{t.successRate}%</span>
+                <span style={{
+                  fontSize: 10, background: '#fef2f2', color: '#dc2626',
+                  padding: '2px 8px', borderRadius: 10, fontWeight: 500,
+                }}>
+                  {t.ineligibleReason}
+                </span>
               </div>
             </div>
           ))}
         </div>
       )}
 
-      {/* ── GMV Target mode: per-terminal target table ── */}
-      {mode === 'load' && (
-        <>
-          <div className="rw-gmv-per-term-table">
-            {/* Header */}
-            <div className="rw-gmv-tbl-header">
-              <span className="rw-gmv-tbl-col-term">Terminal</span>
-              <span className="rw-gmv-tbl-col-sr">SR / Cost</span>
-              <span className="rw-gmv-tbl-col-target">GMV Target</span>
-              <span className="rw-gmv-tbl-col-traffic">Traffic Required</span>
-            </div>
-
-            {order.map(t => {
-              const isSelected = selectedIds.includes(t.id)
-              const traffic    = requiredTraffic[t.id]
-              const hasTarget  = traffic !== null
-              return (
-                <div key={t.id} className={`rw-gmv-tbl-row${isSelected ? '' : ' unsel'}`}>
-                  <div className="rw-gmv-tbl-col-term">
-                    <input
-                      type="checkbox"
-                      checked={isSelected}
-                      onChange={() => setSelected(p => p.includes(t.id) ? p.filter(x => x !== t.id) : [...p, t.id])}
-                    />
-                    <div>
-                      <div className="rw-term-id">{t.displayId}</div>
-                      <div className="rw-term-gw">{t.gatewayShort}</div>
-                    </div>
-                  </div>
-                  <div className="rw-gmv-tbl-col-sr">
-                    <span className="rw-term-sr" style={{ color: t.successRate >= 90 ? '#059669' : '#d97706' }}>SR {t.successRate}%</span>
-                    <span className="rw-term-cost">{t.costPerTxn === 0 ? <span style={{ color: '#059669' }}>₹0</span> : `₹${t.costPerTxn}`}</span>
-                  </div>
-                  <div className="rw-gmv-tbl-col-target">
-                    {isSelected ? (
-                      <div className="rw-gmv-input-row">
-                        <span className="rw-gmv-rupee">₹</span>
-                        <input
-                          className="rw-gmv-input"
-                          type="number"
-                          placeholder="e.g. 5000000"
-                          value={gmvTargets[t.id] || ''}
-                          onChange={e => setGmvTargets(p => ({ ...p, [t.id]: e.target.value }))}
-                        />
-                      </div>
-                    ) : (
-                      <span className="rw-gmv-tbl-na">—</span>
-                    )}
-                  </div>
-                  <div className="rw-gmv-tbl-col-traffic">
-                    {isSelected && hasTarget ? (
-                      <span className={`rw-gmv-traffic-pct${traffic > 100 ? ' over' : ''}`}>
-                        → {traffic}% traffic
-                      </span>
-                    ) : isSelected ? (
-                      <span className="rw-gmv-traffic-empty">Enter target above</span>
-                    ) : (
-                      <span className="rw-gmv-tbl-na">—</span>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-
-            {/* Total row */}
-            <div className={`rw-gmv-tbl-total${trafficOver ? ' over' : trafficExact ? ' exact' : ''}`}>
-              <span className="rw-gmv-tbl-total-label">Total traffic allocated</span>
-              <span className="rw-gmv-tbl-total-value">{trafficRounded > 0 ? `${trafficRounded}%` : '—'}</span>
-            </div>
-          </div>
-
-          {/* Status message below table */}
-          {trafficRounded > 0 && (
-            <div className={`rw-gmv-traffic-status${trafficOver ? ' warn' : trafficExact ? ' ok' : ' info'}`}>
-              {trafficOver && <>⚠️ Total traffic allocation exceeds 100%. Reduce some terminal targets.</>}
-              {trafficExact && <>✓ Traffic fully allocated across selected terminals.</>}
-              {!trafficOver && !trafficExact && <>ℹ️ Remaining {trafficRemain}% traffic will be distributed to other terminals.</>}
-            </div>
-          )}
-        </>
-      )}
-
-      {mode === 'priority' && selectedTerminals.length > 1 && (
-        <div className="rw-fallback-row">
-          <span className="rw-fallback-lbl">Final fallback:</span>
-          <select className="rw-fallback-sel" value={fallbackId || ''} onChange={e => setFallback(e.target.value)}>
-            {selectedTerminals.map(t => <option key={t.id} value={t.id}>{t.displayId} ({t.gatewayShort})</option>)}
-          </select>
-        </div>
-      )}
-
-      {/* ── COMPASS: Routing Action & Priority ── */}
-      <div className="rw-compass-section" style={{ marginTop: 18, borderTop: '1px solid #e0e0e0', paddingTop: 16 }}>
-        <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
-          <span>Routing Action</span>
-          <span style={{ fontSize: 9, background: '#e3f2fd', color: '#1565c0', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>COMPASS</span>
-        </div>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-          {[
-            { key: 'include', label: '✅ Use this gateway', desc: 'Include in routing pool' },
-            { key: 'prefer',  label: '⭐ Prefer', desc: 'Boost to top priority' },
-            { key: 'exclude', label: '🚫 Avoid', desc: 'Exclude from routing' },
-          ].map(opt => (
-            <button
-              key={opt.key}
-              className={`rw-btn${compassAction === opt.key ? ' primary' : ' ghost'}`}
-              style={{ flex: 1, flexDirection: 'column', padding: '8px 6px', fontSize: 11, lineHeight: 1.4, textAlign: 'center' }}
-              onClick={() => setCompassAction(opt.key)}
-            >
-              <div style={{ fontWeight: 700 }}>{opt.label}</div>
-              <div style={{ fontSize: 9, opacity: 0.7, fontWeight: 400, marginTop: 2 }}>{opt.desc}</div>
-            </button>
-          ))}
-        </div>
-
-        {compassAction === 'include' && (
-          <>
-            <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 6 }}>Priority Level</div>
-            <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
-              {[
-                { key: 'high',   label: '🔴 High',   desc: 'Overrides other rules' },
-                { key: 'normal', label: '🔵 Normal', desc: 'Standard priority' },
-                { key: 'low',    label: '⚪ Low',    desc: 'Fallback only' },
-              ].map(opt => (
-                <button
-                  key={opt.key}
-                  className={`rw-btn${compassPriorityLevel === opt.key ? ' primary' : ' ghost'}`}
-                  style={{ flex: 1, padding: '6px 4px', fontSize: 10, textAlign: 'center' }}
-                  onClick={() => setCompassPriorityLevel(opt.key)}
-                >
-                  <div style={{ fontWeight: 600 }}>{opt.label}</div>
-                  <div style={{ fontSize: 9, opacity: 0.7, fontWeight: 400 }}>{opt.desc}</div>
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-          <span style={{ fontSize: 11, color: '#666' }}>Auto-expire?</span>
+      {/* Expiry — only show when something is avoided */}
+      {avoidedIds.size > 0 && (
+        <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: 12, marginTop: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: '#374151' }}>Auto-expire?</span>
           <input
             type="date"
-            style={{ padding: '4px 8px', border: '1px solid #ddd', borderRadius: 4, fontSize: 11 }}
+            style={{ padding: '4px 8px', border: '1px solid #e5e7eb', borderRadius: 6, fontSize: 11 }}
             value={compassExpiry}
             onChange={e => setCompassExpiry(e.target.value)}
           />
-          <span style={{ fontSize: 10, color: '#999' }}>Leave empty for permanent</span>
+          <span style={{ fontSize: 10, color: '#9ca3af' }}>Avoid rules lifted after this date</span>
         </div>
+      )}
 
-        {/* COMPASS document preview toggle */}
+      {/* COMPASS document preview */}
+      <div style={{ marginTop: 14 }}>
         <button
           className="rw-btn ghost"
-          style={{ fontSize: 10, padding: '4px 10px', marginBottom: 8 }}
+          style={{ fontSize: 10, padding: '4px 10px' }}
           onClick={() => setShowCompassPreview(p => !p)}
         >
-          {showCompassPreview ? '▾ Hide' : '▸ Show'} COMPASS Document
+          {showCompassPreview ? '▾ Hide' : '▸ Show'} COMPASS Documents ({generateCompassDocs().length} docs)
         </button>
         {showCompassPreview && (() => {
-          const previewRule = {
-            conditions: buildConditions(method, filters),
-            action: { type: mode === 'load' ? 'split' : 'route', terminals: selectedTerminals.map(t => t.id), splits: [] },
-            enabled: true, compassAction, compassPriority: compassAction === 'prefer' ? 9000 : compassAction === 'exclude' ? 0 : ({ high: 2000, normal: 1500, low: 1000 })[compassPriorityLevel],
-          }
-          const doc = toCompassDocument(previewRule, merchant, { compassAction, compassPriority: previewRule.compassPriority, expiresAt: compassExpiry || null })
-          const esQ = buildCompassESQuery(merchant.id, doc.namespace)
-          const runtime = buildCompassRuntimeAnnotation(doc)
+          const docs = generateCompassDocs()
+          if (docs.length === 0) return (
+            <div style={{ background: '#1a1a2e', borderRadius: 8, padding: 12, marginTop: 8 }}>
+              <pre style={{ fontFamily: "'SF Mono', 'Fira Code', monospace", fontSize: 10, color: '#818cf8', fontStyle: 'italic' }}>
+                // No COMPASS documents. Pure Doppler ML routing.
+              </pre>
+            </div>
+          )
           return (
-            <div style={{ background: '#1a1a2e', borderRadius: 8, padding: 12, marginBottom: 10, maxHeight: 300, overflowY: 'auto' }}>
+            <div style={{ background: '#1a1a2e', borderRadius: 8, padding: 12, marginTop: 8, maxHeight: 350, overflowY: 'auto' }}>
               <pre style={{ fontFamily: "'SF Mono', 'Fira Code', monospace", fontSize: 10, lineHeight: 1.5, color: '#e0e0e0', whiteSpace: 'pre-wrap' }}>
-                <span style={{ color: '#616161', fontSize: 9, fontWeight: 600, display: 'block', marginBottom: 4 }}>ROUTING_RULES DOCUMENT</span>
-                {JSON.stringify(doc, null, 2)}
-                {'\n\n'}
-                <span style={{ color: '#616161', fontSize: 9, fontWeight: 600, display: 'block', marginBottom: 4 }}>ES QUERY 1 — FETCH RULES</span>
-                {JSON.stringify(esQ, null, 2)}
-                {'\n\n'}
-                <span style={{ color: '#616161', fontSize: 9, fontWeight: 600, display: 'block', marginBottom: 4 }}>RUNTIME — GO PROCESSING</span>
-                {JSON.stringify(runtime, null, 2)}
+                {docs.map((doc, i) => {
+                  const label = doc.action === 'include'
+                    ? `DOC ${i + 1} — PRIORITY (${doc.target.gateway?.toUpperCase()})`
+                    : `DOC ${i + 1} — EXCLUDE (${doc.target.gateway?.toUpperCase()})`
+                  return (
+                    <span key={i}>
+                      <span style={{ color: '#fbbf24', fontSize: 9, fontWeight: 600, display: 'block', marginTop: i > 0 ? 12 : 0, marginBottom: 4 }}>{label}</span>
+                      {JSON.stringify(doc, null, 2)}
+                      {'\n'}
+                    </span>
+                  )
+                })}
+                {activeTerminals.length > 1 && (
+                  <span style={{ color: '#818cf8', fontStyle: 'italic' }}>
+                    {'\n'}// Fallbacks: {activeTerminals.slice(1).map(t => t.displayId).join(', ')}
+                    {'\n'}// No docs needed — Doppler ML manages these.
+                  </span>
+                )}
               </pre>
             </div>
           )
         })()}
       </div>
 
-      <div className="rw-footer" style={{ marginTop: 14 }}>
+      {/* Footer */}
+      <div className="rw-footer" style={{ marginTop: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <button className="rw-btn ghost" onClick={onBack}>← Back</button>
+        <span style={{ fontSize: 11, color: '#6b7280' }}>
+          {generateCompassDocs().length > 0
+            ? `Generates ${generateCompassDocs().length} COMPASS doc${generateCompassDocs().length > 1 ? 's' : ''}`
+            : 'No COMPASS docs — Doppler ML routing'}
+        </span>
         <button
           className="rw-btn primary"
-          disabled={selectedIds.length === 0 || (mode === 'load' && trafficOver)}
+          disabled={activeTerminals.length === 0}
           onClick={handleSave}
         >
           ✓ Save Rule
