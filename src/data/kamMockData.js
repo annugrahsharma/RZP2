@@ -178,7 +178,7 @@ export const merchants = [
   },
   {
     id: 'merch-005',
-    name: 'BigBasket',
+    name: 'Blinkit',
     mid: 'MID_BBK_005',
     category: 'Grocery',
     mcc: '5411',
@@ -2133,7 +2133,7 @@ const SEED_RULES = {
       expiresAt: '2026-06-30T23:59:59Z',
     },
   ],
-  // BigBasket — standard, 2 terminals
+  // Blinkit — standard, 2 terminals
   'merch-005': [
     {
       id: 'rule-merch-005-001', name: 'UPI → RBL', type: 'conditional', enabled: true, priority: 1,
