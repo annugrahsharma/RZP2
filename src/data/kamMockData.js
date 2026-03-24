@@ -2705,7 +2705,7 @@ export function traceNTFRuleChain(transaction, rules, merchant) {
         ruleName: rule.name,
         ruleType: rule.type === 'volume_split' ? 'Volume Split' : 'Conditional',
         conditions: formatRuleConditions(rule),
-        description: 'Conditions did not match — rule skipped',
+        description: 'Go: matchesPaymentContext() → false — rule skipped',
         terminalsRemaining: remaining.map(t => ({ ...t, status: 'passed' })),
         terminalsEliminated: [],
       })
@@ -2940,8 +2940,8 @@ export function simulateRoutingPipeline(merchant, transaction, rules, overrides 
     id: 'pool',
     stepNumber: 0,
     type: 'initial',
-    label: 'Terminal Pool',
-    description: `${eligible.length} of ${allTerminals.length} terminals eligible for ${paymentMethod}`,
+    label: 'ES Query 1: Terminal Pool',
+    description: `${eligible.length} of ${allTerminals.length} terminals eligible for ${paymentMethod} (COMPASS: fetch from terminal index)`,
     terminalsRemaining: eligible.map(t => ({ ...t, status: 'eligible' })),
     terminalsEliminated: eliminatedInPool,
     totalCount: allTerminals.length,
@@ -2998,7 +2998,7 @@ export function simulateRoutingPipeline(merchant, transaction, rules, overrides 
         ruleName: rule.name,
         ruleType: rule.type === 'volume_split' ? 'Volume Split' : 'Conditional',
         conditions: formatRuleConditions(rule),
-        description: 'Conditions did not match — rule skipped',
+        description: 'Go: matchesPaymentContext() → false — rule skipped',
         terminalsRemaining: remaining.map(t => ({ ...t, status: 'passed' })),
         terminalsEliminated: [],
         remainingCount: remaining.length,
@@ -3186,8 +3186,8 @@ export function simulateRoutingPipeline(merchant, transaction, rules, overrides 
     id: 'sorter',
     stepNumber: stepNum++,
     type: 'sorter',
-    label: `Sorter: ${routingStrategy === 'cost_based' ? 'Cost-Optimized' : 'SR-Optimized'}`,
-    description: `${scored.length} terminal(s) scored and ranked. ${routingStrategy === 'cost_based' ? 'Lowest cost prioritized.' : 'Highest success rate prioritized.'}`,
+    label: `Priority Sort + Doppler Re-rank`,
+    description: `${scored.length} terminal(s) scored via ${routingStrategy === 'cost_based' ? 'cost optimization' : 'SR optimization'} + Doppler ML weights. (COMPASS: ES Q2 results ranked)`,
     strategy: routingStrategy,
     scored: scored.map((t, rank) => ({
       ...t,
@@ -4199,4 +4199,201 @@ export function generateMethodExplainer(methodKey, platformRules, merchantRules,
   }
 
   return { scenarios, platformConstraints, warnings, ruleCount: platformRules.length + sortedMerchantRules.length + (methodDefault ? 1 : 0) }
+}
+
+
+// ═══════════════════════════════════════════════════════════════
+// COMPASS INTEGRATION LAYER
+// ═══════════════════════════════════════════════════════════════
+
+/** KAM condition field names → COMPASS condition keys */
+const KAM_TO_COMPASS_FIELD = {
+  card_network: 'network', issuer_bank: 'bank', card_type: 'card_type',
+  international: 'international', payment_method: 'method',
+  upi_type: 'upi_flow', upi_flow: 'upi_flow', upi_subtype: 'recurring',
+  recurring_type: 'recurring_type', vpa_handle: 'vpa_handle',
+  emi_tenure: 'emi_tenure', subvention_type: 'subvention_type',
+  amount: 'amount', tokenization: 'tokenization', card_subtype: 'card_sub_type',
+  mandate_frequency: 'mandate_frequency',
+}
+
+const COMPASS_TO_KAM_FIELD = Object.fromEntries(
+  Object.entries(KAM_TO_COMPASS_FIELD).map(([k, v]) => [v, k])
+)
+
+function compassMethodKey(method) {
+  const map = { Cards: 'card', UPIOnetime: 'upi', UPIRecurring: 'upi', UPI: 'upi', Netbanking: 'netbanking', NB: 'netbanking', EMI: 'emi' }
+  return map[method] || (method || '').toLowerCase()
+}
+
+function kamMethodFromCompass(compassMethod, conditions) {
+  if (compassMethod === 'upi' && conditions?.recurring === 'true') return 'UPIRecurring'
+  const map = { card: 'Cards', upi: 'UPI', netbanking: 'Netbanking', emi: 'EMI' }
+  return map[compassMethod] || compassMethod
+}
+
+/**
+ * Convert a KAM rule → COMPASS routing_rules ES document.
+ * Call on rule save to generate POST /v1/routing_rules payload.
+ */
+export function toCompassDocument(kamRule, merchant, options = {}) {
+  const compassAction = options.compassAction || kamRule.compassAction || 'include'
+
+  // Namespace: terminal_override if single-terminal exclude/prefer
+  const isTO = (compassAction === 'exclude' || compassAction === 'prefer')
+    && kamRule.action?.terminals?.length === 1 && kamRule.action?.type === 'route'
+  const namespace = isTO ? 'terminal_override' : 'merchant_routing'
+
+  // Scope
+  const scope_merchant_id = merchant?.id || 'unknown'
+  const scope = { merchant_id: scope_merchant_id }
+
+  // Target
+  let target = {}
+  if (namespace === 'terminal_override') {
+    target = { terminal_id: kamRule.action.terminals[0] }
+  } else {
+    const firstTid = kamRule.action?.terminals?.[0]
+    let gwId = '', gwAcq = ''
+    if (firstTid) {
+      for (const gw of gateways) {
+        if (gw.terminals?.find(t => t.id === firstTid)) {
+          gwId = gw.shortName?.toLowerCase() || gw.id.replace('gw-', '')
+          gwAcq = gw.acquirer || ''
+          break
+        }
+      }
+    }
+    const methodCond = kamRule.conditions?.find(c => c.field === 'payment_method')
+    target = { gateway: gwId, gateway_acquirer: gwAcq, method: compassMethodKey(methodCond?.value || '') }
+  }
+
+  // Flatten conditions
+  const conditions = {}
+  for (const c of (kamRule.conditions || [])) {
+    if (c.field === 'payment_method') continue
+    const key = KAM_TO_COMPASS_FIELD[c.field] || c.field
+    const v = c.value
+    if (Array.isArray(v))             conditions[key] = v.join(',')
+    else if (typeof v === 'boolean')  conditions[key] = String(v)
+    else if (v != null && v !== '')   conditions[key] = String(v)
+  }
+
+  // Priority
+  const compassPriority = options.compassPriority || kamRule.compassPriority
+    || mapKamPriorityToCompass(kamRule.priority, compassAction)
+
+  return {
+    namespace, scope_merchant_id, scope, target,
+    action: compassAction, priority: compassPriority,
+    conditions: Object.keys(conditions).length > 0 ? conditions : null,
+    enabled: kamRule.enabled !== false,
+    expires_at: options.expiresAt || kamRule.expiresAt || null,
+  }
+}
+
+function mapKamPriorityToCompass(kamPri, action) {
+  if (action === 'exclude') return 0
+  if (action === 'prefer')  return 9000
+  if (typeof kamPri === 'number' && kamPri < 100) return Math.max(1000, 2000 - (kamPri - 1) * 200)
+  if (kamPri >= 900) return 800
+  return 1500
+}
+
+/**
+ * Convert a COMPASS routing_rules document → KAM rule object.
+ */
+export function fromCompassDocument(compassDoc, merchant) {
+  const ns = compassDoc.namespace
+  const conds = compassDoc.conditions || {}
+  const compassMethod = ns === 'terminal_override' ? (conds.method || '') : (compassDoc.target?.method || '')
+  const kamMethod = kamMethodFromCompass(compassMethod, conds)
+
+  const conditions = []
+  if (compassMethod) conditions.push({ field: 'payment_method', operator: 'equals', value: kamMethod })
+  for (const [ck, val] of Object.entries(conds)) {
+    if (ck === 'method') continue
+    const kamField = COMPASS_TO_KAM_FIELD[ck] || ck
+    const parsed = val.includes(',') ? val.split(',') : val
+    conditions.push({ field: kamField, operator: Array.isArray(parsed) ? 'in' : 'equals', value: parsed })
+  }
+
+  let terminals = []
+  if (ns === 'terminal_override') {
+    terminals = [compassDoc.target.terminal_id]
+  } else {
+    const gwKey = compassDoc.target?.gateway
+    if (gwKey && merchant?.gatewayMetrics) {
+      const matchGw = gateways.find(g => g.shortName?.toLowerCase() === gwKey || g.id.replace('gw-', '') === gwKey)
+      if (matchGw) terminals = merchant.gatewayMetrics.filter(gm => gm.gatewayId === matchGw.id).map(gm => gm.terminalId)
+    }
+  }
+
+  const al = compassDoc.action === 'include' ? '→' : compassDoc.action === 'prefer' ? '⭐→' : '🚫'
+  const tl = ns === 'terminal_override' ? `Terminal ${(compassDoc.target.terminal_id || '').substring(0, 8)}…` : compassDoc.target?.gateway || 'Unknown'
+
+  return {
+    id: compassDoc.id || `compass-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
+    name: `${kamMethod} ${al} ${tl}`,
+    type: 'conditional', enabled: compassDoc.enabled !== false,
+    priority: mapCompassPriorityToKam(compassDoc.priority),
+    conditions, conditionLogic: 'AND',
+    action: { type: 'route', terminals, splits: [], srThreshold: 90, fallbackTerminal: null },
+    isDefault: false, isMethodDefault: false,
+    createdAt: new Date().toISOString(), createdBy: 'compass-import',
+    _compassDoc: compassDoc, _compassId: compassDoc.id || null, _compassNamespace: compassDoc.namespace,
+    compassAction: compassDoc.action, compassPriority: compassDoc.priority, expiresAt: compassDoc.expires_at,
+  }
+}
+
+function mapCompassPriorityToKam(cp) {
+  if (cp >= 9000) return 1; if (cp >= 2000) return 1; if (cp >= 1500) return 2
+  if (cp >= 1000) return 3; if (cp >= 800)  return 900; return 5
+}
+
+/** Build ES query for fetching merchant's COMPASS rules (preview panel). */
+export function buildCompassESQuery(merchantId, namespace = 'merchant_routing') {
+  return {
+    query: { bool: { filter: [
+      { terms: { namespace: [namespace] } },
+      { terms: { scope_merchant_id: [merchantId, 'DEFAULT', '*'] } },
+      { term: { enabled: true } },
+    ]}},
+    sort: [{ priority: { order: 'desc' } }],
+    size: 200,
+  }
+}
+
+/** Build runtime Go processing annotation for preview. */
+export function buildCompassRuntimeAnnotation(compassDoc) {
+  const ns = compassDoc.namespace
+  if (ns === 'merchant_routing') {
+    const { gateway: gw = '', gateway_acquirer: acq = '', method = '' } = compassDoc.target || {}
+    return {
+      step: 'Go: matchesPaymentContext() → priorityMap',
+      priorityMap_key: `${gw}:${acq}:${method}`, priorityMap_value: compassDoc.priority,
+      payment_conditions_gate: compassDoc.conditions || {},
+      result: `priorityMap["${gw}:${acq}:${method}"] = ${compassDoc.priority}`,
+    }
+  }
+  if (ns === 'terminal_override') {
+    const tid = compassDoc.target?.terminal_id || '<terminal_id>'
+    return {
+      step: 'Go: matchesPaymentContext() → excluded[] or preferred[]',
+      terminal_id: tid, action: compassDoc.action,
+      result: compassDoc.action === 'exclude'
+        ? `excluded.append("${tid}") → ES Q2 must_not` : `preferred.append("${tid}") → ES Q2 should.boost(9999)`,
+    }
+  }
+  if (ns === 'raas_provider') return { step: 'Post-terminal-selection — RaaS optimizer', provider_id: compassDoc.target?.provider_id, action: compassDoc.action }
+  if (ns === 'fraud_terminal_block') return { step: 'Go: matchesPaymentContext() → excluded[]', target: compassDoc.target, result: 'excluded → ES Q2 must_not' }
+  return { step: 'Unknown namespace', namespace: ns }
+}
+
+/** COMPASS namespace definitions */
+export const COMPASS_NAMESPACES = {
+  merchant_routing:     { label: 'Gateway Routing',  description: 'Route payment methods to gateways', actions: ['include'], kamVisible: true },
+  terminal_override:    { label: 'Terminal Override', description: 'Override routing for specific terminals', actions: ['exclude', 'prefer', 'pin'], kamVisible: true },
+  raas_provider:        { label: 'RaaS Provider',    description: 'Score RaaS providers', actions: ['include', 'exclude', 'score'], kamVisible: false },
+  fraud_terminal_block: { label: 'Fraud Block',      description: 'Risk team terminal blocks', actions: ['exclude'], kamVisible: false },
 }

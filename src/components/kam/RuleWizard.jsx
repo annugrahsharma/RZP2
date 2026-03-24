@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback } from 'react'
-import { gateways, simulateRoutingPipeline } from '../../data/kamMockData'
+import { gateways, simulateRoutingPipeline, toCompassDocument, buildCompassESQuery, buildCompassRuntimeAnnotation } from '../../data/kamMockData'
 
 // ════════════════════════════════════════════
 // DATA CONSTANTS
@@ -801,6 +801,12 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack, onClo
   const monthlyTxns = merchant?.txnVolumeHistory?.currentMonth || 30000
   const avgTxnValue = 850 // ₹850 default avg order value
 
+  // COMPASS action & priority state
+  const [compassAction, setCompassAction] = useState('include')  // include | prefer | exclude
+  const [compassPriorityLevel, setCompassPriorityLevel] = useState('normal') // high | normal | low
+  const [compassExpiry, setCompassExpiry] = useState('')
+  const [showCompassPreview, setShowCompassPreview] = useState(false)
+
   const [mode, setMode]            = useState('priority')
   const [order, setOrder]          = useState(() => [...allTerminals].sort((a, b) => b.successRate - a.successRate))
   const [selectedIds, setSelected] = useState(() => allTerminals.map(t => t.id))
@@ -854,6 +860,13 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack, onClo
     const splits = mode === 'load'
       ? selectedTerminals.map(t => ({ terminalId: t.id, percentage: Math.min(Math.round(requiredTraffic[t.id] ?? 0), 100) }))
       : []
+
+    // Map COMPASS priority level → numeric
+    const compassPriorityMap = { high: 2000, normal: 1500, low: 1000 }
+    const compassPri = compassAction === 'prefer' ? 9000
+      : compassAction === 'exclude' ? 0
+      : compassPriorityMap[compassPriorityLevel] || 1500
+
     const rule = {
       id: `rule-${merchant.id}-rw-${Date.now()}`,
       name: buildRuleName(method, filters, selectedTerminals),
@@ -871,7 +884,21 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack, onClo
       isDefault: false,
       createdAt: new Date().toISOString(),
       createdBy: 'anugrah.sharma@razorpay.com',
+      // ── COMPASS fields ──
+      compassAction,
+      compassPriority: compassPri,
+      expiresAt: compassExpiry || null,
     }
+
+    // Generate COMPASS document alongside the rule
+    const compassDoc = toCompassDocument(rule, merchant, {
+      compassAction,
+      compassPriority: compassPri,
+      expiresAt: compassExpiry || null,
+    })
+    rule._compassDoc = compassDoc
+    rule._compassNamespace = compassDoc.namespace
+
     addRule?.(rule)
     setSaved(rule)
   }
@@ -1042,6 +1069,98 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack, onClo
           </select>
         </div>
       )}
+
+      {/* ── COMPASS: Routing Action & Priority ── */}
+      <div className="rw-compass-section" style={{ marginTop: 18, borderTop: '1px solid #e0e0e0', paddingTop: 16 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 10, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span>Routing Action</span>
+          <span style={{ fontSize: 9, background: '#e3f2fd', color: '#1565c0', padding: '1px 6px', borderRadius: 4, fontWeight: 600 }}>COMPASS</span>
+        </div>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
+          {[
+            { key: 'include', label: '✅ Use this gateway', desc: 'Include in routing pool' },
+            { key: 'prefer',  label: '⭐ Prefer', desc: 'Boost to top priority' },
+            { key: 'exclude', label: '🚫 Avoid', desc: 'Exclude from routing' },
+          ].map(opt => (
+            <button
+              key={opt.key}
+              className={`rw-btn${compassAction === opt.key ? ' primary' : ' ghost'}`}
+              style={{ flex: 1, flexDirection: 'column', padding: '8px 6px', fontSize: 11, lineHeight: 1.4, textAlign: 'center' }}
+              onClick={() => setCompassAction(opt.key)}
+            >
+              <div style={{ fontWeight: 700 }}>{opt.label}</div>
+              <div style={{ fontSize: 9, opacity: 0.7, fontWeight: 400, marginTop: 2 }}>{opt.desc}</div>
+            </button>
+          ))}
+        </div>
+
+        {compassAction === 'include' && (
+          <>
+            <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 6 }}>Priority Level</div>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+              {[
+                { key: 'high',   label: '🔴 High',   desc: 'Overrides other rules' },
+                { key: 'normal', label: '🔵 Normal', desc: 'Standard priority' },
+                { key: 'low',    label: '⚪ Low',    desc: 'Fallback only' },
+              ].map(opt => (
+                <button
+                  key={opt.key}
+                  className={`rw-btn${compassPriorityLevel === opt.key ? ' primary' : ' ghost'}`}
+                  style={{ flex: 1, padding: '6px 4px', fontSize: 10, textAlign: 'center' }}
+                  onClick={() => setCompassPriorityLevel(opt.key)}
+                >
+                  <div style={{ fontWeight: 600 }}>{opt.label}</div>
+                  <div style={{ fontSize: 9, opacity: 0.7, fontWeight: 400 }}>{opt.desc}</div>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <span style={{ fontSize: 11, color: '#666' }}>Auto-expire?</span>
+          <input
+            type="date"
+            style={{ padding: '4px 8px', border: '1px solid #ddd', borderRadius: 4, fontSize: 11 }}
+            value={compassExpiry}
+            onChange={e => setCompassExpiry(e.target.value)}
+          />
+          <span style={{ fontSize: 10, color: '#999' }}>Leave empty for permanent</span>
+        </div>
+
+        {/* COMPASS document preview toggle */}
+        <button
+          className="rw-btn ghost"
+          style={{ fontSize: 10, padding: '4px 10px', marginBottom: 8 }}
+          onClick={() => setShowCompassPreview(p => !p)}
+        >
+          {showCompassPreview ? '▾ Hide' : '▸ Show'} COMPASS Document
+        </button>
+        {showCompassPreview && (() => {
+          const previewRule = {
+            conditions: buildConditions(method, filters),
+            action: { type: mode === 'load' ? 'split' : 'route', terminals: selectedTerminals.map(t => t.id), splits: [] },
+            enabled: true, compassAction, compassPriority: compassAction === 'prefer' ? 9000 : compassAction === 'exclude' ? 0 : ({ high: 2000, normal: 1500, low: 1000 })[compassPriorityLevel],
+          }
+          const doc = toCompassDocument(previewRule, merchant, { compassAction, compassPriority: previewRule.compassPriority, expiresAt: compassExpiry || null })
+          const esQ = buildCompassESQuery(merchant.id, doc.namespace)
+          const runtime = buildCompassRuntimeAnnotation(doc)
+          return (
+            <div style={{ background: '#1a1a2e', borderRadius: 8, padding: 12, marginBottom: 10, maxHeight: 300, overflowY: 'auto' }}>
+              <pre style={{ fontFamily: "'SF Mono', 'Fira Code', monospace", fontSize: 10, lineHeight: 1.5, color: '#e0e0e0', whiteSpace: 'pre-wrap' }}>
+                <span style={{ color: '#616161', fontSize: 9, fontWeight: 600, display: 'block', marginBottom: 4 }}>ROUTING_RULES DOCUMENT</span>
+                {JSON.stringify(doc, null, 2)}
+                {'\n\n'}
+                <span style={{ color: '#616161', fontSize: 9, fontWeight: 600, display: 'block', marginBottom: 4 }}>ES QUERY 1 — FETCH RULES</span>
+                {JSON.stringify(esQ, null, 2)}
+                {'\n\n'}
+                <span style={{ color: '#616161', fontSize: 9, fontWeight: 600, display: 'block', marginBottom: 4 }}>RUNTIME — GO PROCESSING</span>
+                {JSON.stringify(runtime, null, 2)}
+              </pre>
+            </div>
+          )
+        })()}
+      </div>
 
       <div className="rw-footer" style={{ marginTop: 14 }}>
         <button className="rw-btn ghost" onClick={onBack}>← Back</button>
