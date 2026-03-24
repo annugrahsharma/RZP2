@@ -432,14 +432,25 @@ export function KAMProvider({ children }) {
           // Assign priority: one before default (999)
           const nonDefault = existingRules.filter((r) => !r.isDefault && !r.isMethodDefault)
           const newPriority = nonDefault.length + 1
-          const newRule = { ...rule, priority: newPriority }
+          const newRule = {
+            ...rule,
+            priority: newPriority,
+            // Preserve COMPASS fields if present
+            _compassDoc: rule._compassDoc || null,
+            _compassId: rule._compassId || null,
+            _compassNamespace: rule._compassNamespace || null,
+            compassAction: rule.compassAction || 'include',
+            compassPriority: rule.compassPriority || 1500,
+            expiresAt: rule.expiresAt || null,
+          }
           return { ...m, routingRulesV2: [...existingRules, newRule] }
         })
       )
       const merchant = merchants.find((m) => m.id === merchantId)
+      const compassInfo = rule._compassNamespace ? ` [COMPASS: ${rule._compassNamespace}/${rule.compassAction}]` : ''
       addAuditEntry(
-        `Added routing rule "${rule.name}" for ${merchant?.name || merchantId}`,
-        `Type: ${rule.type === 'volume_split' ? 'Volume Split' : 'Conditional'}`,
+        `Added routing rule "${rule.name}" for ${merchant?.name || merchantId}${compassInfo}`,
+        `Type: ${rule.type === 'volume_split' ? 'Volume Split' : 'Conditional'}${rule._compassDoc ? ' · COMPASS document generated' : ''}`,
         merchantId
       )
       showToast(`Rule "${rule.name}" added`)

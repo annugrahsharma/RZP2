@@ -35,6 +35,10 @@ import {
   gateways as gatewayData,
   getPlatformRulesForMerchant,
   generateMethodExplainer,
+  toCompassDocument,
+  buildCompassESQuery,
+  buildCompassRuntimeAnnotation,
+  COMPASS_NAMESPACES,
 } from '../../data/kamMockData'
 import RoutingCopilot from './RoutingCopilot'
 import '../../styles/routing-copilot.css'
@@ -2382,13 +2386,29 @@ export default function KAMMerchantDetail() {
               {/* High impact rules */}
               <div className="kam-routing-health-section">
                 <h4>Most Active Rules</h4>
-                {routingHealthData.highImpactRules.map(r => (
-                  <div key={r.ruleId} className="kam-routing-health-rule-row">
-                    <span className="kam-routing-health-rule-name">{r.ruleName}</span>
-                    <span>{r.affectedPayments} txns affected</span>
-                    <span>{r.eliminatedTerminals} terminals eliminated</span>
-                  </div>
-                ))}
+                {routingHealthData.highImpactRules.map(r => {
+                  const fullRule = (merchant.routingRulesV2 || []).find(rr => rr.id === r.ruleId)
+                  const hasCompass = fullRule?._compassDoc
+                  return (
+                    <div key={r.ruleId} className="kam-routing-health-rule-row" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span className="kam-routing-health-rule-name">{r.ruleName}</span>
+                        {hasCompass && <span style={{ fontSize: 8, background: '#e3f2fd', color: '#1565c0', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }}>COMPASS</span>}
+                        {fullRule?.compassAction && fullRule.compassAction !== 'include' && (
+                          <span style={{ fontSize: 8, background: fullRule.compassAction === 'exclude' ? '#ffebee' : '#e8f5e9', color: fullRule.compassAction === 'exclude' ? '#c62828' : '#2e7d32', padding: '1px 5px', borderRadius: 3, fontWeight: 700 }}>{fullRule.compassAction.toUpperCase()}</span>
+                        )}
+                        <span>{r.affectedPayments} txns</span>
+                        <span>{r.eliminatedTerminals} terminals eliminated</span>
+                      </div>
+                      {hasCompass && (
+                        <details style={{ marginTop: 4 }}>
+                          <summary style={{ fontSize: 10, color: '#666', cursor: 'pointer' }}>View COMPASS document</summary>
+                          <pre style={{ fontSize: 9, background: '#1a1a2e', color: '#e0e0e0', padding: 8, borderRadius: 6, marginTop: 4, overflowX: 'auto', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{JSON.stringify(fullRule._compassDoc, null, 2)}</pre>
+                        </details>
+                      )}
+                    </div>
+                  )
+                })}
                 {routingHealthData.highImpactRules.length === 0 && (
                   <div className="kam-routing-health-empty">No rules matched any transactions.</div>
                 )}
