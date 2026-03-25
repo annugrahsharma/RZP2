@@ -1,1985 +1,1985 @@
-import React from "react";
-// Line 1
-// Line 2
-// Line 3
-// Line 4
-// Line 5
-// Line 6
-// Line 7
-// Line 8
-// Line 9
-// Line 10
-// Line 11
-// Line 12
-// Line 13
-// Line 14
-// Line 15
-// Line 16
-// Line 17
-// Line 18
-// Line 19
-// Line 20
-// Line 21
-// Line 22
-// Line 23
-// Line 24
-// Line 25
-// Line 26
-// Line 27
-// Line 28
-// Line 29
-// Line 30
-// Line 31
-// Line 32
-// Line 33
-// Line 34
-// Line 35
-// Line 36
-// Line 37
-// Line 38
-// Line 39
-// Line 40
-// Line 41
-// Line 42
-// Line 43
-// Line 44
-// Line 45
-// Line 46
-// Line 47
-// Line 48
-// Line 49
-// Line 50
-// Line 51
-// Line 52
-// Line 53
-// Line 54
-// Line 55
-// Line 56
-// Line 57
-// Line 58
-// Line 59
-// Line 60
-// Line 61
-// Line 62
-// Line 63
-// Line 64
-// Line 65
-// Line 66
-// Line 67
-// Line 68
-// Line 69
-// Line 70
-// Line 71
-// Line 72
-// Line 73
-// Line 74
-// Line 75
-// Line 76
-// Line 77
-// Line 78
-// Line 79
-// Line 80
-// Line 81
-// Line 82
-// Line 83
-// Line 84
-// Line 85
-// Line 86
-// Line 87
-// Line 88
-// Line 89
-// Line 90
-// Line 91
-// Line 92
-// Line 93
-// Line 94
-// Line 95
-// Line 96
-// Line 97
-// Line 98
-// Line 99
-// Line 100
-// Line 101
-// Line 102
-// Line 103
-// Line 104
-// Line 105
-// Line 106
-// Line 107
-// Line 108
-// Line 109
-// Line 110
-// Line 111
-// Line 112
-// Line 113
-// Line 114
-// Line 115
-// Line 116
-// Line 117
-// Line 118
-// Line 119
-// Line 120
-// Line 121
-// Line 122
-// Line 123
-// Line 124
-// Line 125
-// Line 126
-// Line 127
-// Line 128
-// Line 129
-// Line 130
-// Line 131
-// Line 132
-// Line 133
-// Line 134
-// Line 135
-// Line 136
-// Line 137
-// Line 138
-// Line 139
-// Line 140
-// Line 141
-// Line 142
-// Line 143
-// Line 144
-// Line 145
-// Line 146
-// Line 147
-// Line 148
-// Line 149
-// Line 150
-// Line 151
-// Line 152
-// Line 153
-// Line 154
-// Line 155
-// Line 156
-// Line 157
-// Line 158
-// Line 159
-// Line 160
-// Line 161
-// Line 162
-// Line 163
-// Line 164
-// Line 165
-// Line 166
-// Line 167
-// Line 168
-// Line 169
-// Line 170
-// Line 171
-// Line 172
-// Line 173
-// Line 174
-// Line 175
-// Line 176
-// Line 177
-// Line 178
-// Line 179
-// Line 180
-// Line 181
-// Line 182
-// Line 183
-// Line 184
-// Line 185
-// Line 186
-// Line 187
-// Line 188
-// Line 189
-// Line 190
-// Line 191
-// Line 192
-// Line 193
-// Line 194
-// Line 195
-// Line 196
-// Line 197
-// Line 198
-// Line 199
-// Line 200
-// Line 201
-// Line 202
-// Line 203
-// Line 204
-// Line 205
-// Line 206
-// Line 207
-// Line 208
-// Line 209
-// Line 210
-// Line 211
-// Line 212
-// Line 213
-// Line 214
-// Line 215
-// Line 216
-// Line 217
-// Line 218
-// Line 219
-// Line 220
-// Line 221
-// Line 222
-// Line 223
-// Line 224
-// Line 225
-// Line 226
-// Line 227
-// Line 228
-// Line 229
-// Line 230
-// Line 231
-// Line 232
-// Line 233
-// Line 234
-// Line 235
-// Line 236
-// Line 237
-// Line 238
-// Line 239
-// Line 240
-// Line 241
-// Line 242
-// Line 243
-// Line 244
-// Line 245
-// Line 246
-// Line 247
-// Line 248
-// Line 249
-// Line 250
-// Line 251
-// Line 252
-// Line 253
-// Line 254
-// Line 255
-// Line 256
-// Line 257
-// Line 258
-// Line 259
-// Line 260
-// Line 261
-// Line 262
-// Line 263
-// Line 264
-// Line 265
-// Line 266
-// Line 267
-// Line 268
-// Line 269
-// Line 270
-// Line 271
-// Line 272
-// Line 273
-// Line 274
-// Line 275
-// Line 276
-// Line 277
-// Line 278
-// Line 279
-// Line 280
-// Line 281
-// Line 282
-// Line 283
-// Line 284
-// Line 285
-// Line 286
-// Line 287
-// Line 288
-// Line 289
-// Line 290
-// Line 291
-// Line 292
-// Line 293
-// Line 294
-// Line 295
-// Line 296
-// Line 297
-// Line 298
-// Line 299
-// Line 300
-// Line 301
-// Line 302
-// Line 303
-// Line 304
-// Line 305
-// Line 306
-// Line 307
-// Line 308
-// Line 309
-// Line 310
-// Line 311
-// Line 312
-// Line 313
-// Line 314
-// Line 315
-// Line 316
-// Line 317
-// Line 318
-// Line 319
-// Line 320
-// Line 321
-// Line 322
-// Line 323
-// Line 324
-// Line 325
-// Line 326
-// Line 327
-// Line 328
-// Line 329
-// Line 330
-// Line 331
-// Line 332
-// Line 333
-// Line 334
-// Line 335
-// Line 336
-// Line 337
-// Line 338
-// Line 339
-// Line 340
-// Line 341
-// Line 342
-// Line 343
-// Line 344
-// Line 345
-// Line 346
-// Line 347
-// Line 348
-// Line 349
-// Line 350
-// Line 351
-// Line 352
-// Line 353
-// Line 354
-// Line 355
-// Line 356
-// Line 357
-// Line 358
-// Line 359
-// Line 360
-// Line 361
-// Line 362
-// Line 363
-// Line 364
-// Line 365
-// Line 366
-// Line 367
-// Line 368
-// Line 369
-// Line 370
-// Line 371
-// Line 372
-// Line 373
-// Line 374
-// Line 375
-// Line 376
-// Line 377
-// Line 378
-// Line 379
-// Line 380
-// Line 381
-// Line 382
-// Line 383
-// Line 384
-// Line 385
-// Line 386
-// Line 387
-// Line 388
-// Line 389
-// Line 390
-// Line 391
-// Line 392
-// Line 393
-// Line 394
-// Line 395
-// Line 396
-// Line 397
-// Line 398
-// Line 399
-// Line 400
-// Line 401
-// Line 402
-// Line 403
-// Line 404
-// Line 405
-// Line 406
-// Line 407
-// Line 408
-// Line 409
-// Line 410
-// Line 411
-// Line 412
-// Line 413
-// Line 414
-// Line 415
-// Line 416
-// Line 417
-// Line 418
-// Line 419
-// Line 420
-// Line 421
-// Line 422
-// Line 423
-// Line 424
-// Line 425
-// Line 426
-// Line 427
-// Line 428
-// Line 429
-// Line 430
-// Line 431
-// Line 432
-// Line 433
-// Line 434
-// Line 435
-// Line 436
-// Line 437
-// Line 438
-// Line 439
-// Line 440
-// Line 441
-// Line 442
-// Line 443
-// Line 444
-// Line 445
-// Line 446
-// Line 447
-// Line 448
-// Line 449
-// Line 450
-// Line 451
-// Line 452
-// Line 453
-// Line 454
-// Line 455
-// Line 456
-// Line 457
-// Line 458
-// Line 459
-// Line 460
-// Line 461
-// Line 462
-// Line 463
-// Line 464
-// Line 465
-// Line 466
-// Line 467
-// Line 468
-// Line 469
-// Line 470
-// Line 471
-// Line 472
-// Line 473
-// Line 474
-// Line 475
-// Line 476
-// Line 477
-// Line 478
-// Line 479
-// Line 480
-// Line 481
-// Line 482
-// Line 483
-// Line 484
-// Line 485
-// Line 486
-// Line 487
-// Line 488
-// Line 489
-// Line 490
-// Line 491
-// Line 492
-// Line 493
-// Line 494
-// Line 495
-// Line 496
-// Line 497
-// Line 498
-// Line 499
-// Line 500
-// Line 501
-// Line 502
-// Line 503
-// Line 504
-// Line 505
-// Line 506
-// Line 507
-// Line 508
-// Line 509
-// Line 510
-// Line 511
-// Line 512
-// Line 513
-// Line 514
-// Line 515
-// Line 516
-// Line 517
-// Line 518
-// Line 519
-// Line 520
-// Line 521
-// Line 522
-// Line 523
-// Line 524
-// Line 525
-// Line 526
-// Line 527
-// Line 528
-// Line 529
-// Line 530
-// Line 531
-// Line 532
-// Line 533
-// Line 534
-// Line 535
-// Line 536
-// Line 537
-// Line 538
-// Line 539
-// Line 540
-// Line 541
-// Line 542
-// Line 543
-// Line 544
-// Line 545
-// Line 546
-// Line 547
-// Line 548
-// Line 549
-// Line 550
-// Line 551
-// Line 552
-// Line 553
-// Line 554
-// Line 555
-// Line 556
-// Line 557
-// Line 558
-// Line 559
-// Line 560
-// Line 561
-// Line 562
-// Line 563
-// Line 564
-// Line 565
-// Line 566
-// Line 567
-// Line 568
-// Line 569
-// Line 570
-// Line 571
-// Line 572
-// Line 573
-// Line 574
-// Line 575
-// Line 576
-// Line 577
-// Line 578
-// Line 579
-// Line 580
-// Line 581
-// Line 582
-// Line 583
-// Line 584
-// Line 585
-// Line 586
-// Line 587
-// Line 588
-// Line 589
-// Line 590
-// Line 591
-// Line 592
-// Line 593
-// Line 594
-// Line 595
-// Line 596
-// Line 597
-// Line 598
-// Line 599
-// Line 600
-// Line 601
-// Line 602
-// Line 603
-// Line 604
-// Line 605
-// Line 606
-// Line 607
-// Line 608
-// Line 609
-// Line 610
-// Line 611
-// Line 612
-// Line 613
-// Line 614
-// Line 615
-// Line 616
-// Line 617
-// Line 618
-// Line 619
-// Line 620
-// Line 621
-// Line 622
-// Line 623
-// Line 624
-// Line 625
-// Line 626
-// Line 627
-// Line 628
-// Line 629
-// Line 630
-// Line 631
-// Line 632
-// Line 633
-// Line 634
-// Line 635
-// Line 636
-// Line 637
-// Line 638
-// Line 639
-// Line 640
-// Line 641
-// Line 642
-// Line 643
-// Line 644
-// Line 645
-// Line 646
-// Line 647
-// Line 648
-// Line 649
-// Line 650
-// Line 651
-// Line 652
-// Line 653
-// Line 654
-// Line 655
-// Line 656
-// Line 657
-// Line 658
-// Line 659
-// Line 660
-// Line 661
-// Line 662
-// Line 663
-// Line 664
-// Line 665
-// Line 666
-// Line 667
-// Line 668
-// Line 669
-// Line 670
-// Line 671
-// Line 672
-// Line 673
-// Line 674
-// Line 675
-// Line 676
-// Line 677
-// Line 678
-// Line 679
-// Line 680
-// Line 681
-// Line 682
-// Line 683
-// Line 684
-// Line 685
-// Line 686
-// Line 687
-// Line 688
-// Line 689
-// Line 690
-// Line 691
-// Line 692
-// Line 693
-// Line 694
-// Line 695
-// Line 696
-// Line 697
-// Line 698
-// Line 699
-// Line 700
-// Line 701
-// Line 702
-// Line 703
-// Line 704
-// Line 705
-// Line 706
-// Line 707
-// Line 708
-// Line 709
-// Line 710
-// Line 711
-// Line 712
-// Line 713
-// Line 714
-// Line 715
-// Line 716
-// Line 717
-// Line 718
-// Line 719
-// Line 720
-// Line 721
-// Line 722
-// Line 723
-// Line 724
-// Line 725
-// Line 726
-// Line 727
-// Line 728
-// Line 729
-// Line 730
-// Line 731
-// Line 732
-// Line 733
-// Line 734
-// Line 735
-// Line 736
-// Line 737
-// Line 738
-// Line 739
-// Line 740
-// Line 741
-// Line 742
-// Line 743
-// Line 744
-// Line 745
-// Line 746
-// Line 747
-// Line 748
-// Line 749
-// Line 750
-// Line 751
-// Line 752
-// Line 753
-// Line 754
-// Line 755
-// Line 756
-// Line 757
-// Line 758
-// Line 759
-// Line 760
-// Line 761
-// Line 762
-// Line 763
-// Line 764
-// Line 765
-// Line 766
-// Line 767
-// Line 768
-// Line 769
-// Line 770
-// Line 771
-// Line 772
-// Line 773
-// Line 774
-// Line 775
-// Line 776
-// Line 777
-// Line 778
-// Line 779
-// Line 780
-// Line 781
-// Line 782
-// Line 783
-// Line 784
-// Line 785
-// Line 786
-// Line 787
-// Line 788
-// Line 789
-// Line 790
-// Line 791
-// Line 792
-// Line 793
-// Line 794
-// Line 795
-// Line 796
-// Line 797
-// Line 798
-// Line 799
-// Line 800
-// Line 801
-// Line 802
-// Line 803
-// Line 804
-// Line 805
-// Line 806
-// Line 807
-// Line 808
-// Line 809
-// Line 810
-// Line 811
-// Line 812
-// Line 813
-// Line 814
-// Line 815
-// Line 816
-// Line 817
-// Line 818
-// Line 819
-// Line 820
-// Line 821
-// Line 822
-// Line 823
-// Line 824
-// Line 825
-// Line 826
-// Line 827
-// Line 828
-// Line 829
-// Line 830
-// Line 831
-// Line 832
-// Line 833
-// Line 834
-// Line 835
-// Line 836
-// Line 837
-// Line 838
-// Line 839
-// Line 840
-// Line 841
-// Line 842
-// Line 843
-// Line 844
-// Line 845
-// Line 846
-// Line 847
-// Line 848
-// Line 849
-// Line 850
-// Line 851
-// Line 852
-// Line 853
-// Line 854
-// Line 855
-// Line 856
-// Line 857
-// Line 858
-// Line 859
-// Line 860
-// Line 861
-// Line 862
-// Line 863
-// Line 864
-// Line 865
-// Line 866
-// Line 867
-// Line 868
-// Line 869
-// Line 870
-// Line 871
-// Line 872
-// Line 873
-// Line 874
-// Line 875
-// Line 876
-// Line 877
-// Line 878
-// Line 879
-// Line 880
-// Line 881
-// Line 882
-// Line 883
-// Line 884
-// Line 885
-// Line 886
-// Line 887
-// Line 888
-// Line 889
-// Line 890
-// Line 891
-// Line 892
-// Line 893
-// Line 894
-// Line 895
-// Line 896
-// Line 897
-// Line 898
-// Line 899
-// Line 900
-// Line 901
-// Line 902
-// Line 903
-// Line 904
-// Line 905
-// Line 906
-// Line 907
-// Line 908
-// Line 909
-// Line 910
-// Line 911
-// Line 912
-// Line 913
-// Line 914
-// Line 915
-// Line 916
-// Line 917
-// Line 918
-// Line 919
-// Line 920
-// Line 921
-// Line 922
-// Line 923
-// Line 924
-// Line 925
-// Line 926
-// Line 927
-// Line 928
-// Line 929
-// Line 930
-// Line 931
-// Line 932
-// Line 933
-// Line 934
-// Line 935
-// Line 936
-// Line 937
-// Line 938
-// Line 939
-// Line 940
-// Line 941
-// Line 942
-// Line 943
-// Line 944
-// Line 945
-// Line 946
-// Line 947
-// Line 948
-// Line 949
-// Line 950
-// Line 951
-// Line 952
-// Line 953
-// Line 954
-// Line 955
-// Line 956
-// Line 957
-// Line 958
-// Line 959
-// Line 960
-// Line 961
-// Line 962
-// Line 963
-// Line 964
-// Line 965
-// Line 966
-// Line 967
-// Line 968
-// Line 969
-// Line 970
-// Line 971
-// Line 972
-// Line 973
-// Line 974
-// Line 975
-// Line 976
-// Line 977
-// Line 978
-// Line 979
-// Line 980
-// Line 981
-// Line 982
-// Line 983
-// Line 984
-// Line 985
-// Line 986
-// Line 987
-// Line 988
-// Line 989
-// Line 990
-// Line 991
-// Line 992
-// Line 993
-// Line 994
-// Line 995
-// Line 996
-// Line 997
-// Line 998
-// Line 999
-// Line 1000
-// Line 1001
-// Line 1002
-// Line 1003
-// Line 1004
-// Line 1005
-// Line 1006
-// Line 1007
-// Line 1008
-// Line 1009
-// Line 1010
-// Line 1011
-// Line 1012
-// Line 1013
-// Line 1014
-// Line 1015
-// Line 1016
-// Line 1017
-// Line 1018
-// Line 1019
-// Line 1020
-// Line 1021
-// Line 1022
-// Line 1023
-// Line 1024
-// Line 1025
-// Line 1026
-// Line 1027
-// Line 1028
-// Line 1029
-// Line 1030
-// Line 1031
-// Line 1032
-// Line 1033
-// Line 1034
-// Line 1035
-// Line 1036
-// Line 1037
-// Line 1038
-// Line 1039
-// Line 1040
-// Line 1041
-// Line 1042
-// Line 1043
-// Line 1044
-// Line 1045
-// Line 1046
-// Line 1047
-// Line 1048
-// Line 1049
-// Line 1050
-// Line 1051
-// Line 1052
-// Line 1053
-// Line 1054
-// Line 1055
-// Line 1056
-// Line 1057
-// Line 1058
-// Line 1059
-// Line 1060
-// Line 1061
-// Line 1062
-// Line 1063
-// Line 1064
-// Line 1065
-// Line 1066
-// Line 1067
-// Line 1068
-// Line 1069
-// Line 1070
-// Line 1071
-// Line 1072
-// Line 1073
-// Line 1074
-// Line 1075
-// Line 1076
-// Line 1077
-// Line 1078
-// Line 1079
-// Line 1080
-// Line 1081
-// Line 1082
-// Line 1083
-// Line 1084
-// Line 1085
-// Line 1086
-// Line 1087
-// Line 1088
-// Line 1089
-// Line 1090
-// Line 1091
-// Line 1092
-// Line 1093
-// Line 1094
-// Line 1095
-// Line 1096
-// Line 1097
-// Line 1098
-// Line 1099
-// Line 1100
-// Line 1101
-// Line 1102
-// Line 1103
-// Line 1104
-// Line 1105
-// Line 1106
-// Line 1107
-// Line 1108
-// Line 1109
-// Line 1110
-// Line 1111
-// Line 1112
-// Line 1113
-// Line 1114
-// Line 1115
-// Line 1116
-// Line 1117
-// Line 1118
-// Line 1119
-// Line 1120
-// Line 1121
-// Line 1122
-// Line 1123
-// Line 1124
-// Line 1125
-// Line 1126
-// Line 1127
-// Line 1128
-// Line 1129
-// Line 1130
-// Line 1131
-// Line 1132
-// Line 1133
-// Line 1134
-// Line 1135
-// Line 1136
-// Line 1137
-// Line 1138
-// Line 1139
-// Line 1140
-// Line 1141
-// Line 1142
-// Line 1143
-// Line 1144
-// Line 1145
-// Line 1146
-// Line 1147
-// Line 1148
-// Line 1149
-// Line 1150
-// Line 1151
-// Line 1152
-// Line 1153
-// Line 1154
-// Line 1155
-// Line 1156
-// Line 1157
-// Line 1158
-// Line 1159
-// Line 1160
-// Line 1161
-// Line 1162
-// Line 1163
-// Line 1164
-// Line 1165
-// Line 1166
-// Line 1167
-// Line 1168
-// Line 1169
-// Line 1170
-// Line 1171
-// Line 1172
-// Line 1173
-// Line 1174
-// Line 1175
-// Line 1176
-// Line 1177
-// Line 1178
-// Line 1179
-// Line 1180
-// Line 1181
-// Line 1182
-// Line 1183
-// Line 1184
-// Line 1185
-// Line 1186
-// Line 1187
-// Line 1188
-// Line 1189
-// Line 1190
-// Line 1191
-// Line 1192
-// Line 1193
-// Line 1194
-// Line 1195
-// Line 1196
-// Line 1197
-// Line 1198
-// Line 1199
-// Line 1200
-// Line 1201
-// Line 1202
-// Line 1203
-// Line 1204
-// Line 1205
-// Line 1206
-// Line 1207
-// Line 1208
-// Line 1209
-// Line 1210
-// Line 1211
-// Line 1212
-// Line 1213
-// Line 1214
-// Line 1215
-// Line 1216
-// Line 1217
-// Line 1218
-// Line 1219
-// Line 1220
-// Line 1221
-// Line 1222
-// Line 1223
-// Line 1224
-// Line 1225
-// Line 1226
-// Line 1227
-// Line 1228
-// Line 1229
-// Line 1230
-// Line 1231
-// Line 1232
-// Line 1233
-// Line 1234
-// Line 1235
-// Line 1236
-// Line 1237
-// Line 1238
-// Line 1239
-// Line 1240
-// Line 1241
-// Line 1242
-// Line 1243
-// Line 1244
-// Line 1245
-// Line 1246
-// Line 1247
-// Line 1248
-// Line 1249
-// Line 1250
-// Line 1251
-// Line 1252
-// Line 1253
-// Line 1254
-// Line 1255
-// Line 1256
-// Line 1257
-// Line 1258
-// Line 1259
-// Line 1260
-// Line 1261
-// Line 1262
-// Line 1263
-// Line 1264
-// Line 1265
-// Line 1266
-// Line 1267
-// Line 1268
-// Line 1269
-// Line 1270
-// Line 1271
-// Line 1272
-// Line 1273
-// Line 1274
-// Line 1275
-// Line 1276
-// Line 1277
-// Line 1278
-// Line 1279
-// Line 1280
-// Line 1281
-// Line 1282
-// Line 1283
-// Line 1284
-// Line 1285
-// Line 1286
-// Line 1287
-// Line 1288
-// Line 1289
-// Line 1290
-// Line 1291
-// Line 1292
-// Line 1293
-// Line 1294
-// Line 1295
-// Line 1296
-// Line 1297
-// Line 1298
-// Line 1299
-// Line 1300
-// Line 1301
-// Line 1302
-// Line 1303
-// Line 1304
-// Line 1305
-// Line 1306
-// Line 1307
-// Line 1308
-// Line 1309
-// Line 1310
-// Line 1311
-// Line 1312
-// Line 1313
-// Line 1314
-// Line 1315
-// Line 1316
-// Line 1317
-// Line 1318
-// Line 1319
-// Line 1320
-// Line 1321
-// Line 1322
-// Line 1323
-// Line 1324
-// Line 1325
-// Line 1326
-// Line 1327
-// Line 1328
-// Line 1329
-// Line 1330
-// Line 1331
-// Line 1332
-// Line 1333
-// Line 1334
-// Line 1335
-// Line 1336
-// Line 1337
-// Line 1338
-// Line 1339
-// Line 1340
-// Line 1341
-// Line 1342
-// Line 1343
-// Line 1344
-// Line 1345
-// Line 1346
-// Line 1347
-// Line 1348
-// Line 1349
-// Line 1350
-// Line 1351
-// Line 1352
-// Line 1353
-// Line 1354
-// Line 1355
-// Line 1356
-// Line 1357
-// Line 1358
-// Line 1359
-// Line 1360
-// Line 1361
-// Line 1362
-// Line 1363
-// Line 1364
-// Line 1365
-// Line 1366
-// Line 1367
-// Line 1368
-// Line 1369
-// Line 1370
-// Line 1371
-// Line 1372
-// Line 1373
-// Line 1374
-// Line 1375
-// Line 1376
-// Line 1377
-// Line 1378
-// Line 1379
-// Line 1380
-// Line 1381
-// Line 1382
-// Line 1383
-// Line 1384
-// Line 1385
-// Line 1386
-// Line 1387
-// Line 1388
-// Line 1389
-// Line 1390
-// Line 1391
-// Line 1392
-// Line 1393
-// Line 1394
-// Line 1395
-// Line 1396
-// Line 1397
-// Line 1398
-// Line 1399
-// Line 1400
-// Line 1401
-// Line 1402
-// Line 1403
-// Line 1404
-// Line 1405
-// Line 1406
-// Line 1407
-// Line 1408
-// Line 1409
-// Line 1410
-// Line 1411
-// Line 1412
-// Line 1413
-// Line 1414
-// Line 1415
-// Line 1416
-// Line 1417
-// Line 1418
-// Line 1419
-// Line 1420
-// Line 1421
-// Line 1422
-// Line 1423
-// Line 1424
-// Line 1425
-// Line 1426
-// Line 1427
-// Line 1428
-// Line 1429
-// Line 1430
-// Line 1431
-// Line 1432
-// Line 1433
-// Line 1434
-// Line 1435
-// Line 1436
-// Line 1437
-// Line 1438
-// Line 1439
-// Line 1440
-// Line 1441
-// Line 1442
-// Line 1443
-// Line 1444
-// Line 1445
-// Line 1446
-// Line 1447
-// Line 1448
-// Line 1449
-// Line 1450
-// Line 1451
-// Line 1452
-// Line 1453
-// Line 1454
-// Line 1455
-// Line 1456
-// Line 1457
-// Line 1458
-// Line 1459
-// Line 1460
-// Line 1461
-// Line 1462
-// Line 1463
-// Line 1464
-// Line 1465
-// Line 1466
-// Line 1467
-// Line 1468
-// Line 1469
-// Line 1470
-// Line 1471
-// Line 1472
-// Line 1473
-// Line 1474
-// Line 1475
-// Line 1476
-// Line 1477
-// Line 1478
-// Line 1479
-// Line 1480
-// Line 1481
-// Line 1482
-// Line 1483
-// Line 1484
-// Line 1485
-// Line 1486
-// Line 1487
-// Line 1488
-// Line 1489
-// Line 1490
-// Line 1491
-// Line 1492
-// Line 1493
-// Line 1494
-// Line 1495
-// Line 1496
-// Line 1497
-// Line 1498
-// Line 1499
-// Line 1500
-// Line 1501
-// Line 1502
-// Line 1503
-// Line 1504
-// Line 1505
-// Line 1506
-// Line 1507
-// Line 1508
-// Line 1509
-// Line 1510
-// Line 1511
-// Line 1512
-// Line 1513
-// Line 1514
-// Line 1515
-// Line 1516
-// Line 1517
-// Line 1518
-// Line 1519
-// Line 1520
-// Line 1521
-// Line 1522
-// Line 1523
-// Line 1524
-// Line 1525
-// Line 1526
-// Line 1527
-// Line 1528
-// Line 1529
-// Line 1530
-// Line 1531
-// Line 1532
-// Line 1533
-// Line 1534
-// Line 1535
-// Line 1536
-// Line 1537
-// Line 1538
-// Line 1539
-// Line 1540
-// Line 1541
-// Line 1542
-// Line 1543
-// Line 1544
-// Line 1545
-// Line 1546
-// Line 1547
-// Line 1548
-// Line 1549
-// Line 1550
-// Line 1551
-// Line 1552
-// Line 1553
-// Line 1554
-// Line 1555
-// Line 1556
-// Line 1557
-// Line 1558
-// Line 1559
-// Line 1560
-// Line 1561
-// Line 1562
-// Line 1563
-// Line 1564
-// Line 1565
-// Line 1566
-// Line 1567
-// Line 1568
-// Line 1569
-// Line 1570
-// Line 1571
-// Line 1572
-// Line 1573
-// Line 1574
-// Line 1575
-// Line 1576
-// Line 1577
-// Line 1578
-// Line 1579
-// Line 1580
-// Line 1581
-// Line 1582
-// Line 1583
-// Line 1584
-// Line 1585
-// Line 1586
-// Line 1587
-// Line 1588
-// Line 1589
-// Line 1590
-// Line 1591
-// Line 1592
-// Line 1593
-// Line 1594
-// Line 1595
-// Line 1596
-// Line 1597
-// Line 1598
-// Line 1599
-// Line 1600
-// Line 1601
-// Line 1602
-// Line 1603
-// Line 1604
-// Line 1605
-// Line 1606
-// Line 1607
-// Line 1608
-// Line 1609
-// Line 1610
-// Line 1611
-// Line 1612
-// Line 1613
-// Line 1614
-// Line 1615
-// Line 1616
-// Line 1617
-// Line 1618
-// Line 1619
-// Line 1620
-// Line 1621
-// Line 1622
-// Line 1623
-// Line 1624
-// Line 1625
-// Line 1626
-// Line 1627
-// Line 1628
-// Line 1629
-// Line 1630
-// Line 1631
-// Line 1632
-// Line 1633
-// Line 1634
-// Line 1635
-// Line 1636
-// Line 1637
-// Line 1638
-// Line 1639
-// Line 1640
-// Line 1641
-// Line 1642
-// Line 1643
-// Line 1644
-// Line 1645
-// Line 1646
-// Line 1647
-// Line 1648
-// Line 1649
-// Line 1650
-// Line 1651
-// Line 1652
-// Line 1653
-// Line 1654
-// Line 1655
-// Line 1656
-// Line 1657
-// Line 1658
-// Line 1659
-// Line 1660
-// Line 1661
-// Line 1662
-// Line 1663
-// Line 1664
-// Line 1665
-// Line 1666
-// Line 1667
-// Line 1668
-// Line 1669
-// Line 1670
-// Line 1671
-// Line 1672
-// Line 1673
-// Line 1674
-// Line 1675
-// Line 1676
-// Line 1677
-// Line 1678
-// Line 1679
-// Line 1680
-// Line 1681
-// Line 1682
-// Line 1683
-// Line 1684
-// Line 1685
-// Line 1686
-// Line 1687
-// Line 1688
-// Line 1689
-// Line 1690
-// Line 1691
-// Line 1692
-// Line 1693
-// Line 1694
-// Line 1695
-// Line 1696
-// Line 1697
-// Line 1698
-// Line 1699
-// Line 1700
-// Line 1701
-// Line 1702
-// Line 1703
-// Line 1704
-// Line 1705
-// Line 1706
-// Line 1707
-// Line 1708
-// Line 1709
-// Line 1710
-// Line 1711
-// Line 1712
-// Line 1713
-// Line 1714
-// Line 1715
-// Line 1716
-// Line 1717
-// Line 1718
-// Line 1719
-// Line 1720
-// Line 1721
-// Line 1722
-// Line 1723
-// Line 1724
-// Line 1725
-// Line 1726
-// Line 1727
-// Line 1728
-// Line 1729
-// Line 1730
-// Line 1731
-// Line 1732
-// Line 1733
-// Line 1734
-// Line 1735
-// Line 1736
-// Line 1737
-// Line 1738
-// Line 1739
-// Line 1740
-// Line 1741
-// Line 1742
-// Line 1743
-// Line 1744
-// Line 1745
-// Line 1746
-// Line 1747
-// Line 1748
-// Line 1749
-// Line 1750
-// Line 1751
-// Line 1752
-// Line 1753
-// Line 1754
-// Line 1755
-// Line 1756
-// Line 1757
-// Line 1758
-// Line 1759
-// Line 1760
-// Line 1761
-// Line 1762
-// Line 1763
-// Line 1764
-// Line 1765
-// Line 1766
-// Line 1767
-// Line 1768
-// Line 1769
-// Line 1770
-// Line 1771
-// Line 1772
-// Line 1773
-// Line 1774
-// Line 1775
-// Line 1776
-// Line 1777
-// Line 1778
-// Line 1779
-// Line 1780
-// Line 1781
-// Line 1782
-// Line 1783
-// Line 1784
-// Line 1785
-// Line 1786
-// Line 1787
-// Line 1788
-// Line 1789
-// Line 1790
-// Line 1791
-// Line 1792
-// Line 1793
-// Line 1794
-// Line 1795
-// Line 1796
-// Line 1797
-// Line 1798
-// Line 1799
-// Line 1800
-// Line 1801
-// Line 1802
-// Line 1803
-// Line 1804
-// Line 1805
-// Line 1806
-// Line 1807
-// Line 1808
-// Line 1809
-// Line 1810
-// Line 1811
-// Line 1812
-// Line 1813
-// Line 1814
-// Line 1815
-// Line 1816
-// Line 1817
-// Line 1818
-// Line 1819
-// Line 1820
-// Line 1821
-// Line 1822
-// Line 1823
-// Line 1824
-// Line 1825
-// Line 1826
-// Line 1827
-// Line 1828
-// Line 1829
-// Line 1830
-// Line 1831
-// Line 1832
-// Line 1833
-// Line 1834
-// Line 1835
-// Line 1836
-// Line 1837
-// Line 1838
-// Line 1839
-// Line 1840
-// Line 1841
-// Line 1842
-// Line 1843
-// Line 1844
-// Line 1845
-// Line 1846
-// Line 1847
-// Line 1848
-// Line 1849
-// Line 1850
-// Line 1851
-// Line 1852
-// Line 1853
-// Line 1854
-// Line 1855
-// Line 1856
-// Line 1857
-// Line 1858
-// Line 1859
-// Line 1860
-// Line 1861
-// Line 1862
-// Line 1863
-// Line 1864
-// Line 1865
-// Line 1866
-// Line 1867
-// Line 1868
-// Line 1869
-// Line 1870
-// Line 1871
-// Line 1872
-// Line 1873
-// Line 1874
-// Line 1875
-// Line 1876
-// Line 1877
-// Line 1878
-// Line 1879
-// Line 1880
-// Line 1881
-// Line 1882
-// Line 1883
-// Line 1884
-// Line 1885
-// Line 1886
-// Line 1887
-// Line 1888
-// Line 1889
-// Line 1890
-// Line 1891
-// Line 1892
-// Line 1893
-// Line 1894
-// Line 1895
-// Line 1896
-// Line 1897
-// Line 1898
-// Line 1899
-// Line 1900
-// Line 1901
-// Line 1902
-// Line 1903
-// Line 1904
-// Line 1905
-// Line 1906
-// Line 1907
-// Line 1908
-// Line 1909
-// Line 1910
-// Line 1911
-// Line 1912
-// Line 1913
-// Line 1914
-// Line 1915
-// Line 1916
-// Line 1917
-// Line 1918
-// Line 1919
-// Line 1920
-// Line 1921
-// Line 1922
-// Line 1923
-// Line 1924
-// Line 1925
-// Line 1926
-// Line 1927
-// Line 1928
-// Line 1929
-// Line 1930
-// Line 1931
-// Line 1932
-// Line 1933
-// Line 1934
-// Line 1935
-// Line 1936
-// Line 1937
-// Line 1938
-// Line 1939
-// Line 1940
-// Line 1941
-// Line 1942
-// Line 1943
-// Line 1944
-// Line 1945
-// Line 1946
-// Line 1947
-// Line 1948
-// Line 1949
-// Line 1950
-// Line 1951
-// Line 1952
-// Line 1953
-// Line 1954
-// Line 1955
-// Line 1956
-// Line 1957
-// Line 1958
-// Line 1959
-// Line 1960
-// Line 1961
-// Line 1962
-// Line 1963
-// Line 1964
-// Line 1965
-// Line 1966
-// Line 1967
-// Line 1968
-// Line 1969
-// Line 1970
-// Line 1971
-// Line 1972
-// Line 1973
-// Line 1974
-// Line 1975
-// Line 1976
-// Line 1977
-// Line 1978
-// Line 1979
-// Line 1980
-// Line 1981
-// Line 1982
-// Line 1983
-// Line 1984
+import React, { useState, useMemo, useCallback } from 'react'
+import { gateways, simulateRoutingPipeline, toCompassDocument, buildCompassESQuery, buildCompassRuntimeAnnotation, compassMethodKey, flattenConditions } from '../../data/kamMockData'
+import { useApprovals } from '../../context/ApprovalContext'
+
+// ════════════════════════════════════════════
+// DATA CONSTANTS
+// ════════════════════════════════════════════
+
+const CARDS_NETWORKS = [
+  { id: 'Visa',       label: 'Visa',       count: 1847, pct: 34.0 },
+  { id: 'Mastercard', label: 'Mastercard', count: 1823, pct: 33.5 },
+  { id: 'RuPay',      label: 'RuPay',      count: 1156, pct: 21.3 },
+  { id: 'Amex',       label: 'Amex',       count: 287,  pct: 5.3  },
+  { id: 'Maestro',    label: 'Maestro',    count: 89,   pct: 1.6  },
+  { id: 'Diners',     label: 'Diners',     count: 12,   pct: 0.2  },
+]
+
+const ISSUER_BANKS = [
+  { id: 'HDFC',     label: 'HDFC',     count: 892, pct: 16.4 },
+  { id: 'ICICI',    label: 'ICICI',    count: 834, pct: 15.3 },
+  { id: 'SBI',      label: 'SBI',      count: 756, pct: 13.9 },
+  { id: 'Axis',     label: 'Axis',     count: 623, pct: 11.5 },
+  { id: 'YesBank',  label: 'Yes Bank', count: 287, pct: 5.3  },
+  { id: 'Kotak',    label: 'Kotak',    count: 245, pct: 4.5  },
+  { id: 'IDFC',     label: 'IDFC',     count: 198, pct: 3.6  },
+  { id: 'IndusInd', label: 'IndusInd', count: 156, pct: 2.9  },
+  { id: 'RBL',      label: 'RBL',      count: 134, pct: 2.5  },
+  { id: 'Federal',  label: 'Federal',  count: 112, pct: 2.1  },
+]
+
+const CARD_TYPES = [
+  { id: 'credit',  label: 'Credit',  pct: 39.3 },
+  { id: 'debit',   label: 'Debit',   pct: 36.6 },
+  { id: 'prepaid', label: 'Prepaid', pct: 4.3  },
+]
+
+const TOKENIZATIONS = [
+  { id: 'googlepay', label: 'Google Pay',     pct: 1.6 },
+  { id: 'applepay',  label: 'Apple Pay',      pct: 1.2 },
+  { id: 'rzpvault',  label: 'Razorpay Vault', pct: 0.8 },
+]
+
+const CARD_SUBTYPES = [
+  { id: 'consumer', label: 'Consumer', pct: 4.3 },
+  { id: 'business', label: 'Business', pct: 3.3 },
+  { id: 'premium',  label: 'Premium',  pct: 2.3 },
+]
+
+const AMOUNT_PRESETS_CARDS = [
+  { id: 'lt1l',  label: '<₹1L',  max: 100000 },
+  { id: 'lt2l',  label: '<₹2L',  max: 200000 },
+  { id: 'lt5l',  label: '<₹5L',  max: 500000 },
+  { id: 'gt1l',  label: '>₹1L',  min: 100000 },
+  { id: 'gt2l',  label: '>₹2L',  min: 200000 },
+]
+
+const UPI_TYPES = [
+  { id: 'Collect', label: 'Collect', pct: 36.5, tooltip: 'Customer enters VPA; merchant pulls payment' },
+  { id: 'Intent',  label: 'Intent',  pct: 26.7, tooltip: 'Deep-link opens UPI app directly'            },
+  { id: 'QR',      label: 'QR',      pct: 21.7, tooltip: 'QR code scan at checkout'                    },
+  { id: 'Any',     label: 'Any',     pct: 15.1, tooltip: 'Match all UPI types'                          },
+]
+
+const UPI_FLOWS = [
+  { id: 'Collect', label: 'Collect' },
+  { id: 'Intent',  label: 'Intent'  },
+  { id: 'QR',      label: 'QR'      },
+  { id: 'In-App',  label: 'In-App'  },
+]
+
+const VPA_HANDLES = [
+  { id: '@icici',    label: '@icici',    pct: 12.5 },
+  { id: '@axisbank', label: '@axisbank', pct: 10.9 },
+  { id: '@hdfc',     label: '@hdfc',     pct: 10.0 },
+  { id: '@paytm',    label: '@paytm',    pct: 9.2  },
+  { id: '@ybl',      label: '@ybl',      pct: 8.4  },
+  { id: '@oksbi',    label: '@oksbi',    pct: 7.3  },
+  { id: '@razorpay', label: '@razorpay', pct: 6.5  },
+]
+
+const UPI_AMT_PRESETS = [
+  { id: 'lt50k', label: '<₹50K', max: 50000  },
+  { id: 'lt1l',  label: '<₹1L',  max: 100000 },
+  { id: 'lt2l',  label: '<₹2L',  max: 200000 },
+  { id: 'gt50k', label: '>₹50K', min: 50000  },
+  { id: 'gt1l',  label: '>₹1L',  min: 100000 },
+]
+
+const RECURRING_TYPES = [
+  { id: 'Initial',    label: 'Initial Payment', pct: 29.2, tooltip: 'First charge that sets up the mandate' },
+  { id: 'Auto-debit', label: 'Auto-debit',       pct: 23.4, tooltip: 'Subsequent automatic debits'          },
+  { id: 'Both',       label: 'Both',             pct: 20.0, tooltip: 'Match both initial and auto-debit'    },
+]
+
+const MANDATE_FREQS = [
+  { id: 'Daily',        label: 'Daily'              },
+  { id: 'Weekly',       label: 'Weekly'             },
+  { id: 'Monthly',      label: 'Monthly', pct: 17.5 },
+  { id: 'Quarterly',    label: 'Quarterly'          },
+  { id: 'Yearly',       label: 'Yearly'             },
+  { id: 'As Presented', label: 'As Presented'       },
+]
+
+const MANDATE_AMT_PRESETS = [
+  { id: 'lt5k',  label: '<₹5K',  max: 5000  },
+  { id: 'lt10k', label: '<₹10K', max: 10000 },
+  { id: 'lt25k', label: '<₹25K', max: 25000 },
+  { id: 'lt50k', label: '<₹50K', max: 50000 },
+  { id: 'gt50k', label: '>₹50K', min: 50000 },
+]
+
+const EMI_NETWORKS = [
+  { id: 'Visa',       label: 'Visa',       pct: 44.5 },
+  { id: 'Mastercard', label: 'Mastercard', pct: 41.6 },
+  { id: 'RuPay',      label: 'RuPay',      pct: 9.4  },
+  { id: 'Amex',       label: 'Amex',       pct: 3.3  },
+]
+
+const EMI_DURATIONS = [
+  { id: '3',  label: '3 mo',  pct: 24.3 },
+  { id: '6',  label: '6 mo',  pct: 41.1 },
+  { id: '9',  label: '9 mo',  pct: 17.8 },
+  { id: '12', label: '12 mo', pct: 61.6 },
+  { id: '18', label: '18 mo', pct: 14.4 },
+  { id: '24', label: '24 mo', pct: 28.3 },
+]
+
+const EMI_ISSUER_BANKS = [
+  { id: 'HDFC',    label: 'HDFC',     count: 634 },
+  { id: 'ICICI',   label: 'ICICI',    count: 587 },
+  { id: 'SBI',     label: 'SBI',      count: 412 },
+  { id: 'Axis',    label: 'Axis',     count: 389 },
+  { id: 'Kotak',   label: 'Kotak',    count: 198 },
+  { id: 'YesBank', label: 'Yes Bank', count: 134 },
+]
+
+const SUBVENTION_TYPES = [
+  { id: 'merchant', label: 'Merchant / No-cost', pct: 26.7, tooltip: 'Merchant bears the interest cost; customer pays 0%' },
+  { id: 'customer', label: 'Customer',           pct: 19.9, tooltip: 'Customer pays interest at applicable rate'           },
+  { id: 'mixed',    label: 'Mixed',              pct: 8.9,  tooltip: 'Partial subvention — shared between merchant & bank' },
+]
+
+const EMI_AMT_PRESETS = [
+  { id: '5k-50k',  label: '₹5K – 50K', min: 5000,  max: 50000  },
+  { id: '10k-1l',  label: '₹10K – 1L', min: 10000, max: 100000 },
+  { id: '5k-2l',   label: '₹5K – 2L',  min: 5000,  max: 200000 },
+  { id: 'nolimit', label: 'No Limit',   min: null,  max: null   },
+]
+
+// ════════════════════════════════════════════
+// Step definitions per method
+// ════════════════════════════════════════════
+
+function getSteps(method) {
+  switch (method) {
+    case 'Cards':       return ['Network', 'Issuer', 'Card Type', 'Geography', 'Advanced', 'Terminals']
+    case 'UPIOnetime':  return ['UPI Type', 'Flow', 'VPA Handle', 'Advanced', 'Terminals']
+    case 'UPIRecurring':return ['Recur Type', 'Frequency', 'VPA Handle', 'Advanced', 'Terminals']
+    case 'EMI':         return ['Network', 'Duration', 'Issuer', 'Subvention', 'Advanced', 'Terminals']
+    default:            return ['Configure', 'Terminals']
+  }
+}
+
+// Map wizard method to data key (for terminal filtering against supportedMethods)
+function dataKey(method) {
+  return (method === 'UPIOnetime' || method === 'UPIRecurring') ? 'UPI' : method
+}
+
+// ════════════════════════════════════════════
+// UI PRIMITIVES
+// ════════════════════════════════════════════
+
+function WizardStepper({ steps, currentStep }) {
+  return (
+    <div className="rw-stepper">
+      {steps.map((s, i) => (
+        <React.Fragment key={i}>
+          <div className={`rw-step-node${i < currentStep ? ' done' : i === currentStep ? ' active' : ''}`}>
+            <div className="rw-step-dot">{i < currentStep ? '✓' : i + 1}</div>
+            <div className="rw-step-lbl">{s}</div>
+          </div>
+          {i < steps.length - 1 && <div className={`rw-step-line${i < currentStep ? ' done' : ''}`} />}
+        </React.Fragment>
+      ))}
+    </div>
+  )
+}
+
+function UsageStat({ count, pct }) {
+  if (count == null && pct == null) return null
+  return (
+    <span className="rw-usage">
+      {count != null ? `${count.toLocaleString()} rules` : ''}
+      {count != null && pct != null ? ' · ' : ''}
+      {pct != null ? `${pct}%` : ''}
+    </span>
+  )
+}
+
+function TooltipWrap({ text, children }) {
+  const [show, setShow] = useState(false)
+  if (!text) return <>{children}</>
+  return (
+    <span className="rw-tip-wrap" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
+      {children}
+      {show && <span className="rw-tip">{text}</span>}
+    </span>
+  )
+}
+
+function StepHdr({ title, required, optional, sub }) {
+  return (
+    <div className="rw-step-hdr">
+      <div className="rw-step-title">
+        {title}
+        {required && <span className="rw-req"> *</span>}
+        {optional && <span className="rw-opt"> (optional)</span>}
+      </div>
+      {sub && <div className="rw-step-sub">{sub}</div>}
+    </div>
+  )
+}
+
+function MatchCount({ count }) {
+  return (
+    <div className="rw-match">
+      <span className="rw-match-dot" />
+      <span><strong>{count}</strong> terminal{count !== 1 ? 's' : ''} will match</span>
+    </div>
+  )
+}
+
+function WzFooter({ onBack, onNext, onSkip, nextLabel = 'Next →', nextDisabled = false, onCancel }) {
+  return (
+    <div className="rw-footer">
+      {onCancel && <button className="rw-btn ghost" onClick={onCancel}>Cancel</button>}
+      {onBack   && <button className="rw-btn ghost" onClick={onBack}>← Back</button>}
+      {onSkip   && <button className="rw-btn skip"  onClick={onSkip}>Skip →</button>}
+      {onNext   && <button className="rw-btn primary" onClick={onNext} disabled={nextDisabled}>{nextLabel}</button>}
+    </div>
+  )
+}
+
+function CheckboxGrid({ options, selected, onToggle, anyLabel = 'Any', anySelected }) {
+  return (
+    <div className="rw-cb-grid">
+      {options.map(o => (
+        <label key={o.id} className={`rw-cb-opt${selected.includes(o.id) ? ' on' : ''}`}>
+          <input type="checkbox" checked={selected.includes(o.id)} onChange={() => onToggle(o.id)} />
+          <TooltipWrap text={o.tooltip}><span className="rw-cb-lbl">{o.label}</span></TooltipWrap>
+          <UsageStat count={o.count} pct={o.pct} />
+        </label>
+      ))}
+      <label className={`rw-cb-opt${anySelected ? ' on' : ''}`}>
+        <input type="checkbox" checked={!!anySelected} onChange={() => {}} readOnly />
+        <span className="rw-cb-lbl">{anyLabel}</span>
+      </label>
+    </div>
+  )
+}
+
+function RadioList({ options, selected, onSelect }) {
+  return (
+    <div className="rw-radio-list">
+      {options.map(o => (
+        <label key={o.id} className={`rw-radio-opt${selected === o.id ? ' on' : ''}`} onClick={() => onSelect(o.id)}>
+          <div className="rw-radio-circle">{selected === o.id && <div className="rw-radio-fill" />}</div>
+          <TooltipWrap text={o.tooltip}><span className="rw-radio-lbl">{o.label}</span></TooltipWrap>
+          {o.pct != null && <UsageStat pct={o.pct} />}
+        </label>
+      ))}
+    </div>
+  )
+}
+
+function SearchableMS({ options, selected, onChange, placeholder = 'Search…' }) {
+  const [q, setQ] = useState('')
+  const list = q ? options.filter(o => o.label.toLowerCase().includes(q.toLowerCase())) : options
+  const toggle = id => onChange(selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id])
+  return (
+    <div className="rw-sms">
+      <input className="rw-sms-input" value={q} onChange={e => setQ(e.target.value)} placeholder={placeholder} />
+      <div className="rw-sms-list">
+        {list.map(o => (
+          <label key={o.id} className={`rw-sms-item${selected.includes(o.id) ? ' on' : ''}`}>
+            <input type="checkbox" checked={selected.includes(o.id)} onChange={() => toggle(o.id)} />
+            <span className="rw-sms-lbl">{o.label}</span>
+            <UsageStat count={o.count} pct={o.pct} />
+          </label>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function AdvCollapse({ title, children }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="rw-adv">
+      <button className="rw-adv-toggle" onClick={() => setOpen(o => !o)}>
+        <span className="rw-adv-arrow">{open ? '▾' : '▸'}</span>
+        <span>{title}</span>
+        <span className="rw-adv-badge">Advanced</span>
+      </button>
+      {open && <div className="rw-adv-body">{children}</div>}
+    </div>
+  )
+}
+
+function PresetGroup({ presets, selected, onSelect }) {
+  return (
+    <div className="rw-presets">
+      {presets.map(p => (
+        <button key={p.id} className={`rw-preset${selected === p.id ? ' on' : ''}`} onClick={() => onSelect(selected === p.id ? null : p.id)}>
+          {p.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function WarnBox({ text }) {
+  return <div className="rw-warn">{text}</div>
+}
+
+// ════════════════════════════════════════════
+// TERMINAL SELECTION — shared final step
+// ════════════════════════════════════════════
+
+function buildRuleName(method, f, terminals) {
+  const t0 = terminals[0]?.displayId || 'Terminal'
+  if (method === 'Cards') {
+    const net = f.networks?.length > 0 ? f.networks.join('+') : 'Any Network'
+    return `Cards ${net} → ${t0}`
+  }
+  if (method === 'UPIOnetime')  return `UPI Onetime ${f.upiType || 'Any'} → ${t0}`
+  if (method === 'UPIRecurring') return `UPI Recurring ${f.recurringType || 'Both'} → ${t0}`
+  if (method === 'EMI') {
+    const net = f.emiNetworks?.length > 0 ? f.emiNetworks.join('+') : 'Any'
+    return `EMI ${net} → ${t0}`
+  }
+  return `${method} → ${t0}`
+}
+
+function buildConditions(method, f) {
+  const conds = []
+  const mkey = dataKey(method)
+  conds.push({ field: 'payment_method', operator: 'equals', value: mkey })
+  if (method === 'UPIOnetime')  conds.push({ field: 'upi_subtype', operator: 'equals', value: 'onetime' })
+  if (method === 'UPIRecurring') conds.push({ field: 'upi_subtype', operator: 'equals', value: 'recurring' })
+
+  if (method === 'Cards') {
+    if (f.networks?.length)     conds.push({ field: 'card_network', operator: 'in', value: f.networks })
+    if (f.issuerBanks?.length)  conds.push({ field: 'issuer_bank', operator: 'in', value: f.issuerBanks })
+    if (f.cardTypes?.length)    conds.push({ field: 'card_type', operator: 'in', value: f.cardTypes })
+    if (f.international === 'Domestic')      conds.push({ field: 'international', operator: 'equals', value: false })
+    if (f.international === 'International') conds.push({ field: 'international', operator: 'equals', value: true })
+    if (f.tokenizations?.length) conds.push({ field: 'tokenization', operator: 'in', value: f.tokenizations })
+    if (f.cardSubtypes?.length)  conds.push({ field: 'card_subtype', operator: 'in', value: f.cardSubtypes })
+    const ap = AMOUNT_PRESETS_CARDS.find(x => x.id === f.amountPreset)
+    if (ap?.min) conds.push({ field: 'amount', operator: 'greater_than', value: ap.min })
+    if (ap?.max) conds.push({ field: 'amount', operator: 'less_than',    value: ap.max })
+    if (!ap && f.amountMin) conds.push({ field: 'amount', operator: 'greater_than', value: +f.amountMin })
+    if (!ap && f.amountMax) conds.push({ field: 'amount', operator: 'less_than',    value: +f.amountMax })
+  }
+  if (method === 'UPIOnetime') {
+    if (f.upiType && f.upiType !== 'Any') conds.push({ field: 'upi_type', operator: 'equals', value: f.upiType })
+    if (f.upiFlows?.length)  conds.push({ field: 'upi_flow', operator: 'in', value: f.upiFlows })
+    if (f.vpaHandle && f.vpaHandle !== 'Any') conds.push({ field: 'vpa_handle', operator: 'equals', value: f.vpaHandle })
+    const ap = UPI_AMT_PRESETS.find(x => x.id === f.upiAmtPreset)
+    if (ap?.min) conds.push({ field: 'amount', operator: 'greater_than', value: ap.min })
+    if (ap?.max) conds.push({ field: 'amount', operator: 'less_than',    value: ap.max })
+  }
+  if (method === 'UPIRecurring') {
+    if (f.recurringType && f.recurringType !== 'Both') conds.push({ field: 'recurring_type', operator: 'equals', value: f.recurringType })
+    if (f.mandateFreqs?.length) conds.push({ field: 'mandate_frequency', operator: 'in', value: f.mandateFreqs })
+    if (f.vpaHandle && f.vpaHandle !== 'Any') conds.push({ field: 'vpa_handle', operator: 'equals', value: f.vpaHandle })
+    const ap = MANDATE_AMT_PRESETS.find(x => x.id === f.mandateAmtPreset)
+    if (ap?.min) conds.push({ field: 'mandate_amount', operator: 'greater_than', value: ap.min })
+    if (ap?.max) conds.push({ field: 'mandate_amount', operator: 'less_than',    value: ap.max })
+  }
+  if (method === 'EMI') {
+    if (f.emiNetworks?.length)   conds.push({ field: 'card_network', operator: 'in', value: f.emiNetworks })
+    if (f.emiDurations?.length)  conds.push({ field: 'emi_tenure', operator: 'in', value: f.emiDurations })
+    if (f.emiIssuers?.length)    conds.push({ field: 'issuer_bank', operator: 'in', value: f.emiIssuers })
+    if (f.subventionType)        conds.push({ field: 'subvention_type', operator: 'equals', value: f.subventionType })
+    if (f.emiCardTypes?.length)  conds.push({ field: 'card_type', operator: 'in', value: f.emiCardTypes })
+    const ap = EMI_AMT_PRESETS.find(x => x.id === f.emiAmtPreset)
+    if (ap?.min) conds.push({ field: 'amount', operator: 'greater_than', value: ap.min })
+    if (ap?.max) conds.push({ field: 'amount', operator: 'less_than',    value: ap.max })
+  }
+  return conds
+}
+
+function FilterSummary({ method, f }) {
+  const badges = []
+  if (method === 'Cards') {
+    if (f.networks?.length)    f.networks.forEach(n => badges.push({ label: n, v: 'blue' }))
+    else                       badges.push({ label: 'Any Network', v: 'gray' })
+    if (f.issuerBanks?.length) badges.push({ label: `${f.issuerBanks.length} issuers`, v: 'blue' })
+    if (f.cardTypes?.length)   f.cardTypes.forEach(t => badges.push({ label: t, v: 'blue' }))
+    if (f.international !== 'Both') badges.push({ label: f.international, v: 'warn' })
+    if (f.amountPreset)        badges.push({ label: AMOUNT_PRESETS_CARDS.find(x => x.id === f.amountPreset)?.label, v: 'gray' })
+  }
+  if (method === 'UPIOnetime') {
+    badges.push({ label: f.upiType || 'Any Type', v: 'blue' })
+    if (f.upiFlows?.length)  badges.push({ label: f.upiFlows.join(', '), v: 'blue' })
+    if (f.vpaHandle && f.vpaHandle !== 'Any') badges.push({ label: f.vpaHandle, v: 'blue' })
+  }
+  if (method === 'UPIRecurring') {
+    badges.push({ label: f.recurringType || 'Both', v: 'blue' })
+    if (f.mandateFreqs?.length) badges.push({ label: f.mandateFreqs.join(', '), v: 'blue' })
+    if (f.vpaHandle && f.vpaHandle !== 'Any') badges.push({ label: f.vpaHandle, v: 'blue' })
+  }
+  if (method === 'EMI') {
+    if (f.emiNetworks?.length)  f.emiNetworks.forEach(n => badges.push({ label: n, v: 'blue' }))
+    else                        badges.push({ label: 'Any Network', v: 'gray' })
+    if (f.emiDurations?.length) badges.push({ label: f.emiDurations.map(d => `${d}mo`).join(', '), v: 'blue' })
+    if (f.subventionType)       badges.push({ label: f.subventionType, v: 'blue' })
+    if (f.emiAmtPreset)         badges.push({ label: EMI_AMT_PRESETS.find(x => x.id === f.emiAmtPreset)?.label, v: 'gray' })
+  }
+  return (
+    <div className="rw-filter-summary">
+      <span className="rw-filter-title">Applies to:</span>
+      {badges.filter(b => b.label).map((b, i) => <span key={i} className={`rw-filter-badge ${b.v}`}>{b.label}</span>)}
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════
+// RULE IMPACT ANALYSIS HELPERS
+// ════════════════════════════════════════════
+
+function generateImpactedFlows(method, filters, monthlyTxns) {
+  const dailyTxns = Math.round(monthlyTxns / 30)
+  const flows = []
+
+  if (method === 'Cards') {
+    const nets  = filters.networks?.length   ? filters.networks   : ['Visa', 'Mastercard', 'RuPay']
+    const types = filters.cardTypes?.length  ? filters.cardTypes  : ['credit', 'debit']
+    const intls = filters.international === 'Domestic'      ? [false]
+                : filters.international === 'International' ? [true]
+                : [false, true]
+
+    let count = 0
+    for (const net of nets) {
+      for (const ct of types) {
+        for (const intl of intls) {
+          if (count >= 6) break
+          if (net === 'RuPay' && intl) continue
+          const netShare  = net === 'Visa' ? 0.34 : net === 'Mastercard' ? 0.34 : net === 'RuPay' ? 0.21 : 0.05
+          const typeShare = ct === 'credit' ? 0.39 : ct === 'debit' ? 0.37 : 0.04
+          const intlShare = intl ? 0.23 : 0.77
+          const volEst = Math.round(dailyTxns * netShare * typeShare * intlShare)
+          flows.push({
+            id: `flow-${flows.length}`,
+            label: `${net} ${ct.charAt(0).toUpperCase() + ct.slice(1)} ${intl ? 'International' : 'Domestic'}`,
+            txn: {
+              payment_method: 'Cards',
+              card_network: net,
+              card_type: ct,
+              international: intl,
+              amount: intl ? 25000 : 5000,
+              issuer_bank: filters.issuerBanks?.[0] || null,
+            },
+            dailyVol: Math.max(volEst, 1),
+          })
+          count++
+        }
+      }
+    }
+  } else if (method === 'UPIOnetime' || method === 'UPIRecurring') {
+    const subtype = method === 'UPIRecurring' ? 'recurring' : 'onetime'
+    const upiTypes = filters.upiType && filters.upiType !== 'Any' ? [filters.upiType] : ['Collect', 'Intent', 'QR']
+    for (const ut of upiTypes.slice(0, 4)) {
+      const share = ut === 'Collect' ? 0.36 : ut === 'Intent' ? 0.27 : ut === 'QR' ? 0.22 : 0.15
+      flows.push({
+        id: `flow-${flows.length}`,
+        label: `UPI ${ut} (${subtype})`,
+        txn: { payment_method: 'UPI', upi_subtype: subtype, upi_type: ut, amount: 2500 },
+        dailyVol: Math.max(Math.round(dailyTxns * share), 1),
+      })
+    }
+  } else if (method === 'EMI') {
+    const nets = filters.emiNetworks?.length ? filters.emiNetworks : ['Visa', 'Mastercard']
+    for (const net of nets.slice(0, 3)) {
+      flows.push({
+        id: `flow-${flows.length}`,
+        label: `EMI ${net} Credit`,
+        txn: { payment_method: 'EMI', card_network: net, card_type: 'credit', international: false, amount: 25000 },
+        dailyVol: Math.max(Math.round(dailyTxns * 0.08), 1),
+      })
+    }
+  } else {
+    flows.push({
+      id: 'flow-0',
+      label: `${method} (all)`,
+      txn: { payment_method: method, amount: 5000 },
+      dailyVol: dailyTxns,
+    })
+  }
+
+  return flows.length ? flows : [{
+    id: 'flow-0',
+    label: `${method} (all)`,
+    txn: { payment_method: dataKey(method), amount: 5000 },
+    dailyVol: dailyTxns,
+  }]
+}
+
+// ── Mini pipeline renderer (before/after traces) ────────────────
+function ImpactPipelineTrace({ result, label }) {
+  if (!result) return null
+  const stages = result.stages || []
+  return (
+    <div className="rw-impact-pipeline">
+      <div className="rw-impact-pipeline-hdr">
+        <span className="rw-impact-pipeline-label">{label}</span>
+        {result.isNTF
+          ? <span className="rw-impact-pip-badge ntf">NTF — payment fails</span>
+          : <span className="rw-impact-pip-badge ok">→ {result.selectedTerminal?.displayId} · SR {result.selectedTerminal?.successRate}%</span>
+        }
+      </div>
+      {stages.map((stage, i) => {
+        const isNTF    = stage.type === 'ntf' || stage.type === 'rule_ntf'
+        const isFilter = stage.type === 'rule_filter'
+        const isSorter = stage.type === 'sorter'
+        const isPass   = stage.type === 'rule_pass'
+        return (
+          <div key={i} className={`rw-impact-pip-stage${isNTF ? ' ntf' : isFilter ? ' filter' : isSorter ? ' sorter' : isPass ? ' pass' : ''}`}>
+            <div className="rw-impact-pip-num">{i + 1}</div>
+            <div className="rw-impact-pip-body">
+              <div className="rw-impact-pip-stage-label">{stage.label}</div>
+              <div className="rw-impact-pip-desc">{stage.description}</div>
+              {(stage.terminalsRemaining || []).length > 0 && (
+                <div className="rw-impact-pip-chips">
+                  {stage.terminalsRemaining.map(t => (
+                    <span key={t.terminalId} className="rw-impact-pip-chip pass">{t.displayId} <span className="rw-impact-pip-chip-sr">{t.successRate}%</span></span>
+                  ))}
+                </div>
+              )}
+              {(stage.terminalsEliminated || []).length > 0 && (
+                <div className="rw-impact-pip-chips">
+                  {stage.terminalsEliminated.map(t => (
+                    <span key={t.terminalId} className="rw-impact-pip-chip fail">{t.displayId} <em className="rw-impact-pip-chip-sr">{t.reason}</em></span>
+                  ))}
+                </div>
+              )}
+              {isSorter && stage.scored && (
+                <div className="rw-impact-pip-scores">
+                  {stage.scored.map((t, si) => (
+                    <div key={t.terminalId} className={`rw-impact-pip-score-row${t.isSelected ? ' selected' : ''}`}>
+                      <span className="rw-impact-pip-rank">#{si + 1}</span>
+                      <span className="rw-impact-pip-name">{t.displayId}</span>
+                      <div className="rw-impact-pip-bar-wrap"><div className="rw-impact-pip-bar" style={{ width: `${Math.min(t.finalScore, 100)}%` }} /></div>
+                      <span className="rw-impact-pip-score-val">{Math.round(t.finalScore)}</span>
+                      {t.isSelected && <span className="rw-impact-pip-sel-badge">Selected</span>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function RuleImpactAnalysis({ rule, savedTerminals, merchant, filters, method, monthlyTxns, avgTxnValue, allTerminals, rules, srThresh, onDone, onEditRule, onDisableRule }) {
+  const flows = useMemo(() => generateImpactedFlows(method, filters, monthlyTxns), [method, filters, monthlyTxns])
+  const [simulated, setSimulated] = useState({})   // flowId → { before, after }
+  const [simulating, setSimulating] = useState(null)
+  const [expanded, setExpanded]   = useState({})   // flowId → bool
+
+  const runSim = useCallback((flow) => {
+    setSimulating(flow.id)
+    setTimeout(() => {
+      const rulesWithout = (rules || []).filter(r => r.id !== rule.id)
+      const rulesWith    = [rule, ...rulesWithout].sort((a, b) => (a.priority || 99) - (b.priority || 99))
+      const before = simulateRoutingPipeline(merchant, flow.txn, rulesWithout)
+      const after  = simulateRoutingPipeline(merchant, flow.txn, rulesWith)
+      setSimulated(p => ({ ...p, [flow.id]: { before, after } }))
+      setExpanded(p => ({ ...p, [flow.id]: true }))  // auto-expand after sim
+      setSimulating(null)
+    }, 140)
+  }, [rules, rule, merchant])
+
+  const toggleExpand = (flowId) => setExpanded(p => ({ ...p, [flowId]: !p[flowId] }))
+
+  const formatRev = (amt) => {
+    const abs = Math.abs(amt)
+    if (abs >= 100000) return `₹${(abs / 100000).toFixed(1)}L`
+    if (abs >= 1000)   return `₹${(abs / 1000).toFixed(1)}K`
+    return `₹${abs}`
+  }
+
+  // Derive per-flow impact metrics
+  const flowMetrics = useMemo(() => {
+    const m = {}
+    flows.forEach(flow => {
+      const sim = simulated[flow.id]
+      if (!sim) return
+      const beforeTerm = sim.before.isNTF ? null : sim.before.selectedTerminal
+      const afterTerm  = sim.after.isNTF  ? null : sim.after.selectedTerminal
+      const beforeSR   = beforeTerm?.successRate || 0
+      const afterSR    = afterTerm?.successRate  || 0
+      const srDelta    = afterSR - beforeSR
+      const ntfRisk    = sim.after.isNTF && !sim.before.isNTF
+      const revDelta   = Math.round((srDelta / 100) * flow.dailyVol * avgTxnValue)
+      m[flow.id] = { beforeTerm, afterTerm, beforeSR, afterSR, srDelta, ntfRisk, revDelta }
+    })
+    return m
+  }, [simulated, flows, avgTxnValue])
+
+  const aggregateSummary = useMemo(() => {
+    const keys = Object.keys(flowMetrics)
+    if (!keys.length) return null
+    let ntfRisks = 0, totalSRDelta = 0, totalRevDelta = 0
+    keys.forEach(flowId => {
+      const m = flowMetrics[flowId]
+      if (m.ntfRisk) ntfRisks++
+      totalSRDelta  += m.srDelta
+      totalRevDelta += m.revDelta
+    })
+    const simCount = keys.length
+    return {
+      ntfRisks,
+      avgSRDelta: simCount ? Math.round(totalSRDelta / simCount * 10) / 10 : 0,
+      totalRevDelta: Math.round(totalRevDelta),
+      simCount,
+    }
+  }, [flowMetrics])
+
+  return (
+    <div className="rw-impact">
+      {/* ── Success banner ── */}
+      <div className="rw-impact-banner">
+        <span className="rw-impact-check">✓</span>
+        <div>
+          <div className="rw-impact-title">Rule Created</div>
+          <div className="rw-impact-name">{rule.name}</div>
+        </div>
+        <span className="rw-impact-enabled-badge">Active</span>
+      </div>
+
+      {/* ── Impacted flows ── */}
+      <div className="rw-impact-section-label">Impacted Payment Flows ({flows.length})</div>
+      <div className="rw-impact-flows">
+        {flows.map(flow => {
+          const sim      = simulated[flow.id]
+          const isSimming = simulating === flow.id
+          const isOpen   = !!expanded[flow.id]
+          const m        = flowMetrics[flow.id]
+
+          return (
+            <div key={flow.id} className={`rw-impact-flow-card${sim ? (isOpen ? ' open' : ' collapsed') : ''}`}>
+
+              {/* ── Header row (always visible) ── */}
+              <div className="rw-impact-flow-header" onClick={sim ? () => toggleExpand(flow.id) : undefined} style={sim ? { cursor: 'pointer' } : {}}>
+                <div className="rw-impact-flow-meta">
+                  <span className="rw-impact-flow-label">{flow.label}</span>
+                  <span className="rw-impact-flow-vol">~{flow.dailyVol.toLocaleString()} txns/day</span>
+                </div>
+
+                {/* Inline badges when collapsed (post-sim) */}
+                {sim && !isOpen && m && (
+                  <div className="rw-impact-flow-inline-badges">
+                    {m.ntfRisk && <span className="rw-impact-badge ntf compact">⚠️ NTF Risk</span>}
+                    {!m.ntfRisk && Math.abs(m.srDelta) >= 0.1 && (
+                      <span className={`rw-impact-badge compact ${m.srDelta > 0 ? 'sr-up' : 'sr-down'}`}>
+                        {m.srDelta > 0 ? '↑' : '↓'} SR {Math.abs(m.srDelta).toFixed(1)}%
+                      </span>
+                    )}
+                    {!m.ntfRisk && Math.abs(m.revDelta) >= 100 && (
+                      <span className={`rw-impact-badge compact ${m.revDelta >= 0 ? 'rev-up' : 'rev-down'}`}>
+                        {m.revDelta >= 0 ? '↑' : '↓'} {formatRev(m.revDelta)}/day
+                      </span>
+                    )}
+                    {!m.ntfRisk && Math.abs(m.srDelta) < 0.1 && (
+                      <span className="rw-impact-badge compact neutral">No change</span>
+                    )}
+                  </div>
+                )}
+
+                {/* Simulate / Re-simulate button (only when not collapsed) */}
+                {(!sim || isOpen) && (
+                  <button
+                    className="rw-impact-sim-btn"
+                    onClick={e => { e.stopPropagation(); runSim(flow) }}
+                    disabled={isSimming}
+                  >
+                    {isSimming ? 'Simulating…' : sim ? '↺ Re-simulate' : '▷ Simulate'}
+                  </button>
+                )}
+
+                {/* Chevron toggle (post-sim) */}
+                {sim && (
+                  <span className={`rw-impact-chevron${isOpen ? ' open' : ''}`}>▼</span>
+                )}
+              </div>
+
+              {/* Pre-sim hint */}
+              {!sim && !isSimming && (
+                <div className="rw-impact-flow-hint">Click Simulate to trace routing impact</div>
+              )}
+              {isSimming && (
+                <div className="rw-impact-flow-hint simming">⏳ Running pipeline simulation…</div>
+              )}
+
+              {/* ── Expandable detail ── */}
+              <div className={`rw-impact-flow-expand${isOpen ? ' open' : ''}`}>
+                {sim && (
+                  <div className="rw-impact-sim-results">
+                    {/* Impact badges */}
+                    {m && (
+                      <div className="rw-impact-badges">
+                        {m.ntfRisk && (
+                          <span className="rw-impact-badge ntf">
+                            ⚠️ NTF Risk — rule routes to {savedTerminals.map(t => t.displayId).join(', ')} with no fallback terminal
+                          </span>
+                        )}
+                        {!m.ntfRisk && Math.abs(m.srDelta) >= 0.1 && (
+                          <span className={`rw-impact-badge ${m.srDelta > 0 ? 'sr-up' : 'sr-down'}`}>
+                            {m.srDelta > 0 ? '↑' : '↓'} SR {m.srDelta > 0 ? 'improves' : 'drops'} {Math.abs(m.srDelta).toFixed(1)}%  ({m.beforeSR}% → {m.afterSR}%)
+                          </span>
+                        )}
+                        {!m.ntfRisk && Math.abs(m.revDelta) >= 100 && (
+                          <span className={`rw-impact-badge ${m.revDelta >= 0 ? 'rev-up' : 'rev-down'}`}>
+                            {m.revDelta >= 0 ? '↑' : '↓'} Est. {formatRev(m.revDelta)}/day revenue {m.revDelta >= 0 ? 'gain' : 'reduction'}
+                          </span>
+                        )}
+                        {!m.ntfRisk && Math.abs(m.srDelta) < 0.1 && (
+                          <span className="rw-impact-badge neutral">No routing change for this flow</span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Full pipeline traces — side by side (stacked on narrow) */}
+                    <div className="rw-impact-pipelines">
+                      <ImpactPipelineTrace result={sim.before} label="Without this rule" />
+                      <ImpactPipelineTrace result={sim.after}  label="With this rule" />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+            </div>
+          )
+        })}
+      </div>
+
+      {/* ── Aggregate summary ── */}
+      {aggregateSummary && (
+        <div className={`rw-impact-summary ${aggregateSummary.ntfRisks > 0 ? 'danger' : aggregateSummary.avgSRDelta < -0.5 ? 'warn' : 'ok'}`}>
+          <div className="rw-impact-summary-title">Impact Summary ({aggregateSummary.simCount} flow{aggregateSummary.simCount > 1 ? 's' : ''} simulated)</div>
+          <div className="rw-impact-summary-rows">
+            {aggregateSummary.ntfRisks > 0 && (
+              <div className="rw-impact-summary-row red">⚠️ {aggregateSummary.ntfRisks} flow{aggregateSummary.ntfRisks > 1 ? 's' : ''} at NTF risk — no fallback terminal</div>
+            )}
+            <div className={`rw-impact-summary-row ${aggregateSummary.avgSRDelta >= 0 ? 'green' : 'amber'}`}>
+              {aggregateSummary.avgSRDelta >= 0 ? '↑' : '↓'} Avg SR change: {aggregateSummary.avgSRDelta >= 0 ? '+' : ''}{aggregateSummary.avgSRDelta}% across simulated flows
+            </div>
+            {Math.abs(aggregateSummary.totalRevDelta) >= 100 && (
+              <div className={`rw-impact-summary-row ${aggregateSummary.totalRevDelta >= 0 ? 'green' : 'amber'}`}>
+                {aggregateSummary.totalRevDelta >= 0 ? '↑' : '↓'} Net est. revenue impact: {aggregateSummary.totalRevDelta >= 0 ? '+' : ''}{formatRev(aggregateSummary.totalRevDelta)}/day
+              </div>
+            )}
+          </div>
+          <div className="rw-impact-summary-note">Review each flow's simulation above before enabling this rule in production.</div>
+        </div>
+      )}
+
+      {/* ── Action buttons ── */}
+      <div className="rw-impact-actions">
+        <button className="rw-btn ghost" onClick={onEditRule}>← Edit Rule</button>
+        <button className="rw-btn secondary" onClick={onDisableRule}>⏸ Disable Rule</button>
+        <button className="rw-btn primary" onClick={onDone}>Done ✓</button>
+      </div>
+    </div>
+  )
+}
+
+function TerminalStep({ merchant, method, filters, rules, addRule, onBack, onClose }) {
+  const { requestApproval: requestApprovalCtx } = useApprovals()
+  // Get ALL terminals for the merchant (for showing ineligible ones)
+  const allMerchantTerminals = useMemo(() =>
+    merchant.gatewayMetrics.map(gm => {
+      const gw = gateways.find(g => g.id === gm.gatewayId)
+      const term = gw?.terminals.find(t => t.id === gm.terminalId)
+      const supportsMethod = (gm.supportedMethods || []).includes(dataKey(method))
+      const bankDisabled = term?.bankStatus === 'disabled'
+      let ineligibleReason = null
+
+      // Check in order: method -> bank disabled -> network -> issuer -> card type
+      if (!supportsMethod) {
+        ineligibleReason = `Does not support ${method}`
+      } else if (bankDisabled) {
+        ineligibleReason = term.bankStatusReason || 'Terminal disabled by bank'
+      } else if (method === 'Cards' && filters?.networks?.length > 0) {
+        // Check network support
+        const terminalNetworks = gm.supportedNetworks || []
+        if (terminalNetworks.length > 0) {
+          const hasMatchingNetwork = filters.networks.some(n => terminalNetworks.includes(n))
+          if (!hasMatchingNetwork) {
+            ineligibleReason = `Does not support ${filters.networks.join(', ')}`
+          }
+        }
+      }
+
+      if (!ineligibleReason && method === 'Cards' && filters?.issuerBanks?.length > 0) {
+        // Check issuer support
+        const terminalIssuers = gm.supportedIssuers || []
+        if (terminalIssuers.length > 0 && !terminalIssuers.includes('ALL')) {
+          const hasMatchingIssuer = filters.issuerBanks.some(i => terminalIssuers.includes(i))
+          if (!hasMatchingIssuer) {
+            ineligibleReason = `Issuer ${filters.issuerBanks.join(', ')} not supported`
+          }
+        }
+      }
+
+      if (!ineligibleReason && method === 'Cards' && filters?.cardTypes?.length > 0) {
+        // Check card type support
+        const terminalCardTypes = gm.supportedCardTypes || []
+        if (terminalCardTypes.length > 0) {
+          const hasMatchingCardType = filters.cardTypes.some(ct => terminalCardTypes.includes(ct))
+          if (!hasMatchingCardType) {
+            ineligibleReason = `${filters.cardTypes.join(', ')} cards not supported`
+          }
+        }
+      }
+
+      return {
+        id: gm.terminalId,
+        displayId: term?.terminalId || gm.terminalId,
+        gatewayShort: gw?.shortName || '?',
+        successRate: gm.successRate,
+        costPerTxn: gm.costPerTxn,
+        txnShare: gm.txnShare || 0,
+        eligible: !ineligibleReason,
+        ineligibleReason,
+      }
+    }), [merchant, method, filters])
+
+  const eligibleTerminals = allMerchantTerminals.filter(t => t.eligible)
+  const ineligibleTerminals = allMerchantTerminals.filter(t => !t.eligible)
+
+  // Monthly transactions + assumed avg transaction value
+  const monthlyTxns = merchant?.txnVolumeHistory?.currentMonth || 30000
+  const avgTxnValue = 850 // ₹850 default avg order value
+
+  // State
+  const [order, setOrder] = useState(() => [...eligibleTerminals].sort((a, b) => b.successRate - a.successRate))
+  const [avoidedIds, setAvoidedIds] = useState(new Set())
+  const [compassExpiry, setCompassExpiry] = useState('')
+  const [showCompassPreview, setShowCompassPreview] = useState(false)
+  const [dragIdx, setDragIdx] = useState(null)
+  const [saved, setSaved] = useState(null)
+  const [srThresholds, setSrThresholds] = useState({})
+  const setSrThreshold = (id, val) => setSrThresholds(prev => ({ ...prev, [id]: Math.max(0, Math.min(99, val)) }))
+  const [routingMode, setRoutingMode] = useState('priority')
+  const [gmvTargets, setGmvTargets] = useState({})
+
+  const activeTerminals = order.filter(t => !avoidedIds.has(t.id))
+  const priorityTerminal = activeTerminals[0] || null
+
+  const [approvalToast, setApprovalToast] = useState(null)
+
+  const toggleAvoid = async (id) => {
+    // If undoing an avoid, no approval needed
+    if (avoidedIds.has(id)) {
+      setAvoidedIds(prev => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
+      return
+    }
+    // Block if it would leave zero active
+    if (activeTerminals.length <= 1) return
+
+    // Find terminal info for the approval request
+    const terminal = order.find(t => t.id === id)
+    if (!terminal) return
+
+    // Find gateway info
+    const gw = gateways.find(g => g.terminals.some(gt => gt.id === id))
+
+    // Trigger approval flow
+    if (requestApprovalCtx) {
+      const result = await requestApprovalCtx(
+        {
+          type: 'avoid_terminal',
+          terminalId: id,
+          terminalDisplayId: terminal.displayId || id,
+          gatewayName: gw?.name || terminal.gatewayShort || '',
+          method: method,
+        },
+        {
+          merchantCount: 1,
+          merchantNames: [merchant?.name || 'Current Merchant'],
+          estimatedTxnVolume: `~${Math.round((merchant?.txnVolumeHistory?.currentMonth || 30000) * (terminal.txnShare / 100))} txn/month`,
+          estimatedRevenue: `₹${((merchant?.txnVolumeHistory?.currentMonth || 30000) * (terminal.txnShare / 100) * 850 / 100000).toFixed(1)}L/month`,
+        }
+      )
+      if (result.submitted) {
+        setApprovalToast(`Approval ${result.approvalId} submitted — terminal will be avoided after manager approval`)
+        setTimeout(() => setApprovalToast(null), 4000)
+        // Don't actually avoid yet — awaiting approval
+        return
+      }
+      return // cancelled
+    }
+
+    // Fallback: direct avoid (no approval provider)
+    setAvoidedIds(prev => {
+      const next = new Set(prev)
+      next.add(id)
+      return next
+    })
+  }
+
+  // GMV mode helpers
+  const totalMonthlyGMV = (monthlyTxns * avgTxnValue) / 10000000 // in Crores
+  const getGmvPct = (id) => {
+    const target = gmvTargets[id] || 0
+    return target > 0 ? Math.round((target / totalMonthlyGMV) * 1000) / 10 : 0
+  }
+  const totalGmvPct = eligibleTerminals.reduce((sum, t) => sum + getGmvPct(t.id), 0)
+  const gmvExceeds100 = totalGmvPct > 100
+
+  // Drag handlers
+  const handleDragStart = (e, i) => { setDragIdx(i); e.dataTransfer.effectAllowed = 'move' }
+  const handleDragOver = (e, i) => {
+    e.preventDefault()
+    if (dragIdx === null || dragIdx === i) return
+    const next = [...order]; const [m] = next.splice(dragIdx, 1); next.splice(i, 0, m)
+    setOrder(next); setDragIdx(i)
+  }
+
+  // Generate COMPASS documents
+  const generateCompassDocs = () => {
+    const docs = []
+    const conditions = buildConditions(method, filters)
+
+    if (routingMode === 'gmv') {
+      // GMV Split mode: generate include docs with traffic_distribution for each terminal with gmv > 0
+      const terminalsWithGmv = eligibleTerminals.filter(t => gmvTargets[t.id] && gmvTargets[t.id] > 0)
+      terminalsWithGmv.forEach((t, idx) => {
+        let gwId = ''
+        for (const gw of gateways) {
+          if (gw.terminals?.find(tm => tm.id === t.id)) {
+            gwId = gw.shortName?.toLowerCase() || gw.id.replace('gw-', '')
+            break
+          }
+        }
+        const pct = getGmvPct(t.id)
+        const priority = 2000 - (idx * 200)
+        const doc = {
+          namespace: 'merchant_routing',
+          scope_merchant_id: merchant.id,
+          scope: { merchant_id: merchant.id },
+          target: { gateway: gwId, method: compassMethodKey(method) },
+          action: 'include',
+          priority: priority,
+          conditions: flattenConditions(conditions),
+          traffic_distribution: {
+            percentage: pct,
+            gmv_target_cr: gmvTargets[t.id]
+          },
+          enabled: true,
+          expires_at: null,
+        }
+        docs.push(doc)
+      })
+      return docs
+    }
+
+    // Priority mode (original)
+    // Doc 1: Priority terminal (#1 active)
+    if (priorityTerminal) {
+      let gwId = ''
+      for (const gw of gateways) {
+        if (gw.terminals?.find(t => t.id === priorityTerminal.id)) {
+          gwId = gw.shortName?.toLowerCase() || gw.id.replace('gw-', '')
+          break
+        }
+      }
+      // Build fallback_condition from SR thresholds set on the priority terminal
+      const priThresh = srThresholds[priorityTerminal.id] ?? 70
+      const doc = {
+        namespace: 'merchant_routing',
+        scope_merchant_id: merchant.id,
+        scope: { merchant_id: merchant.id },
+        target: { gateway: gwId, method: compassMethodKey(method) },
+        action: 'include',
+        priority: 2000,
+        conditions: flattenConditions(conditions),
+        enabled: true,
+        expires_at: null,
+      }
+      if (priThresh > 0 && activeTerminals.length > 1) {
+        doc.fallback_condition = { minimum_sr: priThresh }
+      }
+      docs.push(doc)
+    }
+
+    // Docs for avoided terminals (deduplicated by gateway)
+    const avoidedGws = new Map()
+    order.filter(t => avoidedIds.has(t.id)).forEach(t => {
+      let gwId = ''
+      for (const gw of gateways) {
+        if (gw.terminals?.find(tm => tm.id === t.id)) {
+          gwId = gw.shortName?.toLowerCase() || gw.id.replace('gw-', '')
+          break
+        }
+      }
+      if (gwId && !avoidedGws.has(gwId)) avoidedGws.set(gwId, t)
+    })
+
+    for (const [gwId, t] of avoidedGws) {
+      docs.push({
+        namespace: 'merchant_routing',
+        scope_merchant_id: merchant.id,
+        scope: { merchant_id: merchant.id },
+        target: { gateway: gwId, method: compassMethodKey(method) },
+        action: 'exclude',
+        priority: 0,
+        conditions: flattenConditions(conditions),
+        enabled: true,
+        expires_at: compassExpiry ? `${compassExpiry}T00:00:00Z` : null,
+      })
+    }
+
+    return docs
+  }
+
+  const handleSave = () => {
+    const conditions = buildConditions(method, filters)
+    const compassDocs = generateCompassDocs()
+
+    if (routingMode === 'gmv') {
+      // GMV Split mode
+      const splitsArray = eligibleTerminals
+        .filter(t => gmvTargets[t.id] && gmvTargets[t.id] > 0)
+        .map(t => ({
+          terminalId: t.id,
+          percentage: getGmvPct(t.id)
+        }))
+
+      const splitTerminalNames = splitsArray
+        .map(s => {
+          const term = eligibleTerminals.find(t => t.id === s.terminalId)
+          return `${term?.gatewayShort} ${Math.round(s.percentage * 10) / 10}%`
+        })
+        .join(' + ')
+
+      const rule = {
+        id: `rule-${merchant.id}-rw-${Date.now()}`,
+        name: `${method} GMV Split → ${splitTerminalNames}`,
+        type: 'volume_split',
+        enabled: true,
+        priority: (rules?.filter(r => !r.isDefault && !r.isMethodDefault).length || 0) + 1,
+        conditions, conditionLogic: 'AND',
+        action: {
+          type: 'split',
+          splits: splitsArray,
+        },
+        isDefault: false,
+        createdAt: new Date().toISOString(),
+        createdBy: 'anugrah.sharma@razorpay.com',
+        // COMPASS fields
+        compassAction: 'include',
+        compassPriority: 2000,
+        expiresAt: null,
+        _compassDocs: compassDocs,
+        _compassDoc: compassDocs[0] || null,
+        _compassNamespace: 'merchant_routing',
+      }
+
+      addRule?.(rule)
+      setSaved(rule)
+    } else {
+      // Priority mode (original)
+      const rule = {
+        id: `rule-${merchant.id}-rw-${Date.now()}`,
+        name: buildRuleName(method, filters, activeTerminals),
+        type: 'conditional',
+        enabled: true,
+        priority: (rules?.filter(r => !r.isDefault && !r.isMethodDefault).length || 0) + 1,
+        conditions, conditionLogic: 'AND',
+        action: {
+          type: 'route',
+          terminals: activeTerminals.map(t => t.id),
+          splits: [],
+          srThreshold: srThresholds[activeTerminals[0]?.id] ?? 70,
+          fallbackTerminal: activeTerminals[activeTerminals.length - 1]?.id || null,
+        },
+        isDefault: false,
+        createdAt: new Date().toISOString(),
+        createdBy: 'anugrah.sharma@razorpay.com',
+        // COMPASS fields
+        compassAction: 'include',
+        compassPriority: 2000,
+        expiresAt: compassExpiry || null,
+        _compassDocs: compassDocs,
+        _compassDoc: compassDocs[0] || null,
+        _compassNamespace: 'merchant_routing',
+      }
+
+      addRule?.(rule)
+      setSaved(rule)
+    }
+  }
+
+  if (saved) {
+    return (
+      <RuleImpactAnalysis
+        rule={saved}
+        savedTerminals={activeTerminals}
+        merchant={merchant}
+        filters={filters}
+        method={method}
+        monthlyTxns={monthlyTxns}
+        avgTxnValue={avgTxnValue}
+        allTerminals={eligibleTerminals}
+        rules={rules}
+        srThresh={srThresholds}
+        onDone={onClose || (() => setSaved(null))}
+        onEditRule={() => setSaved(null)}
+        onDisableRule={onClose || (() => setSaved(null))}
+      />
+    )
+  }
+
+  return (
+    <div className="rw-term-step">
+      <FilterSummary method={method} f={filters} />
+
+      {/* Tab toggle: Priority vs GMV Split */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 16, marginTop: 12 }}>
+        <button
+          onClick={() => { setRoutingMode('priority'); setGmvTargets({}); }}
+          style={{
+            padding: '6px 14px',
+            fontSize: '11px',
+            fontWeight: 600,
+            borderRadius: 6,
+            border: routingMode === 'priority' ? 'none' : '1px solid #d1d5db',
+            background: routingMode === 'priority' ? '#3b82f6' : 'transparent',
+            color: routingMode === 'priority' ? 'white' : '#6b7280',
+            cursor: 'pointer',
+            transition: 'all 0.15s',
+          }}
+        >
+          Priority Routing
+        </button>
+        <button
+          onClick={() => setRoutingMode('gmv')}
+          style={{
+            padding: '6px 14px',
+            fontSize: '11px',
+            fontWeight: 600,
+            borderRadius: 6,
+            border: routingMode === 'gmv' ? 'none' : '1px solid #d1d5db',
+            background: routingMode === 'gmv' ? '#3b82f6' : 'transparent',
+            color: routingMode === 'gmv' ? 'white' : '#6b7280',
+            cursor: 'pointer',
+            transition: 'all 0.15s',
+          }}
+        >
+          GMV Split
+        </button>
+      </div>
+
+      {routingMode === 'priority' && (
+        <>
+          <div style={{ fontSize: 12, color: '#666', marginBottom: 6 }}>
+            Drag to set priority order. <strong>#1 is your priority terminal.</strong> Mark terminals you want to exclude as "Avoid."
+          </div>
+          {activeTerminals.length > 1 && (
+            <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 14 }}>
+              Set an SR threshold per terminal — traffic falls back to the next terminal when SR drops below it.
+            </div>
+          )}
+        </>
+      )}
+
+      {routingMode === 'gmv' && (
+        <>
+          <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>
+            Enter GMV targets per gateway. The system computes the % of total volume to route.
+          </div>
+          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 12 }}>
+            Estimated monthly GMV: <strong>₹{totalMonthlyGMV.toFixed(2)} Cr</strong>
+          </div>
+        </>
+      )}
+
+      {/* ── Eligible terminals ── */}
+      {routingMode === 'priority' && (
+        <>
+          <div className="rw-match" style={{ marginBottom: 8 }}>
+            <span className="rw-match-dot" />
+            <span><strong>{eligibleTerminals.length}</strong> eligible terminals</span>
+          </div>
+
+          <div className="rw-term-list">
+        {order.map((t, i) => {
+          const isAvoided = avoidedIds.has(t.id)
+          const isPriority = !isAvoided && activeTerminals[0]?.id === t.id
+          const activeRank = isAvoided ? null : activeTerminals.indexOf(t) + 1
+
+          return (
+            <div
+              key={t.id}
+              className={`rw-term-row${isPriority ? ' priority' : ''}${isAvoided ? ' avoided' : ' sel'}${dragIdx === i ? ' drag' : ''}`}
+              draggable={!isAvoided}
+              onDragStart={e => handleDragStart(e, i)}
+              onDragOver={e => handleDragOver(e, i)}
+              onDragEnd={() => setDragIdx(null)}
+              style={{
+                borderLeft: isPriority ? '4px solid #059669' : isAvoided ? '4px solid #fca5a5' : '4px solid transparent',
+                background: isPriority ? '#ecfdf5' : isAvoided ? '#fef2f2' : 'white',
+                opacity: isAvoided ? 0.5 : 1,
+              }}
+            >
+              <div className="rw-term-left">
+                <span className="rw-term-drag" style={{ opacity: isAvoided ? 0.3 : 1 }}>⠿</span>
+                <div style={{
+                  width: 24, height: 24, borderRadius: '50%',
+                  background: isPriority ? '#059669' : isAvoided ? '#dc2626' : '#e5e7eb',
+                  color: isPriority || isAvoided ? 'white' : '#6b7280',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 11, fontWeight: 700, flexShrink: 0,
+                }}>
+                  {isAvoided ? '✕' : isPriority ? '★' : activeRank}
+                </div>
+                <div>
+                  <div className="rw-term-id" style={{ textDecoration: isAvoided ? 'line-through' : 'none', color: isAvoided ? '#9ca3af' : undefined }}>
+                    {t.displayId}
+                    {isPriority && (
+                      <span style={{ fontSize: 9, fontWeight: 700, background: '#059669', color: 'white', padding: '1px 6px', borderRadius: 3, marginLeft: 6 }}>PRIORITY</span>
+                    )}
+                  </div>
+                  <div className="rw-term-gw">{t.gatewayShort}{t.costPerTxn === 0 ? ' · zero-cost' : ''}</div>
+                </div>
+              </div>
+              <div className="rw-term-right" style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span className="rw-term-sr" style={{ color: isAvoided ? '#9ca3af' : (t.successRate >= 90 ? '#059669' : '#d97706') }}>
+                  {t.successRate}%
+                </span>
+                <span className="rw-term-cost">{t.costPerTxn === 0 ? <span style={{ color: '#059669' }}>₹0</span> : `₹${t.costPerTxn}`}</span>
+                <span style={{ fontSize: 10, color: '#9ca3af' }}>{t.txnShare}%</span>
+                {/* SR threshold — show on each active terminal except the last fallback */}
+                {!isAvoided && activeTerminals.indexOf(t) < activeTerminals.length - 1 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, color: '#6b7280' }}>
+                    <span style={{ whiteSpace: 'nowrap' }}>Fallback if SR &lt;</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="99"
+                      value={srThresholds[t.id] ?? 70}
+                      onChange={e => setSrThreshold(t.id, +e.target.value)}
+                      onClick={e => e.stopPropagation()}
+                      style={{ width: 40, padding: '2px 4px', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: 10, textAlign: 'center' }}
+                    />
+                    <span>%</span>
+                  </div>
+                )}
+                {!isAvoided && activeTerminals.indexOf(t) === activeTerminals.length - 1 && (
+                  <span style={{ fontSize: 9, color: '#9ca3af', fontStyle: 'italic', whiteSpace: 'nowrap' }}>Final fallback</span>
+                )}
+                <button
+                  onClick={() => toggleAvoid(t.id)}
+                  style={{
+                    padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+                    cursor: 'pointer', border: '1.5px solid',
+                    background: isAvoided ? '#dc2626' : 'white',
+                    color: isAvoided ? 'white' : '#6b7280',
+                    borderColor: isAvoided ? '#dc2626' : '#e5e7eb',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  {isAvoided ? '↩ Undo' : '🚫 Avoid'}
+                </button>
+              </div>
+            </div>
+          )
+        })}
+          </div>
+
+          {/* NTF warnings */}
+          {activeTerminals.length === 1 && avoidedIds.size > 0 && (
+            <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 8, padding: '8px 12px', margin: '8px 0', fontSize: 12, color: '#92400e' }}>
+              ⚠️ Only <strong>1</strong> active terminal remaining. If it goes down, payments will NTF.
+            </div>
+          )}
+
+          {avoidedIds.size === 0 && (
+            <div style={{ fontSize: 11, color: '#9ca3af', fontStyle: 'italic', padding: '6px 0' }}>
+              All terminals active — #1 gets priority, rest are Doppler-managed fallbacks.
+            </div>
+          )}
+        </>
+      )}
+
+      {/* GMV Split mode UI */}
+      {routingMode === 'gmv' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12, marginBottom: 16 }}>
+          {eligibleTerminals.map(t => {
+            const pct = getGmvPct(t.id)
+            const gmvVal = gmvTargets[t.id] || ''
+            return (
+              <div
+                key={t.id}
+                style={{
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 8,
+                  padding: 12,
+                  background: 'white',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#1f2937' }}>
+                      {t.displayId}
+                    </div>
+                    <div style={{ fontSize: 10, color: '#6b7280' }}>
+                      {t.gatewayShort}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexDirection: 'column', alignItems: 'flex-end' }}>
+                    <span style={{ fontSize: 10, color: '#6b7280' }}>SR: {t.successRate}%</span>
+                    <span style={{ fontSize: 10, color: '#6b7280' }}>₹{t.costPerTxn}/txn</span>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: 10 }}>
+                  <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+                    GMV Target (₹ Cr)
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={gmvVal}
+                    onChange={e => setGmvTargets(prev => {
+                      const newVal = e.target.value ? parseFloat(e.target.value) : null
+                      if (newVal === null) {
+                        const { [t.id]: _, ...rest } = prev
+                        return rest
+                      }
+                      return { ...prev, [t.id]: newVal }
+                    })}
+                    step="0.1"
+                    min="0"
+                    style={{
+                      width: '100%',
+                      padding: '6px 8px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 4,
+                      fontSize: 11,
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+
+                {pct > 0 && (
+                  <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 4, padding: '6px 8px', fontSize: 11, color: '#1e40af' }}>
+                    → routes <strong>{pct}%</strong> of volume
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {routingMode === 'gmv' && gmvExceeds100 && (
+        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '8px 12px', marginBottom: 12, fontSize: 12, color: '#991b1b' }}>
+          ⚠️ Total GMV allocation ({totalGmvPct}%) exceeds 100%. Please adjust targets.
+        </div>
+      )}
+
+      {routingMode === 'gmv' && totalGmvPct > 0 && (
+        <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '8px 12px', marginBottom: 12, fontSize: 11, color: '#166534' }}>
+          Remaining {(100 - totalGmvPct).toFixed(1)}% → Doppler ML managed
+        </div>
+      )}
+
+      {/* ── Ineligible terminals (priority mode only) ── */}
+      {routingMode === 'priority' && ineligibleTerminals.length > 0 && (
+        <div style={{ marginTop: 16 }}>
+          <div style={{ fontSize: 11, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
+            Ineligible Terminals ({ineligibleTerminals.length})
+          </div>
+          {ineligibleTerminals.map(t => (
+            <div key={t.id} style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+              padding: '8px 12px', border: '1px dashed #e5e7eb', borderRadius: 8, marginBottom: 4,
+              opacity: 0.45, background: '#f9fafb',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{
+                  width: 22, height: 22, borderRadius: '50%', background: '#e5e7eb', color: '#9ca3af',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10,
+                }}>—</div>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: '#9ca3af' }}>{t.displayId}</div>
+                  <div style={{ fontSize: 10, color: '#d1d5db' }}>{t.gatewayShort}</div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <span style={{ fontSize: 11, color: '#d1d5db' }}>{t.successRate}%</span>
+                <span style={{
+                  fontSize: 10, background: '#fef2f2', color: '#dc2626',
+                  padding: '2px 8px', borderRadius: 10, fontWeight: 500,
+                }}>
+                  {t.ineligibleReason}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Expiry — only show in priority mode when something is avoided */}
+      {routingMode === 'priority' && avoidedIds.size > 0 && (
+        <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: 12, marginTop: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 11, fontWeight: 600, color: '#374151' }}>Auto-expire?</span>
+          <input
+            type="date"
+            style={{ padding: '4px 8px', border: '1px solid #e5e7eb', borderRadius: 6, fontSize: 11 }}
+            value={compassExpiry}
+            onChange={e => setCompassExpiry(e.target.value)}
+          />
+          <span style={{ fontSize: 10, color: '#9ca3af' }}>Avoid rules lifted after this date</span>
+        </div>
+      )}
+
+      {/* COMPASS document preview */}
+      <div style={{ marginTop: 14 }}>
+        <button
+          className="rw-btn ghost"
+          style={{ fontSize: 10, padding: '4px 10px' }}
+          onClick={() => setShowCompassPreview(p => !p)}
+        >
+          {showCompassPreview ? '▾ Hide' : '▸ Show'} COMPASS Documents ({generateCompassDocs().length} docs)
+        </button>
+        {showCompassPreview && (() => {
+          const docs = generateCompassDocs()
+          if (docs.length === 0) return (
+            <div style={{ background: '#1a1a2e', borderRadius: 8, padding: 12, marginTop: 8 }}>
+              <pre style={{ fontFamily: "'SF Mono', 'Fira Code', monospace", fontSize: 10, color: '#818cf8', fontStyle: 'italic' }}>
+                // No COMPASS documents. Pure Doppler ML routing.
+              </pre>
+            </div>
+          )
+          return (
+            <div style={{ background: '#1a1a2e', borderRadius: 8, padding: 12, marginTop: 8, maxHeight: 350, overflowY: 'auto' }}>
+              <pre style={{ fontFamily: "'SF Mono', 'Fira Code', monospace", fontSize: 10, lineHeight: 1.5, color: '#e0e0e0', whiteSpace: 'pre-wrap' }}>
+                {docs.map((doc, i) => {
+                  const label = doc.action === 'include'
+                    ? `DOC ${i + 1} — PRIORITY (${doc.target.gateway?.toUpperCase()})`
+                    : `DOC ${i + 1} — EXCLUDE (${doc.target.gateway?.toUpperCase()})`
+                  return (
+                    <span key={i}>
+                      <span style={{ color: '#fbbf24', fontSize: 9, fontWeight: 600, display: 'block', marginTop: i > 0 ? 12 : 0, marginBottom: 4 }}>{label}</span>
+                      {JSON.stringify(doc, null, 2)}
+                      {'\n'}
+                    </span>
+                  )
+                })}
+                {activeTerminals.length > 1 && (
+                  <span style={{ color: '#818cf8', fontStyle: 'italic' }}>
+                    {'\n'}// Fallbacks: {activeTerminals.slice(1).map(t => t.displayId).join(', ')}
+                    {'\n'}// No docs needed — Doppler ML manages these.
+                  </span>
+                )}
+              </pre>
+            </div>
+          )
+        })()}
+      </div>
+
+      {/* Footer */}
+      <div className="rw-footer" style={{ marginTop: 14, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <button className="rw-btn ghost" onClick={onBack}>← Back</button>
+        <span style={{ fontSize: 11, color: '#6b7280' }}>
+          {generateCompassDocs().length > 0
+            ? `Generates ${generateCompassDocs().length} COMPASS doc${generateCompassDocs().length > 1 ? 's' : ''}`
+            : 'No COMPASS docs — Doppler ML routing'}
+        </span>
+        <button
+          className="rw-btn primary"
+          disabled={
+            routingMode === 'priority'
+              ? activeTerminals.length === 0
+              : totalGmvPct === 0 || gmvExceeds100
+          }
+          onClick={handleSave}
+          title={
+            routingMode === 'gmv' && gmvExceeds100
+              ? 'Total GMV allocation exceeds 100%'
+              : routingMode === 'gmv' && totalGmvPct === 0
+              ? 'Set at least one GMV target'
+              : ''
+          }
+        >
+          ✓ Save Rule
+        </button>
+      </div>
+
+      {/* Approval toast */}
+      {approvalToast && (
+        <div style={{
+          position: 'fixed', bottom: 24, right: 24, background: '#f59e0b', color: 'white',
+          padding: '10px 20px', borderRadius: 8, fontSize: 12, fontWeight: 500,
+          boxShadow: '0 4px 12px rgba(0,0,0,0.2)', zIndex: 9999, maxWidth: 380,
+          display: 'flex', alignItems: 'center', gap: 8,
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          </svg>
+          {approvalToast}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════
+// CARDS WIZARD
+// ════════════════════════════════════════════
+
+function CardsWizard({ merchant, method, rules, addRule, onClose }) {
+  const steps = getSteps(method)
+  const [step, setStep] = useState(0)
+  const [f, setF] = useState({
+    networks: [], issuerBanks: [], cardTypes: [],
+    international: 'Both', tokenizations: [], cardSubtypes: [],
+    amountPreset: null, amountMin: '', amountMax: '',
+  })
+  const upd = (k, v) => setF(p => ({ ...p, [k]: v }))
+  const tog = (k, id) => setF(p => ({ ...p, [k]: p[k].includes(id) ? p[k].filter(x => x !== id) : [...p[k], id] }))
+
+  const termCount = useMemo(() =>
+    merchant.gatewayMetrics.filter(gm => (gm.supportedMethods || []).includes('Cards')).length,
+    [merchant])
+
+  const rupayIntlWarn = f.networks.includes('RuPay') && f.international === 'International'
+
+  if (step === steps.length - 1) {
+    return (
+      <div className="rw-wizard">
+        <WizardStepper steps={steps} currentStep={step} />
+        <div className="rw-wz-body">
+          <TerminalStep merchant={merchant} method={method} filters={f} rules={rules} addRule={addRule} onBack={() => setStep(step - 1)} onClose={onClose} />
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rw-wizard">
+      <WizardStepper steps={steps} currentStep={step} />
+      <div className="rw-wz-body">
+
+        {/* Step 0 — Card Network (REQUIRED) */}
+        {step === 0 && (
+          <>
+            <StepHdr title="Card Network" required sub="Select one or more networks this rule applies to." />
+            <CheckboxGrid
+              options={CARDS_NETWORKS}
+              selected={f.networks}
+              onToggle={id => tog('networks', id)}
+              anyLabel="Any Network"
+              anySelected={f.networks.length === 0}
+            />
+            {rupayIntlWarn && <WarnBox text="⚠ RuPay does not support International — this combination will match no payments." />}
+            <MatchCount count={termCount} />
+            <WzFooter onCancel={onClose} onNext={() => setStep(1)} nextLabel={f.networks.length === 0 ? 'Any Network — Next →' : `${f.networks.length} selected — Next →`} />
+          </>
+        )}
+
+        {/* Step 1 — Issuer Bank (OPTIONAL) */}
+        {step === 1 && (
+          <>
+            <StepHdr title="Issuer Bank" optional sub="Filter by card-issuing bank. Empty = any issuer." />
+            <SearchableMS options={ISSUER_BANKS} selected={f.issuerBanks} onChange={v => upd('issuerBanks', v)} placeholder="Search bank…" />
+            <MatchCount count={termCount} />
+            <WzFooter onBack={() => setStep(0)} onSkip={() => setStep(2)} onNext={() => setStep(2)} nextLabel={f.issuerBanks.length ? `${f.issuerBanks.length} selected — Next →` : 'Any Issuer — Next →'} />
+          </>
+        )}
+
+        {/* Step 2 — Card Type (OPTIONAL) */}
+        {step === 2 && (
+          <>
+            <StepHdr title="Card Type" optional sub="Credit, Debit, or Prepaid. Empty = any type." />
+            <CheckboxGrid
+              options={CARD_TYPES}
+              selected={f.cardTypes}
+              onToggle={id => tog('cardTypes', id)}
+              anyLabel="Any Type"
+              anySelected={f.cardTypes.length === 0}
+            />
+            <MatchCount count={termCount} />
+            <WzFooter onBack={() => setStep(1)} onSkip={() => setStep(3)} onNext={() => setStep(3)} nextLabel="Next →" />
+          </>
+        )}
+
+        {/* Step 3 — Geography (OPTIONAL) */}
+        {step === 3 && (
+          <>
+            <StepHdr title="Geography" optional sub="Domestic Only, International Only, or Both." />
+            <RadioList
+              options={[
+                { id: 'Domestic',      label: 'Domestic Only',     pct: 22.7 },
+                { id: 'International', label: 'International Only', pct: 8.4  },
+                { id: 'Both',          label: 'Both (default)',     pct: null  },
+              ]}
+              selected={f.international}
+              onSelect={v => upd('international', v)}
+            />
+            {rupayIntlWarn && <WarnBox text="⚠ RuPay + International = no payments matched." />}
+            <MatchCount count={f.international === 'International' && f.networks.includes('RuPay') ? 0 : termCount} />
+            <WzFooter onBack={() => setStep(2)} onSkip={() => setStep(4)} onNext={() => setStep(4)} nextLabel="Next →" />
+          </>
+        )}
+
+        {/* Step 4 — Advanced (collapsed) */}
+        {step === 4 && (
+          <>
+            <StepHdr title="Advanced Options" sub="Optional fine-grained filters — all collapsed by default." />
+            <AdvCollapse title="Tokenization">
+              <CheckboxGrid
+                options={TOKENIZATIONS}
+                selected={f.tokenizations}
+                onToggle={id => tog('tokenizations', id)}
+                anyLabel="Any Vault"
+                anySelected={f.tokenizations.length === 0}
+              />
+            </AdvCollapse>
+            <AdvCollapse title="Card Sub-type">
+              <CheckboxGrid
+                options={CARD_SUBTYPES}
+                selected={f.cardSubtypes}
+                onToggle={id => tog('cardSubtypes', id)}
+                anyLabel="Any Sub-type"
+                anySelected={f.cardSubtypes.length === 0}
+              />
+            </AdvCollapse>
+            <AdvCollapse title="Amount Range">
+              <PresetGroup presets={AMOUNT_PRESETS_CARDS} selected={f.amountPreset} onSelect={v => upd('amountPreset', v)} />
+              {!f.amountPreset && (
+                <div className="rw-amt-custom">
+                  <span>Min ₹</span><input type="number" className="rw-amt-inp" placeholder="0" value={f.amountMin} onChange={e => upd('amountMin', e.target.value)} />
+                  <span>Max ₹</span><input type="number" className="rw-amt-inp" placeholder="∞" value={f.amountMax} onChange={e => upd('amountMax', e.target.value)} />
+                </div>
+              )}
+            </AdvCollapse>
+            <MatchCount count={termCount} />
+            <WzFooter onBack={() => setStep(3)} onNext={() => setStep(5)} nextLabel="Select Terminals →" />
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════
+// UPI ONETIME WIZARD
+// ════════════════════════════════════════════
+
+function UPIOnetimeWizard({ merchant, method, rules, addRule, onClose }) {
+  const steps = getSteps(method)
+  const [step, setStep] = useState(0)
+  const [f, setF] = useState({ upiType: 'Any', upiFlows: [], vpaHandle: 'Any', upiAmtPreset: null })
+  const upd = (k, v) => setF(p => ({ ...p, [k]: v }))
+  const tog = (k, id) => setF(p => ({ ...p, [k]: p[k].includes(id) ? p[k].filter(x => x !== id) : [...p[k], id] }))
+  const termCount = useMemo(() => merchant.gatewayMetrics.filter(gm => (gm.supportedMethods || []).includes('UPI')).length, [merchant])
+
+  if (step === steps.length - 1) {
+    return (
+      <div className="rw-wizard">
+        <WizardStepper steps={steps} currentStep={step} />
+        <div className="rw-wz-body">
+          <TerminalStep merchant={merchant} method={method} filters={f} rules={rules} addRule={addRule} onBack={() => setStep(step - 1)} onClose={onClose} />
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rw-wizard">
+      <WizardStepper steps={steps} currentStep={step} />
+      <div className="rw-wz-body">
+
+        {/* Step 0 — UPI Type (REQUIRED) */}
+        {step === 0 && (
+          <>
+            <StepHdr title="UPI Type" required sub="Select the UPI payment type for this rule." />
+            <RadioList options={UPI_TYPES} selected={f.upiType} onSelect={v => upd('upiType', v)} />
+            <MatchCount count={termCount} />
+            <WzFooter onCancel={onClose} onNext={() => setStep(1)} nextLabel="Next →" />
+          </>
+        )}
+
+        {/* Step 1 — UPI Flow (OPTIONAL) */}
+        {step === 1 && (
+          <>
+            <StepHdr title="UPI Flow" optional sub="Multi-select specific flows. Empty = any flow." />
+            <CheckboxGrid
+              options={UPI_FLOWS}
+              selected={f.upiFlows}
+              onToggle={id => tog('upiFlows', id)}
+              anyLabel="Any Flow"
+              anySelected={f.upiFlows.length === 0}
+            />
+            <MatchCount count={termCount} />
+            <WzFooter onBack={() => setStep(0)} onSkip={() => setStep(2)} onNext={() => setStep(2)} nextLabel="Next →" />
+          </>
+        )}
+
+        {/* Step 2 — VPA Handle (OPTIONAL) */}
+        {step === 2 && (
+          <>
+            <StepHdr title="VPA Handle" optional sub="Filter by UPI VPA suffix. Select one or leave as Any." />
+            <div className="rw-vpa-grid">
+              {VPA_HANDLES.map(h => (
+                <button key={h.id} className={`rw-vpa-opt${f.vpaHandle === h.id ? ' on' : ''}`} onClick={() => upd('vpaHandle', f.vpaHandle === h.id ? 'Any' : h.id)}>
+                  <span className="rw-vpa-label">{h.label}</span>
+                  <UsageStat pct={h.pct} />
+                </button>
+              ))}
+              <button className={`rw-vpa-opt${f.vpaHandle === 'Any' ? ' on' : ''}`} onClick={() => upd('vpaHandle', 'Any')}>
+                <span className="rw-vpa-label">Any Handle</span>
+              </button>
+            </div>
+            <MatchCount count={termCount} />
+            <WzFooter onBack={() => setStep(1)} onSkip={() => setStep(3)} onNext={() => setStep(3)} nextLabel="Next →" />
+          </>
+        )}
+
+        {/* Step 3 — Amount (ADVANCED) */}
+        {step === 3 && (
+          <>
+            <StepHdr title="Advanced Options" sub="Optional amount filter." />
+            <AdvCollapse title="Amount Range">
+              <PresetGroup presets={UPI_AMT_PRESETS} selected={f.upiAmtPreset} onSelect={v => upd('upiAmtPreset', v)} />
+            </AdvCollapse>
+            <MatchCount count={termCount} />
+            <WzFooter onBack={() => setStep(2)} onNext={() => setStep(4)} nextLabel="Select Terminals →" />
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════
+// UPI RECURRING WIZARD
+// ════════════════════════════════════════════
+
+function UPIRecurringWizard({ merchant, method, rules, addRule, onClose }) {
+  const steps = getSteps(method)
+  const [step, setStep] = useState(0)
+  const [f, setF] = useState({ recurringType: 'Both', mandateFreqs: [], vpaHandle: 'Any', mandateAmtPreset: null })
+  const upd = (k, v) => setF(p => ({ ...p, [k]: v }))
+  const tog = (k, id) => setF(p => ({ ...p, [k]: p[k].includes(id) ? p[k].filter(x => x !== id) : [...p[k], id] }))
+  const termCount = useMemo(() => merchant.gatewayMetrics.filter(gm => (gm.supportedMethods || []).includes('UPI')).length, [merchant])
+
+  const freqApplies = f.recurringType === 'Auto-debit' || f.recurringType === 'Both'
+
+  if (step === steps.length - 1) {
+    return (
+      <div className="rw-wizard">
+        <WizardStepper steps={steps} currentStep={step} />
+        <div className="rw-wz-body">
+          <TerminalStep merchant={merchant} method={method} filters={f} rules={rules} addRule={addRule} onBack={() => setStep(step - 1)} onClose={onClose} />
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rw-wizard">
+      <WizardStepper steps={steps} currentStep={step} />
+      <div className="rw-wz-body">
+
+        {/* Step 0 — Recurring Type (REQUIRED) */}
+        {step === 0 && (
+          <>
+            <StepHdr title="Recurring Type" required sub="Select which part of the recurring payment lifecycle this rule covers." />
+            <RadioList options={RECURRING_TYPES} selected={f.recurringType} onSelect={v => upd('recurringType', v)} />
+            <MatchCount count={termCount} />
+            <WzFooter onCancel={onClose} onNext={() => setStep(1)} nextLabel="Next →" />
+          </>
+        )}
+
+        {/* Step 1 — Mandate Frequency (OPTIONAL, conditional) */}
+        {step === 1 && (
+          <>
+            <StepHdr title="Mandate Frequency" optional sub={freqApplies ? 'Filter by recurring frequency.' : 'Not applicable for Initial Payment type.'} />
+            {freqApplies ? (
+              <CheckboxGrid
+                options={MANDATE_FREQS}
+                selected={f.mandateFreqs}
+                onToggle={id => tog('mandateFreqs', id)}
+                anyLabel="Any Frequency"
+                anySelected={f.mandateFreqs.length === 0}
+              />
+            ) : (
+              <div className="rw-na-box">Mandate frequency filters apply only to Auto-debit and Both. <button className="rw-link" onClick={() => setStep(0)}>← Change type</button></div>
+            )}
+            <MatchCount count={termCount} />
+            <WzFooter onBack={() => setStep(0)} onSkip={() => setStep(2)} onNext={() => setStep(2)} nextLabel="Next →" />
+          </>
+        )}
+
+        {/* Step 2 — VPA Handle (OPTIONAL) */}
+        {step === 2 && (
+          <>
+            <StepHdr title="VPA Handle" optional sub="Filter by VPA suffix (optional)." />
+            <div className="rw-vpa-grid">
+              {VPA_HANDLES.map(h => (
+                <button key={h.id} className={`rw-vpa-opt${f.vpaHandle === h.id ? ' on' : ''}`} onClick={() => upd('vpaHandle', f.vpaHandle === h.id ? 'Any' : h.id)}>
+                  <span className="rw-vpa-label">{h.label}</span>
+                  <UsageStat pct={h.pct} />
+                </button>
+              ))}
+              <button className={`rw-vpa-opt${f.vpaHandle === 'Any' ? ' on' : ''}`} onClick={() => upd('vpaHandle', 'Any')}>
+                <span className="rw-vpa-label">Any Handle</span>
+              </button>
+            </div>
+            <MatchCount count={termCount} />
+            <WzFooter onBack={() => setStep(1)} onSkip={() => setStep(3)} onNext={() => setStep(3)} nextLabel="Next →" />
+          </>
+        )}
+
+        {/* Step 3 — Advanced (Max Mandate Amount) */}
+        {step === 3 && (
+          <>
+            <StepHdr title="Advanced Options" sub="Optional max mandate amount filter." />
+            <AdvCollapse title="Max Mandate Amount">
+              <PresetGroup presets={MANDATE_AMT_PRESETS} selected={f.mandateAmtPreset} onSelect={v => upd('mandateAmtPreset', v)} />
+            </AdvCollapse>
+            <MatchCount count={termCount} />
+            <WzFooter onBack={() => setStep(2)} onNext={() => setStep(4)} nextLabel="Select Terminals →" />
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════
+// EMI WIZARD
+// ════════════════════════════════════════════
+
+function EMIWizard({ merchant, method, rules, addRule, onClose }) {
+  const steps = getSteps(method)
+  const [step, setStep] = useState(0)
+  const [f, setF] = useState({
+    emiNetworks: [], emiDurations: [], emiIssuers: [],
+    subventionType: null, emiCardTypes: [], emiAmtPreset: null,
+  })
+  const upd = (k, v) => setF(p => ({ ...p, [k]: v }))
+  const tog = (k, id) => setF(p => ({ ...p, [k]: p[k].includes(id) ? p[k].filter(x => x !== id) : [...p[k], id] }))
+  const termCount = useMemo(() => merchant.gatewayMetrics.filter(gm => (gm.supportedMethods || []).includes('EMI')).length, [merchant])
+
+  const debitEmiWarn = f.emiCardTypes.includes('debit')
+
+  if (step === steps.length - 1) {
+    return (
+      <div className="rw-wizard">
+        <WizardStepper steps={steps} currentStep={step} />
+        <div className="rw-wz-body">
+          <TerminalStep merchant={merchant} method={method} filters={f} rules={rules} addRule={addRule} onBack={() => setStep(step - 1)} onClose={onClose} />
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="rw-wizard">
+      <WizardStepper steps={steps} currentStep={step} />
+      <div className="rw-wz-body">
+
+        {/* Step 0 — Card Network (REQUIRED) */}
+        {step === 0 && (
+          <>
+            <StepHdr title="Card Network" required sub="Select which networks this EMI rule covers." />
+            <CheckboxGrid
+              options={EMI_NETWORKS}
+              selected={f.emiNetworks}
+              onToggle={id => tog('emiNetworks', id)}
+              anyLabel="Any Network"
+              anySelected={f.emiNetworks.length === 0}
+            />
+            <MatchCount count={termCount} />
+            <WzFooter onCancel={onClose} onNext={() => setStep(1)} nextLabel={f.emiNetworks.length === 0 ? 'Any Network — Next →' : `${f.emiNetworks.length} selected — Next →`} />
+          </>
+        )}
+
+        {/* Step 1 — EMI Duration (REQUIRED) */}
+        {step === 1 && (
+          <>
+            <StepHdr title="EMI Duration" required sub="Select one or more tenure options." />
+            <CheckboxGrid
+              options={EMI_DURATIONS}
+              selected={f.emiDurations}
+              onToggle={id => tog('emiDurations', id)}
+              anyLabel="Any Duration"
+              anySelected={f.emiDurations.length === 0}
+            />
+            <MatchCount count={termCount} />
+            <WzFooter onBack={() => setStep(0)} onNext={() => setStep(2)} nextLabel={f.emiDurations.length === 0 ? 'Any Duration — Next →' : `${f.emiDurations.length} selected — Next →`} />
+          </>
+        )}
+
+        {/* Step 2 — Issuer Bank (OPTIONAL) */}
+        {step === 2 && (
+          <>
+            <StepHdr title="Issuer Bank" optional sub="Filter by card-issuing bank." />
+            <SearchableMS options={EMI_ISSUER_BANKS} selected={f.emiIssuers} onChange={v => upd('emiIssuers', v)} placeholder="Search bank…" />
+            <MatchCount count={termCount} />
+            <WzFooter onBack={() => setStep(1)} onSkip={() => setStep(3)} onNext={() => setStep(3)} nextLabel={f.emiIssuers.length ? `${f.emiIssuers.length} selected — Next →` : 'Any Issuer — Next →'} />
+          </>
+        )}
+
+        {/* Step 3 — Subvention Type (OPTIONAL) */}
+        {step === 3 && (
+          <>
+            <StepHdr title="Subvention Type" optional sub="Who bears the EMI interest cost?" />
+            <RadioList
+              options={[...SUBVENTION_TYPES, { id: null, label: 'Any Subvention', pct: null }]}
+              selected={f.subventionType}
+              onSelect={v => upd('subventionType', v)}
+            />
+            <MatchCount count={termCount} />
+            <WzFooter onBack={() => setStep(2)} onSkip={() => setStep(4)} onNext={() => setStep(4)} nextLabel="Next →" />
+          </>
+        )}
+
+        {/* Step 4 — Advanced */}
+        {step === 4 && (
+          <>
+            <StepHdr title="Advanced Options" sub="Optional card type and amount filters." />
+            <AdvCollapse title="Card Type">
+              <CheckboxGrid
+                options={[
+                  { id: 'credit', label: 'Credit', pct: 72.7 },
+                  { id: 'debit',  label: 'Debit',  pct: 14.3 },
+                ]}
+                selected={f.emiCardTypes}
+                onToggle={id => tog('emiCardTypes', id)}
+                anyLabel="Any Card Type"
+                anySelected={f.emiCardTypes.length === 0}
+              />
+              {debitEmiWarn && <WarnBox text="⚠ Debit card EMI has very limited bank support — ensure terminal specifically supports debit EMI." />}
+            </AdvCollapse>
+            <AdvCollapse title="Amount Range">
+              <PresetGroup presets={EMI_AMT_PRESETS} selected={f.emiAmtPreset} onSelect={v => upd('emiAmtPreset', v)} />
+            </AdvCollapse>
+            <MatchCount count={termCount} />
+            <WzFooter onBack={() => setStep(3)} onNext={() => setStep(5)} nextLabel="Select Terminals →" />
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════
+// MAIN EXPORT — picks the right wizard
+// ════════════════════════════════════════════
+
+export default function CreateRuleWizard({ merchant, method, rules, addRule, onClose }) {
+  if (method === 'Cards')       return <CardsWizard       merchant={merchant} method={method} rules={rules} addRule={addRule} onClose={onClose} />
+  if (method === 'UPIOnetime')  return <UPIOnetimeWizard  merchant={merchant} method={method} rules={rules} addRule={addRule} onClose={onClose} />
+  if (method === 'UPIRecurring')return <UPIRecurringWizard merchant={merchant} method={method} rules={rules} addRule={addRule} onClose={onClose} />
+  if (method === 'EMI')         return <EMIWizard          merchant={merchant} method={method} rules={rules} addRule={addRule} onClose={onClose} />
+  return <div className="gc-info-box">Wizard not available for this method.</div>
+}
