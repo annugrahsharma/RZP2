@@ -652,6 +652,63 @@ export function getPlatformRulesForMerchant(merchant) {
   })
 }
 
+// ── Terminal SR History (mock data for simulation sliders) ─────
+// Provides SR by time window so users can adjust and see routing probability
+export const TERMINAL_SR_HISTORY = {
+  'term-hdfc-001':     { '24h': 71.2, '7d': 73.0, '30d': 73.5 },
+  'term-hdfc-001-upi': { '24h': 72.8, '7d': 73.2, '30d': 73.5 },
+  'term-hdfc-001-nb':  { '24h': 74.1, '7d': 73.8, '30d': 73.5 },
+  'term-hdfc-002':     { '24h': 70.5, '7d': 71.8, '30d': 72.1 },
+  'term-icici-001':    { '24h': 73.9, '7d': 72.5, '30d': 72.8 },
+  'term-icici-001-nb': { '24h': 73.1, '7d': 72.9, '30d': 72.8 },
+  'term-icici-002':    { '24h': 70.8, '7d': 71.0, '30d': 71.2 },
+  'term-axis-001':     { '24h': 70.2, '7d': 71.0, '30d': 71.4 },
+  'term-axis-001-upi': { '24h': 72.0, '7d': 71.6, '30d': 71.4 },
+  'term-axis-001-nb':  { '24h': 71.8, '7d': 71.5, '30d': 71.4 },
+  'term-axis-002':     { '24h': 68.2, '7d': 69.1, '30d': 69.6 },
+  'term-axis-002-upi': { '24h': 68.5, '7d': 69.3, '30d': 69.6 },
+  'term-rbl-001':      { '24h': 67.5, '7d': 68.2, '30d': 68.8 },
+  'term-rbl-001-upi':  { '24h': 67.8, '7d': 68.4, '30d': 68.8 },
+  'term-rbl-001-nb':   { '24h': 68.0, '7d': 68.5, '30d': 68.8 },
+  'term-rbl-002':      { '24h': 66.0, '7d': 67.0, '30d': 67.5 },
+  'term-yes-001':      { '24h': 69.5, '7d': 70.2, '30d': 70.5 },
+  'term-yes-001-upi':  { '24h': 70.0, '7d': 70.4, '30d': 70.5 },
+  'term-yes-001-nb':   { '24h': 69.8, '7d': 70.3, '30d': 70.5 },
+  'term-yes-002':      { '24h': 68.2, '7d': 69.0, '30d': 69.2 },
+}
+
+/**
+ * Calculate routing probability distribution for terminals.
+ * Uses softmax over SR values (with optional prefer boost) to produce
+ * a percentage chance each terminal gets picked by Doppler.
+ */
+export function calculateRoutingProbability(terminals, preferredTerminals = new Set(), routingStrategy = 'success_rate') {
+  if (terminals.length === 0) return []
+
+  // Temperature controls how sharply SR differences translate to probability
+  // Lower temp = more winner-take-all; higher temp = more even distribution
+  const TEMP = 3.0
+
+  const scored = terminals.map(t => {
+    let baseScore = t.successRate || 70
+    // Prefer boost: +8 SR-equivalent points (significant but not absolute)
+    if (preferredTerminals.has(t.terminalId)) baseScore += 8
+    // Cost bonus for cost-based routing
+    if (routingStrategy === 'cost_based' && t.isZeroCost) baseScore += 3
+    return { ...t, baseScore, isPreferred: preferredTerminals.has(t.terminalId) }
+  })
+
+  // Softmax: exp(score/temp) / sum(exp(score/temp))
+  const maxScore = Math.max(...scored.map(t => t.baseScore))
+  const exps = scored.map(t => Math.exp((t.baseScore - maxScore) / TEMP))
+  const sumExp = exps.reduce((s, e) => s + e, 0)
+
+  return scored.map((t, i) => ({
+    ...t,
+    probability: Math.round((exps[i] / sumExp) * 1000) / 10, // one decimal %
+  })).sort((a, b) => b.probability - a.probability)
+}
+
 // ── COMPASS Namespace: fraud_terminal_block ─────
 // Risk team terminal blocks — processed first in pipeline
 export const FRAUD_TERMINAL_BLOCKS = [
@@ -3765,42 +3822,29 @@ export function simulateRoutingPipeline(merchant, transaction, rules, overrides 
   }
 
   // ════════════════════════════════════════════════════════════
-  // STAGE 6: Doppler Sorter (ES Q2 ranking)
+  // STAGE 6: Routing Probability (ES Q2 — Doppler)
+  // Uses SR-based probability distribution instead of fake ML scores
   // ════════════════════════════════════════════════════════════
-  const dopplerScores = generateDopplerScores(remaining, transaction, merchant)
-  const dopplerMap = Object.fromEntries(dopplerScores.map(d => [d.terminalId, d.dopplerScore]))
+  const srOverrides = overrides.srOverrides || {}
+  const remainingWithSR = remaining.map(t => ({
+    ...t,
+    successRate: srOverrides[t.terminalId] !== undefined ? srOverrides[t.terminalId] : t.successRate,
+  }))
 
-  const scored = remaining.map(t => {
-    const doppler = dopplerMap[t.terminalId] || 50
-    const isPreferred = preferredTerminals.has(t.terminalId)
-    let finalScore
-
-    if (routingStrategy === 'cost_based') {
-      const maxCost = Math.max(...remaining.map(r => r.costPerTxn), 3)
-      const costScore = ((maxCost - t.costPerTxn) / maxCost) * 100
-      finalScore = Math.round((costScore * 0.6 + doppler * 0.2 + t.successRate * 0.2) * 10) / 10
-    } else {
-      finalScore = Math.round((t.successRate * 0.5 + doppler * 0.35 + (t.isZeroCost ? 5 : 0) * 0.15) * 10) / 10
-    }
-
-    // Apply terminal_override prefer boost
-    if (isPreferred) finalScore += 100
-
-    return { ...t, dopplerScore: doppler, finalScore, isPreferred }
-  }).sort((a, b) => b.finalScore - a.finalScore)
-
-  const selectedTerminal = scored[0]
+  const probDist = calculateRoutingProbability(remainingWithSR, preferredTerminals, routingStrategy)
+  const selectedTerminal = probDist[0]
 
   stages.push({
     id: 'sorter', stepNumber: stepNum++,
-    type: 'sorter', namespace: 'doppler_sorter',
-    label: `COMPASS ES Q2: Doppler Sort + Re-rank`,
-    description: `${scored.length} terminal(s) scored via ${routingStrategy === 'cost_based' ? 'cost optimization' : 'SR optimization'} + Doppler ML${preferredTerminals.size > 0 ? ' + preferred boost' : ''}`,
+    type: 'probability', namespace: 'doppler_sorter',
+    label: `Routing Probability (Doppler ES Q2)`,
+    description: `${probDist.length} terminal(s) — probability based on ${srOverrides && Object.keys(srOverrides).length > 0 ? 'adjusted' : 'historical'} SR${preferredTerminals.size > 0 ? ' + prefer boost' : ''}`,
     strategy: routingStrategy,
-    scored: scored.map((t, rank) => ({
+    scored: probDist.map((t, rank) => ({
       ...t,
       rank: rank + 1,
       isSelected: t.terminalId === selectedTerminal.terminalId,
+      finalScore: t.probability,
     })),
     selectedTerminal: {
       terminalId: selectedTerminal.terminalId,
@@ -3808,11 +3852,11 @@ export function simulateRoutingPipeline(merchant, transaction, rules, overrides 
       gatewayShort: selectedTerminal.gatewayShort,
       successRate: selectedTerminal.successRate,
       costPerTxn: selectedTerminal.costPerTxn,
-      finalScore: selectedTerminal.finalScore,
-      dopplerScore: selectedTerminal.dopplerScore,
+      finalScore: selectedTerminal.probability,
+      probability: selectedTerminal.probability,
       isPreferred: selectedTerminal.isPreferred || false,
     },
-    remainingCount: scored.length,
+    remainingCount: probDist.length,
   })
 
   return _buildResult(stages, selectedTerminal, false, warnings, merchant, routingStrategy)

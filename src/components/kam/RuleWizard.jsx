@@ -536,7 +536,7 @@ function ImpactPipelineTrace({ result, label }) {
       {stages.map((stage, i) => {
         const isNTF      = stage.type === 'ntf' || stage.type === 'rule_ntf'
         const isFilter   = stage.type === 'rule_filter'
-        const isSorter   = stage.type === 'sorter'
+        const isSorter   = stage.type === 'sorter' || stage.type === 'probability'
         const isPass     = stage.type === 'rule_pass'
         const isSkip     = stage.type === 'rule_skip'
         const isDisabled = stage.type === 'rule_disabled'

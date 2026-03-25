@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react'
-import { gateways, simulateRoutingPipeline } from '../../data/kamMockData'
+import { gateways, simulateRoutingPipeline, TERMINAL_SR_HISTORY, calculateRoutingProbability } from '../../data/kamMockData'
 import CreateRuleWizard from './RuleWizard'
 
 // ════════════════════════════════════════════
@@ -910,7 +910,7 @@ function SimulatePipeline({ steps, phase, simResult }) {
             <span className="gc-step-title">COMPASS Routing Pipeline</span>
             {simResult.isNTF
               ? <span className="gc-badge gc-badge-danger">NTF — No Terminal Found</span>
-              : <span className="gc-badge gc-badge-success">→ {simResult.selectedTerminal?.displayId} · SR {simResult.selectedTerminal?.successRate}%{simResult.selectedTerminal?.isPreferred ? ' ⭐' : ''}</span>
+              : <span className="gc-badge gc-badge-success">→ {simResult.selectedTerminal?.displayId} · SR {simResult.selectedTerminal?.successRate}%{simResult.selectedTerminal?.probability ? ` · ${simResult.selectedTerminal.probability}% likely` : ''}{simResult.selectedTerminal?.isPreferred ? ' ⭐' : ''}</span>
             }
           </div>
           <div className="gc-step-body">
@@ -924,7 +924,7 @@ function SimulatePipeline({ steps, phase, simResult }) {
         {stages.map((stage, i) => {
           const isNTF      = stage.type === 'ntf' || stage.type === 'rule_ntf'
           const isFilter   = stage.type === 'rule_filter'
-          const isSorter   = stage.type === 'sorter'
+          const isSorter   = stage.type === 'sorter' || stage.type === 'probability'
           const isPass     = stage.type === 'rule_pass'
           const isSkip     = stage.type === 'rule_skip'
           const isDisabled = stage.type === 'rule_disabled'
@@ -1023,23 +1023,46 @@ function SimulatePipeline({ steps, phase, simResult }) {
                     </div>
                   )}
 
-                  {/* Sorter scores */}
+                  {/* Probability distribution */}
                   {isSorter && stage.scored && (
                     <div style={{ marginTop: 6 }}>
-                      {stage.scored.map((t, si) => (
-                        <div key={t.terminalId} style={{
-                          display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0',
-                          borderBottom: si < stage.scored.length - 1 ? '1px solid #F1F5F9' : 'none',
-                        }}>
-                          <span style={{ fontSize: 10, fontWeight: 700, color: '#94A3B8', width: 20 }}>#{si + 1}</span>
-                          <span style={{ fontSize: 12, fontWeight: 600, color: t.isSelected ? '#166534' : '#475569', minWidth: 70 }}>{t.displayId}{t.isPreferred ? ' ⭐' : ''}</span>
-                          <div style={{ flex: 1, height: 6, background: '#F1F5F9', borderRadius: 3, overflow: 'hidden' }}>
-                            <div style={{ width: `${Math.min(t.finalScore, 100)}%`, height: '100%', background: t.isSelected ? '#22C55E' : '#94A3B8', borderRadius: 3 }} />
+                      {stage.scored.map((t, si) => {
+                        const prob = t.probability ?? t.finalScore
+                        const isProb = stage.type === 'probability'
+                        return (
+                          <div key={t.terminalId} style={{
+                            display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0',
+                            borderBottom: si < stage.scored.length - 1 ? '1px solid #F1F5F9' : 'none',
+                          }}>
+                            <span style={{ fontSize: 10, fontWeight: 700, color: '#94A3B8', width: 20 }}>#{si + 1}</span>
+                            <div style={{ minWidth: 80 }}>
+                              <span style={{ fontSize: 12, fontWeight: 600, color: t.isSelected ? '#166534' : '#475569' }}>{t.displayId}{t.isPreferred ? ' ⭐' : ''}</span>
+                              <div style={{ fontSize: 9, color: '#94A3B8' }}>SR {t.successRate}%{t.isPreferred ? ' + prefer' : ''}</div>
+                            </div>
+                            <div style={{ flex: 1, height: 8, background: '#F1F5F9', borderRadius: 4, overflow: 'hidden' }}>
+                              <div style={{
+                                width: `${Math.min(prob, 100)}%`, height: '100%', borderRadius: 4,
+                                background: t.isSelected
+                                  ? 'linear-gradient(90deg, #22C55E, #16A34A)'
+                                  : prob > 20 ? 'linear-gradient(90deg, #93C5FD, #528FF0)' : '#CBD5E1',
+                              }} />
+                            </div>
+                            <span style={{
+                              fontSize: 12, fontWeight: 700, minWidth: 48, textAlign: 'right',
+                              color: t.isSelected ? '#166534' : '#475569',
+                            }}>{isProb ? `${prob}%` : Math.round(prob)}</span>
+                            {t.isSelected && <span style={{
+                              fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 4,
+                              background: '#DCFCE7', color: '#166534',
+                            }}>{isProb ? 'Most likely' : 'Selected'}</span>}
                           </div>
-                          <span style={{ fontSize: 10, fontWeight: 600, color: '#64748B', minWidth: 25 }}>{Math.round(t.finalScore)}</span>
-                          {t.isSelected && <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 3, background: '#DCFCE7', color: '#166534' }}>Selected</span>}
+                        )
+                      })}
+                      {stage.type === 'probability' && (
+                        <div style={{ fontSize: 10, color: '#94A3B8', marginTop: 6, fontStyle: 'italic' }}>
+                          Probability derived from SR performance. Adjust SR sliders above to explore scenarios.
                         </div>
-                      ))}
+                      )}
                     </div>
                   )}
                 </div>
@@ -1155,32 +1178,157 @@ function SimulateView({ method, merchant, rules }) {
   const [form, setForm]   = useState(() => defaultForm(method))
   const [steps, setSteps] = useState([])
   const [compassResult, setCompassResult] = useState(null)
+  const [srWindow, setSrWindow] = useState('24h') // '24h' | '7d' | '30d'
+  const [srOverrides, setSrOverrides] = useState({}) // terminalId → SR value
+
+  // Get eligible terminals for this method (for SR sliders)
+  const eligibleTerminals = useMemo(() => {
+    const dk = methodToDataKey(method)
+    return merchant.gatewayMetrics
+      .filter(gm => (gm.supportedMethods || []).includes(dk))
+      .map(gm => {
+        const gw = gateways.find(g => g.id === gm.gatewayId)
+        const term = gw?.terminals.find(t => t.id === gm.terminalId)
+        const srHist = TERMINAL_SR_HISTORY[gm.terminalId] || {}
+        return {
+          terminalId: gm.terminalId,
+          displayId: term?.terminalId || gm.terminalId,
+          gatewayShort: gw?.shortName || '?',
+          sr24h: srHist['24h'] || gm.successRate,
+          sr7d: srHist['7d'] || gm.successRate,
+          sr30d: srHist['30d'] || gm.successRate,
+          defaultSR: gm.successRate,
+        }
+      })
+  }, [method, merchant])
+
+  // Initialize SR overrides when window changes
+  useEffect(() => {
+    const overrides = {}
+    eligibleTerminals.forEach(t => {
+      overrides[t.terminalId] = t[`sr${srWindow.replace('h','h').replace('d','d')}`] || t[srWindow === '24h' ? 'sr24h' : srWindow === '7d' ? 'sr7d' : 'sr30d']
+    })
+    setSrOverrides(overrides)
+  }, [srWindow, eligibleTerminals])
 
   const runSimulation = useCallback(() => {
     setPhase('running')
     setSteps([])
     setCompassResult(null)
 
-    // Run the actual COMPASS pipeline simulation
     const txn = buildSimTxn(form, method)
-    const result = simulateRoutingPipeline(merchant, txn, rules)
+    const result = simulateRoutingPipeline(merchant, txn, rules, { srOverrides })
 
-    // Animate: show result after a brief delay for the "running" animation
     setTimeout(() => {
       setCompassResult(result)
       setPhase('done')
     }, 600)
-  }, [form, method, merchant, rules])
+  }, [form, method, merchant, rules, srOverrides])
+
+  // Live re-simulate when SR sliders change (if already simulated)
+  const reSimulate = useCallback((newOverrides) => {
+    if (phase !== 'done') return
+    const txn = buildSimTxn(form, method)
+    const result = simulateRoutingPipeline(merchant, txn, rules, { srOverrides: newOverrides })
+    setCompassResult(result)
+  }, [form, method, merchant, rules, phase])
+
+  const handleSrChange = (terminalId, val) => {
+    const next = { ...srOverrides, [terminalId]: val }
+    setSrOverrides(next)
+    reSimulate(next)
+  }
 
   const methodLabel = method === 'UPIOnetime' ? 'UPI Onetime' : method === 'UPIRecurring' ? 'UPI Recurring' : method
   return (
     <div className="gc-sim-view">
       {phase === 'form'
-        ? <SimulateForm method={method} form={form} onFormChange={setForm} onRun={runSimulation} />
+        ? <>
+            <SimulateForm method={method} form={form} onFormChange={setForm} onRun={runSimulation} />
+            {/* SR Sliders section below the form */}
+            <div style={{ margin: '12px 0 0 0', padding: '12px 16px', background: '#F8FAFC', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: '#1E293B' }}>Terminal SR Assumptions</div>
+                  <div style={{ fontSize: 11, color: '#94A3B8' }}>Adjust SR per terminal to simulate different scenarios</div>
+                </div>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {['24h', '7d', '30d'].map(w => (
+                    <button key={w} onClick={() => setSrWindow(w)} style={{
+                      fontSize: 11, padding: '3px 10px', borderRadius: 4, cursor: 'pointer',
+                      border: srWindow === w ? '1px solid #528FF0' : '1px solid #E2E8F0',
+                      background: srWindow === w ? '#EFF6FF' : 'white',
+                      color: srWindow === w ? '#1E40AF' : '#64748B', fontWeight: srWindow === w ? 600 : 400,
+                    }}>{w}</button>
+                  ))}
+                </div>
+              </div>
+              {eligibleTerminals.map(t => {
+                const val = srOverrides[t.terminalId] ?? t.sr24h
+                const defaultVal = t[srWindow === '24h' ? 'sr24h' : srWindow === '7d' ? 'sr7d' : 'sr30d']
+                const isChanged = Math.abs(val - defaultVal) > 0.1
+                return (
+                  <div key={t.terminalId} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 0', borderBottom: '1px solid #F1F5F9' }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#334155', minWidth: 80 }}>{t.displayId}</span>
+                    <span style={{ fontSize: 10, color: '#94A3B8', minWidth: 35 }}>{t.gatewayShort}</span>
+                    <input type="range" min="40" max="99" step="0.1" value={val}
+                      onChange={e => handleSrChange(t.terminalId, parseFloat(e.target.value))}
+                      style={{ flex: 1, height: 4, accentColor: val >= 70 ? '#22C55E' : val >= 60 ? '#F59E0B' : '#EF4444' }}
+                    />
+                    <span style={{
+                      fontSize: 12, fontWeight: 700, minWidth: 45, textAlign: 'right',
+                      color: val >= 70 ? '#166534' : val >= 60 ? '#92400E' : '#991B1B',
+                    }}>{val.toFixed(1)}%</span>
+                    {isChanged && (
+                      <button onClick={() => handleSrChange(t.terminalId, defaultVal)}
+                        style={{ fontSize: 9, padding: '1px 5px', border: '1px solid #E2E8F0', borderRadius: 3, background: 'white', color: '#94A3B8', cursor: 'pointer' }}
+                        title="Reset to default"
+                      >↺</button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </>
         : <>
             <div className="gc-sim-params-bar">
               <span>{methodLabel} · ₹{form.amount.toLocaleString()}{form.cardNetwork && method === 'Cards' ? ` · ${form.cardNetwork} ${form.cardType}` : ''}{form.international === 'International' ? ' · Intl' : ' · Domestic'} · {form.recurring}</span>
               <button className="gc-sim-reset-btn" onClick={() => { setPhase('form'); setSteps([]); setCompassResult(null) }}>← Edit</button>
+            </div>
+            {/* SR sliders inline when viewing results — live adjustment */}
+            <div style={{ margin: '0 0 8px 0', padding: '10px 14px', background: '#F8FAFC', borderRadius: 8, border: '1px solid #E2E8F0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#1E293B' }}>Adjust SR (live re-simulation)</span>
+                <div style={{ display: 'flex', gap: 4 }}>
+                  {['24h', '7d', '30d'].map(w => (
+                    <button key={w} onClick={() => setSrWindow(w)} style={{
+                      fontSize: 10, padding: '2px 8px', borderRadius: 3, cursor: 'pointer',
+                      border: srWindow === w ? '1px solid #528FF0' : '1px solid #E2E8F0',
+                      background: srWindow === w ? '#EFF6FF' : 'white',
+                      color: srWindow === w ? '#1E40AF' : '#64748B', fontWeight: srWindow === w ? 600 : 400,
+                    }}>{w}</button>
+                  ))}
+                </div>
+              </div>
+              {eligibleTerminals.map(t => {
+                const val = srOverrides[t.terminalId] ?? t.sr24h
+                const defaultVal = t[srWindow === '24h' ? 'sr24h' : srWindow === '7d' ? 'sr7d' : 'sr30d']
+                const isChanged = Math.abs(val - defaultVal) > 0.1
+                return (
+                  <div key={t.terminalId} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0' }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: '#334155', minWidth: 70 }}>{t.displayId}</span>
+                    <input type="range" min="40" max="99" step="0.1" value={val}
+                      onChange={e => handleSrChange(t.terminalId, parseFloat(e.target.value))}
+                      style={{ flex: 1, height: 3, accentColor: val >= 70 ? '#22C55E' : val >= 60 ? '#F59E0B' : '#EF4444' }}
+                    />
+                    <span style={{
+                      fontSize: 11, fontWeight: 700, minWidth: 42, textAlign: 'right',
+                      color: val >= 70 ? '#166534' : val >= 60 ? '#92400E' : '#991B1B',
+                    }}>{val.toFixed(1)}%</span>
+                    {isChanged && <button onClick={() => handleSrChange(t.terminalId, defaultVal)} style={{ fontSize: 8, padding: '1px 4px', border: '1px solid #E2E8F0', borderRadius: 2, background: 'white', color: '#94A3B8', cursor: 'pointer' }}>↺</button>}
+                  </div>
+                )
+              })}
             </div>
             <SimulatePipeline steps={steps} phase={phase} simResult={compassResult} />
           </>
