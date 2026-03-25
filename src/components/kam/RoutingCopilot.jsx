@@ -789,6 +789,17 @@ function buildSimTxn(form, method) {
   return txn
 }
 
+// ── COMPASS Namespace Colors (shared with RuleWizard) ──
+const NS_COLORS = {
+  terminal_pool:       { bg: '#EFF6FF', border: '#93C5FD', label: '#1E40AF', icon: '🔍' },
+  fraud_terminal_block:{ bg: '#FEF2F2', border: '#FCA5A5', label: '#991B1B', icon: '🛡️' },
+  terminal_override:   { bg: '#FFFBEB', border: '#FCD34D', label: '#92400E', icon: '⚙️' },
+  platform_rules:      { bg: '#F5F3FF', border: '#C4B5FD', label: '#5B21B6', icon: '📋' },
+  merchant_routing:    { bg: '#F0FDF4', border: '#86EFAC', label: '#166534', icon: '🔀' },
+  sr_safety_net:       { bg: '#FFF7ED', border: '#FDBA74', label: '#9A3412', icon: '⛨' },
+  doppler_sorter:      { bg: '#EFF6FF', border: '#93C5FD', label: '#1E40AF', icon: '⚡' },
+}
+
 function buildPipelineData(form, method, merchant, rules) {
   const TOTAL = 418
   const methodLabel = method === 'UPIOnetime' ? 'UPI Onetime' : method === 'UPIRecurring' ? 'UPI Recurring' : method
@@ -883,9 +894,166 @@ function SimulateForm({ method, form, onFormChange, onRun }) {
   )
 }
 
-function SimulatePipeline({ steps, phase }) {
+function SimulatePipeline({ steps, phase, simResult }) {
   const endRef = useRef(null)
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }) }, [steps.length])
+
+  // If we have a COMPASS simResult, render the full pipeline trace
+  if (simResult) {
+    const stages = simResult.stages || []
+    return (
+      <div className="gc-pipeline-viz">
+        {/* Summary header */}
+        <div className="gc-step-card" style={{ borderLeft: '4px solid #528FF0' }}>
+          <div className="gc-step-hdr">
+            <span className="gc-step-num" style={{ background: '#528FF0', color: 'white' }}>⚡</span>
+            <span className="gc-step-title">COMPASS Routing Pipeline</span>
+            {simResult.isNTF
+              ? <span className="gc-badge gc-badge-danger">NTF — No Terminal Found</span>
+              : <span className="gc-badge gc-badge-success">→ {simResult.selectedTerminal?.displayId} · SR {simResult.selectedTerminal?.successRate}%{simResult.selectedTerminal?.isPreferred ? ' ⭐' : ''}</span>
+            }
+          </div>
+          <div className="gc-step-body">
+            <div style={{ fontSize: 12, color: '#64748B' }}>
+              {stages.length} pipeline stages evaluated across {new Set(stages.map(s => s.namespace).filter(Boolean)).size} COMPASS namespaces
+            </div>
+          </div>
+        </div>
+
+        {/* Render each COMPASS stage */}
+        {stages.map((stage, i) => {
+          const isNTF      = stage.type === 'ntf' || stage.type === 'rule_ntf'
+          const isFilter   = stage.type === 'rule_filter'
+          const isSorter   = stage.type === 'sorter'
+          const isPass     = stage.type === 'rule_pass'
+          const isSkip     = stage.type === 'rule_skip'
+          const isDisabled = stage.type === 'rule_disabled'
+          const isNsHeader = stage.type === 'namespace_header'
+          const isThreshold = stage.type === 'threshold_filter' || stage.type === 'threshold_bypass'
+          const isInitial  = stage.type === 'initial'
+          const nsColors   = NS_COLORS[stage.namespace] || {}
+
+          // Namespace header — visual separator banner
+          if (isNsHeader) {
+            return (
+              <div key={i} style={{
+                background: nsColors.bg || '#F8FAFC',
+                borderLeft: `4px solid ${nsColors.border || '#CBD5E1'}`,
+                padding: '8px 14px', margin: '10px 0 4px 0', borderRadius: '0 8px 8px 0',
+                display: 'flex', alignItems: 'center', gap: 10,
+              }}>
+                <span style={{ fontSize: 16 }}>{nsColors.icon || '📋'}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: nsColors.label || '#475569', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                  {stage.label}
+                </span>
+                <span style={{ fontSize: 11, color: '#94A3B8', marginLeft: 'auto' }}>{stage.description}</span>
+              </div>
+            )
+          }
+
+          // Rule action badge (SELECT / REJECT / BLOCK)
+          const actionBadge = stage.ruleAction ? (
+            <span style={{
+              fontSize: 9, fontWeight: 700, padding: '2px 7px', borderRadius: 3, marginLeft: 6,
+              background: stage.ruleAction === 'REJECT' || stage.ruleAction === 'BLOCK' ? '#FEE2E2' : stage.ruleAction?.includes('SELECT') ? '#DCFCE7' : '#F3E8FF',
+              color: stage.ruleAction === 'REJECT' || stage.ruleAction === 'BLOCK' ? '#991B1B' : stage.ruleAction?.includes('SELECT') ? '#166534' : '#6B21A8',
+            }}>
+              {stage.ruleAction}
+            </span>
+          ) : null
+
+          // Stage number badge color
+          const numBg = isNTF ? '#DC2626' : isFilter ? '#F59E0B' : isSorter ? '#3B82F6' : isThreshold ? '#F97316' : isInitial ? '#528FF0' : '#E2E8F0'
+          const numFg = isNTF || isFilter || isSorter || isThreshold || isInitial ? 'white' : '#6B7280'
+
+          return (
+            <div key={i} className="gc-step-card" style={{
+              borderLeft: nsColors.border ? `3px solid ${isSkip || isDisabled ? '#E2E8F0' : nsColors.border}` : undefined,
+              opacity: isSkip ? 0.55 : isDisabled ? 0.4 : 1,
+              padding: '8px 12px', marginBottom: 4,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <span style={{
+                  background: numBg, color: numFg,
+                  fontSize: 10, width: 24, height: 24, borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontWeight: 700,
+                }}>{isNTF ? '✕' : isSorter ? '⚡' : isThreshold ? '⛨' : i + 1}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: isNTF ? '#DC2626' : '#1E293B' }}>{stage.label}</span>
+                    {actionBadge}
+                    {isDisabled && <span style={{ fontSize: 9, color: '#9CA3AF', fontStyle: 'italic' }}>(disabled)</span>}
+                  </div>
+                  <div style={{ fontSize: 11, color: '#64748B', marginTop: 2 }}>{stage.description}</div>
+                  {stage.action && !isNTF && (
+                    <div style={{ fontSize: 10, color: '#6B7280', fontFamily: 'monospace', margin: '3px 0', background: '#F8FAFC', padding: '2px 6px', borderRadius: 3, display: 'inline-block' }}>{stage.action}</div>
+                  )}
+                  {stage.reason && !stage.description?.includes(stage.reason) && (
+                    <div style={{ fontSize: 10, color: '#9CA3AF', fontStyle: 'italic', marginTop: 2 }}>{stage.reason}</div>
+                  )}
+
+                  {/* Terminal chips — remaining */}
+                  {(stage.terminalsRemaining || []).length > 0 && !isSkip && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 5 }}>
+                      {stage.terminalsRemaining.map(t => (
+                        <span key={t.terminalId || t.displayId} style={{
+                          fontSize: 10, padding: '2px 8px', borderRadius: 4, fontWeight: 500,
+                          background: t.status === 'preferred' ? '#FEF3C7' : '#F0FDF4',
+                          border: `1px solid ${t.status === 'preferred' ? '#F59E0B' : '#86EFAC'}`,
+                          color: t.status === 'preferred' ? '#92400E' : '#166534',
+                        }}>
+                          {t.displayId} <span style={{ color: '#94A3B8', fontSize: 9 }}>{t.successRate}%</span>
+                          {t.status === 'preferred' && <span style={{ fontSize: 8, marginLeft: 2 }}>⭐</span>}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Terminal chips — eliminated */}
+                  {(stage.terminalsEliminated || []).length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 3 }}>
+                      {stage.terminalsEliminated.map(t => (
+                        <span key={t.terminalId || t.displayId} style={{
+                          fontSize: 10, padding: '2px 8px', borderRadius: 4,
+                          background: '#FEF2F2', border: '1px solid #FCA5A5', color: '#991B1B',
+                        }}>
+                          {t.displayId} <em style={{ fontSize: 9, fontWeight: 400 }}>{t.reason}</em>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Sorter scores */}
+                  {isSorter && stage.scored && (
+                    <div style={{ marginTop: 6 }}>
+                      {stage.scored.map((t, si) => (
+                        <div key={t.terminalId} style={{
+                          display: 'flex', alignItems: 'center', gap: 8, padding: '4px 0',
+                          borderBottom: si < stage.scored.length - 1 ? '1px solid #F1F5F9' : 'none',
+                        }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: '#94A3B8', width: 20 }}>#{si + 1}</span>
+                          <span style={{ fontSize: 12, fontWeight: 600, color: t.isSelected ? '#166534' : '#475569', minWidth: 70 }}>{t.displayId}{t.isPreferred ? ' ⭐' : ''}</span>
+                          <div style={{ flex: 1, height: 6, background: '#F1F5F9', borderRadius: 3, overflow: 'hidden' }}>
+                            <div style={{ width: `${Math.min(t.finalScore, 100)}%`, height: '100%', background: t.isSelected ? '#22C55E' : '#94A3B8', borderRadius: 3 }} />
+                          </div>
+                          <span style={{ fontSize: 10, fontWeight: 600, color: '#64748B', minWidth: 25 }}>{Math.round(t.finalScore)}</span>
+                          {t.isSelected && <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 3, background: '#DCFCE7', color: '#166534' }}>Selected</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )
+        })}
+        {phase === 'running' && <div className="gc-step-loading"><div className="gc-sim-spinner" /><span>Running routing pipeline…</span></div>}
+        <div ref={endRef} />
+      </div>
+    )
+  }
+
+  // Fallback: old step-by-step view (for historic or legacy)
   return (
     <div className="gc-pipeline-viz">
       {steps.map((s, i) => (
@@ -908,7 +1076,6 @@ function SimulatePipeline({ steps, phase }) {
               <div className="gc-step-filter-track"><div className="gc-step-filter-fill" style={{ width: `${Math.round((s.after / s.before) * 100)}%` }} /></div>
               <div className="gc-step-filter-labels"><span><strong>{s.after}</strong> rules remaining ({Math.round((s.after / s.before) * 100)}%)</span><span style={{ color: '#94a3b8' }}>{s.before - s.after} filtered out</span></div>
               <div className="gc-step-note">Excluded: {s.others.join(' · ')}</div>
-              <div className="gc-step-insight">⚡ 49.9% of rules don't filter on payment method — they apply to <strong>ALL</strong> payments regardless of method.</div>
             </div>
           </>}
 
@@ -949,7 +1116,6 @@ function SimulatePipeline({ steps, phase }) {
                 <span>{s.afterFilter} evaluated</span><span className="gc-step-arr">→</span>
                 <span><strong>{s.rulesApplied}</strong> applied ({s.rejectMatchCount} REJECT + 1 SELECT)</span>
               </div>
-              <div className="gc-step-insight" style={{ marginTop: 8 }}>💡 <strong>Critical Insight:</strong> Rules Fetched ≠ Rules Applied. {s.total} fetched → ~{s.afterFilter} evaluated → {s.rulesApplied} actually applied to this payment.</div>
               {!s.isNTF && <>
                 <div className="gc-final-terminals">
                   {s.terminals.map((t, ti) => (
@@ -988,25 +1154,22 @@ function SimulateView({ method, merchant, rules }) {
   const [phase, setPhase] = useState('form')
   const [form, setForm]   = useState(() => defaultForm(method))
   const [steps, setSteps] = useState([])
+  const [compassResult, setCompassResult] = useState(null)
 
   const runSimulation = useCallback(() => {
     setPhase('running')
     setSteps([])
-    const d = buildPipelineData(form, method, merchant, rules)
-    const methodOthers = Object.keys(METHOD_RULE_RATIOS).filter(m => m !== method).map(m => m === 'UPIOnetime' ? 'UPI Onetime' : m === 'UPIRecurring' ? 'UPI Recurring' : m)
-    const shares = d.topTerminals.length >= 2 ? [70, 30] : [100]
+    setCompassResult(null)
 
-    const allSteps = [
-      { type: 'fetch',  total: d.TOTAL, merchantSpecific: Math.round(d.TOTAL * 0.34), platform: Math.round(d.TOTAL * 0.66) },
-      { type: 'filter', before: d.TOTAL, after: d.afterMethod, methodLabel: d.methodLabel, others: methodOthers },
-      { type: 'reject', rules: d.rejectRules, eliminated: d.totalEliminated, terminalsBefore: d.methodTerminals.length, terminalsAfter: d.terminalsAfterReject },
-      { type: 'select', rule: d.selectRule },
-      { type: 'final',  isNTF: d.simResult.isNTF, selected: d.simResult.selectedTerminal, total: d.TOTAL, afterFilter: d.afterMethod, rejectMatchCount: d.rejectMatchCount, rulesApplied: d.rejectMatchCount + 1, terminals: d.topTerminals.slice(0, 2), shares, srThreshold: 90 },
-    ]
-    allSteps.forEach((step, i) => setTimeout(() => {
-      setSteps(prev => [...prev, step])
-      if (i === allSteps.length - 1) setPhase('done')
-    }, i * 650 + 200))
+    // Run the actual COMPASS pipeline simulation
+    const txn = buildSimTxn(form, method)
+    const result = simulateRoutingPipeline(merchant, txn, rules)
+
+    // Animate: show result after a brief delay for the "running" animation
+    setTimeout(() => {
+      setCompassResult(result)
+      setPhase('done')
+    }, 600)
   }, [form, method, merchant, rules])
 
   const methodLabel = method === 'UPIOnetime' ? 'UPI Onetime' : method === 'UPIRecurring' ? 'UPI Recurring' : method
@@ -1017,9 +1180,9 @@ function SimulateView({ method, merchant, rules }) {
         : <>
             <div className="gc-sim-params-bar">
               <span>{methodLabel} · ₹{form.amount.toLocaleString()}{form.cardNetwork && method === 'Cards' ? ` · ${form.cardNetwork} ${form.cardType}` : ''}{form.international === 'International' ? ' · Intl' : ' · Domestic'} · {form.recurring}</span>
-              <button className="gc-sim-reset-btn" onClick={() => { setPhase('form'); setSteps([]) }}>← Edit</button>
+              <button className="gc-sim-reset-btn" onClick={() => { setPhase('form'); setSteps([]); setCompassResult(null) }}>← Edit</button>
             </div>
-            <SimulatePipeline steps={steps} phase={phase} />
+            <SimulatePipeline steps={steps} phase={phase} simResult={compassResult} />
           </>
       }
     </div>
@@ -1045,19 +1208,10 @@ function buildHistoricSteps(mock, method, merchant, rules) {
     cardType: mock?.card_type === 'debit' ? 'Debit' : 'Credit',
     international: mock?.international ? 'International' : 'Domestic',
   }
-  const d = buildPipelineData(form, txnMethod, merchant, rules)
   const txn = { payment_method: txnMethod, amount: form.amount, card_network: form.cardNetwork, card_type: form.cardType.toLowerCase(), international: mock?.international || false }
   const simResult = simulateRoutingPipeline(merchant, txn, rules)
-  const shares = d.topTerminals.length >= 2 ? [70, 30] : [100]
-  const methodOthers = Object.keys(METHOD_RULE_RATIOS).filter(m => m !== txnMethod).map(m => m === 'UPIOnetime' ? 'UPI Onetime' : m === 'UPIRecurring' ? 'UPI Recurring' : m)
-  const steps = [
-    { type: 'fetch',  total: d.TOTAL, merchantSpecific: Math.round(d.TOTAL * 0.34), platform: Math.round(d.TOTAL * 0.66) },
-    { type: 'filter', before: d.TOTAL, after: d.afterMethod, methodLabel: d.methodLabel, others: methodOthers },
-    { type: 'reject', rules: d.rejectRules, eliminated: d.totalEliminated, terminalsBefore: d.methodTerminals.length, terminalsAfter: d.terminalsAfterReject },
-    { type: 'select', rule: d.selectRule },
-    { type: 'final',  isNTF: simResult.isNTF, selected: simResult.selectedTerminal, total: d.TOTAL, afterFilter: d.afterMethod, rejectMatchCount: d.rejectMatchCount, rulesApplied: d.rejectMatchCount + 1, terminals: d.topTerminals.slice(0, 2), shares, srThreshold: 90 },
-  ]
-  return { steps, simResult, txn }
+  // Return COMPASS result directly — no more legacy steps
+  return { steps: [], simResult, txn }
 }
 
 function HistoricView({ method, merchant, rules }) {
@@ -1154,7 +1308,7 @@ function HistoricView({ method, merchant, rules }) {
                 </button>
                 {expanded[r.id] && (
                   <div className="gc-historic-acc-body">
-                    <SimulatePipeline steps={r.steps} phase="done" />
+                    <SimulatePipeline steps={r.steps} phase="done" simResult={r.simResult} />
                   </div>
                 )}
               </div>
