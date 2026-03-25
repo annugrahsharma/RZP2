@@ -856,6 +856,8 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack, onClo
   const [saved, setSaved] = useState(null)
   const [srThresholds, setSrThresholds] = useState({})
   const setSrThreshold = (id, val) => setSrThresholds(prev => ({ ...prev, [id]: Math.max(0, Math.min(99, val)) }))
+  const [routingMode, setRoutingMode] = useState('priority')
+  const [gmvTargets, setGmvTargets] = useState({})
 
   const activeTerminals = order.filter(t => !avoidedIds.has(t.id))
   const priorityTerminal = activeTerminals[0] || null
@@ -873,6 +875,15 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack, onClo
     })
   }
 
+  // GMV mode helpers
+  const totalMonthlyGMV = (monthlyTxns * avgTxnValue) / 10000000 // in Crores
+  const getGmvPct = (id) => {
+    const target = gmvTargets[id] || 0
+    return target > 0 ? Math.round((target / totalMonthlyGMV) * 1000) / 10 : 0
+  }
+  const totalGmvPct = eligibleTerminals.reduce((sum, t) => sum + getGmvPct(t.id), 0)
+  const gmvExceeds100 = totalGmvPct > 100
+
   // Drag handlers
   const handleDragStart = (e, i) => { setDragIdx(i); e.dataTransfer.effectAllowed = 'move' }
   const handleDragOver = (e, i) => {
@@ -887,6 +898,40 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack, onClo
     const docs = []
     const conditions = buildConditions(method, filters)
 
+    if (routingMode === 'gmv') {
+      // GMV Split mode: generate include docs with traffic_distribution for each terminal with gmv > 0
+      const terminalsWithGmv = eligibleTerminals.filter(t => gmvTargets[t.id] && gmvTargets[t.id] > 0)
+      terminalsWithGmv.forEach((t, idx) => {
+        let gwId = ''
+        for (const gw of gateways) {
+          if (gw.terminals?.find(tm => tm.id === t.id)) {
+            gwId = gw.shortName?.toLowerCase() || gw.id.replace('gw-', '')
+            break
+          }
+        }
+        const pct = getGmvPct(t.id)
+        const priority = 2000 - (idx * 200)
+        const doc = {
+          namespace: 'merchant_routing',
+          scope_merchant_id: merchant.id,
+          scope: { merchant_id: merchant.id },
+          target: { gateway: gwId, method: compassMethodKey(method) },
+          action: 'include',
+          priority: priority,
+          conditions: flattenConditions(conditions),
+          traffic_distribution: {
+            percentage: pct,
+            gmv_target_cr: gmvTargets[t.id]
+          },
+          enabled: true,
+          expires_at: null,
+        }
+        docs.push(doc)
+      })
+      return docs
+    }
+
+    // Priority mode (original)
     // Doc 1: Priority terminal (#1 active)
     if (priorityTerminal) {
       let gwId = ''
@@ -949,34 +994,78 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack, onClo
     const conditions = buildConditions(method, filters)
     const compassDocs = generateCompassDocs()
 
-    const rule = {
-      id: `rule-${merchant.id}-rw-${Date.now()}`,
-      name: buildRuleName(method, filters, activeTerminals),
-      type: 'conditional',
-      enabled: true,
-      priority: (rules?.filter(r => !r.isDefault && !r.isMethodDefault).length || 0) + 1,
-      conditions, conditionLogic: 'AND',
-      action: {
-        type: 'route',
-        terminals: activeTerminals.map(t => t.id),
-        splits: [],
-        srThreshold: srThresholds[activeTerminals[0]?.id] ?? 70,
-        fallbackTerminal: activeTerminals[activeTerminals.length - 1]?.id || null,
-      },
-      isDefault: false,
-      createdAt: new Date().toISOString(),
-      createdBy: 'anugrah.sharma@razorpay.com',
-      // COMPASS fields
-      compassAction: 'include',
-      compassPriority: 2000,
-      expiresAt: compassExpiry || null,
-      _compassDocs: compassDocs,
-      _compassDoc: compassDocs[0] || null,
-      _compassNamespace: 'merchant_routing',
-    }
+    if (routingMode === 'gmv') {
+      // GMV Split mode
+      const splitsArray = eligibleTerminals
+        .filter(t => gmvTargets[t.id] && gmvTargets[t.id] > 0)
+        .map(t => ({
+          terminalId: t.id,
+          percentage: getGmvPct(t.id)
+        }))
 
-    addRule?.(rule)
-    setSaved(rule)
+      const splitTerminalNames = splitsArray
+        .map(s => {
+          const term = eligibleTerminals.find(t => t.id === s.terminalId)
+          return `${term?.gatewayShort} ${Math.round(s.percentage * 10) / 10}%`
+        })
+        .join(' + ')
+
+      const rule = {
+        id: `rule-${merchant.id}-rw-${Date.now()}`,
+        name: `${method} GMV Split → ${splitTerminalNames}`,
+        type: 'volume_split',
+        enabled: true,
+        priority: (rules?.filter(r => !r.isDefault && !r.isMethodDefault).length || 0) + 1,
+        conditions, conditionLogic: 'AND',
+        action: {
+          type: 'split',
+          splits: splitsArray,
+        },
+        isDefault: false,
+        createdAt: new Date().toISOString(),
+        createdBy: 'anugrah.sharma@razorpay.com',
+        // COMPASS fields
+        compassAction: 'include',
+        compassPriority: 2000,
+        expiresAt: null,
+        _compassDocs: compassDocs,
+        _compassDoc: compassDocs[0] || null,
+        _compassNamespace: 'merchant_routing',
+      }
+
+      addRule?.(rule)
+      setSaved(rule)
+    } else {
+      // Priority mode (original)
+      const rule = {
+        id: `rule-${merchant.id}-rw-${Date.now()}`,
+        name: buildRuleName(method, filters, activeTerminals),
+        type: 'conditional',
+        enabled: true,
+        priority: (rules?.filter(r => !r.isDefault && !r.isMethodDefault).length || 0) + 1,
+        conditions, conditionLogic: 'AND',
+        action: {
+          type: 'route',
+          terminals: activeTerminals.map(t => t.id),
+          splits: [],
+          srThreshold: srThresholds[activeTerminals[0]?.id] ?? 70,
+          fallbackTerminal: activeTerminals[activeTerminals.length - 1]?.id || null,
+        },
+        isDefault: false,
+        createdAt: new Date().toISOString(),
+        createdBy: 'anugrah.sharma@razorpay.com',
+        // COMPASS fields
+        compassAction: 'include',
+        compassPriority: 2000,
+        expiresAt: compassExpiry || null,
+        _compassDocs: compassDocs,
+        _compassDoc: compassDocs[0] || null,
+        _compassNamespace: 'merchant_routing',
+      }
+
+      addRule?.(rule)
+      setSaved(rule)
+    }
   }
 
   if (saved) {
@@ -1002,22 +1091,76 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack, onClo
   return (
     <div className="rw-term-step">
       <FilterSummary method={method} f={filters} />
-      <div style={{ fontSize: 12, color: '#666', marginBottom: 6 }}>
-        Drag to set priority order. <strong>#1 is your priority terminal.</strong> Mark terminals you want to exclude as "Avoid."
+
+      {/* Tab toggle: Priority vs GMV Split */}
+      <div style={{ display: 'flex', gap: 6, marginBottom: 16, marginTop: 12 }}>
+        <button
+          onClick={() => { setRoutingMode('priority'); setGmvTargets({}); }}
+          style={{
+            padding: '6px 14px',
+            fontSize: '11px',
+            fontWeight: 600,
+            borderRadius: 6,
+            border: routingMode === 'priority' ? 'none' : '1px solid #d1d5db',
+            background: routingMode === 'priority' ? '#3b82f6' : 'transparent',
+            color: routingMode === 'priority' ? 'white' : '#6b7280',
+            cursor: 'pointer',
+            transition: 'all 0.15s',
+          }}
+        >
+          Priority Routing
+        </button>
+        <button
+          onClick={() => setRoutingMode('gmv')}
+          style={{
+            padding: '6px 14px',
+            fontSize: '11px',
+            fontWeight: 600,
+            borderRadius: 6,
+            border: routingMode === 'gmv' ? 'none' : '1px solid #d1d5db',
+            background: routingMode === 'gmv' ? '#3b82f6' : 'transparent',
+            color: routingMode === 'gmv' ? 'white' : '#6b7280',
+            cursor: 'pointer',
+            transition: 'all 0.15s',
+          }}
+        >
+          GMV Split
+        </button>
       </div>
-      {activeTerminals.length > 1 && (
-        <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 14 }}>
-          Set an SR threshold per terminal — traffic falls back to the next terminal when SR drops below it.
-        </div>
+
+      {routingMode === 'priority' && (
+        <>
+          <div style={{ fontSize: 12, color: '#666', marginBottom: 6 }}>
+            Drag to set priority order. <strong>#1 is your priority terminal.</strong> Mark terminals you want to exclude as "Avoid."
+          </div>
+          {activeTerminals.length > 1 && (
+            <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 14 }}>
+              Set an SR threshold per terminal — traffic falls back to the next terminal when SR drops below it.
+            </div>
+          )}
+        </>
       )}
 
-      {/* ── Eligible terminals: draggable with avoid ── */}
-      <div className="rw-match" style={{ marginBottom: 8 }}>
-        <span className="rw-match-dot" />
-        <span><strong>{eligibleTerminals.length}</strong> eligible terminals</span>
-      </div>
+      {routingMode === 'gmv' && (
+        <>
+          <div style={{ fontSize: 12, color: '#666', marginBottom: 4 }}>
+            Enter GMV targets per gateway. The system computes the % of total volume to route.
+          </div>
+          <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 12 }}>
+            Estimated monthly GMV: <strong>₹{totalMonthlyGMV.toFixed(2)} Cr</strong>
+          </div>
+        </>
+      )}
 
-      <div className="rw-term-list">
+      {/* ── Eligible terminals ── */}
+      {routingMode === 'priority' && (
+        <>
+          <div className="rw-match" style={{ marginBottom: 8 }}>
+            <span className="rw-match-dot" />
+            <span><strong>{eligibleTerminals.length}</strong> eligible terminals</span>
+          </div>
+
+          <div className="rw-term-list">
         {order.map((t, i) => {
           const isAvoided = avoidedIds.has(t.id)
           const isPriority = !isAvoided && activeTerminals[0]?.id === t.id
@@ -1100,23 +1243,108 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack, onClo
             </div>
           )
         })}
-      </div>
+          </div>
 
-      {/* NTF warnings */}
-      {activeTerminals.length === 1 && avoidedIds.size > 0 && (
-        <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 8, padding: '8px 12px', margin: '8px 0', fontSize: 12, color: '#92400e' }}>
-          ⚠️ Only <strong>1</strong> active terminal remaining. If it goes down, payments will NTF.
+          {/* NTF warnings */}
+          {activeTerminals.length === 1 && avoidedIds.size > 0 && (
+            <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', borderRadius: 8, padding: '8px 12px', margin: '8px 0', fontSize: 12, color: '#92400e' }}>
+              ⚠️ Only <strong>1</strong> active terminal remaining. If it goes down, payments will NTF.
+            </div>
+          )}
+
+          {avoidedIds.size === 0 && (
+            <div style={{ fontSize: 11, color: '#9ca3af', fontStyle: 'italic', padding: '6px 0' }}>
+              All terminals active — #1 gets priority, rest are Doppler-managed fallbacks.
+            </div>
+          )}
+        </>
+      )}
+
+      {/* GMV Split mode UI */}
+      {routingMode === 'gmv' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 12, marginBottom: 16 }}>
+          {eligibleTerminals.map(t => {
+            const pct = getGmvPct(t.id)
+            const gmvVal = gmvTargets[t.id] || ''
+            return (
+              <div
+                key={t.id}
+                style={{
+                  border: '1px solid #e5e7eb',
+                  borderRadius: 8,
+                  padding: 12,
+                  background: 'white',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <div>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: '#1f2937' }}>
+                      {t.displayId}
+                    </div>
+                    <div style={{ fontSize: 10, color: '#6b7280' }}>
+                      {t.gatewayShort}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, flexDirection: 'column', alignItems: 'flex-end' }}>
+                    <span style={{ fontSize: 10, color: '#6b7280' }}>SR: {t.successRate}%</span>
+                    <span style={{ fontSize: 10, color: '#6b7280' }}>₹{t.costPerTxn}/txn</span>
+                  </div>
+                </div>
+
+                <div style={{ marginBottom: 10 }}>
+                  <label style={{ display: 'block', fontSize: 10, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+                    GMV Target (₹ Cr)
+                  </label>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={gmvVal}
+                    onChange={e => setGmvTargets(prev => {
+                      const newVal = e.target.value ? parseFloat(e.target.value) : null
+                      if (newVal === null) {
+                        const { [t.id]: _, ...rest } = prev
+                        return rest
+                      }
+                      return { ...prev, [t.id]: newVal }
+                    })}
+                    step="0.1"
+                    min="0"
+                    style={{
+                      width: '100%',
+                      padding: '6px 8px',
+                      border: '1px solid #d1d5db',
+                      borderRadius: 4,
+                      fontSize: 11,
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+
+                {pct > 0 && (
+                  <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: 4, padding: '6px 8px', fontSize: 11, color: '#1e40af' }}>
+                    → routes <strong>{pct}%</strong> of volume
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
       )}
 
-      {avoidedIds.size === 0 && (
-        <div style={{ fontSize: 11, color: '#9ca3af', fontStyle: 'italic', padding: '6px 0' }}>
-          All terminals active — #1 gets priority, rest are Doppler-managed fallbacks.
+      {routingMode === 'gmv' && gmExceeds100 && (
+        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '8px 12px', marginBottom: 12, fontSize: 12, color: '#991b1b' }}>
+          ⚠️ Total GMV allocation ({totalGmvPct}%) exceeds 100%. Please adjust targets.
         </div>
       )}
 
-      {/* ── Ineligible terminals ── */}
-      {ineligibleTerminals.length > 0 && (
+      {routingMode === 'gmv' && totalGmvPct > 0 && (
+        <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 8, padding: '8px 12px', marginBottom: 12, fontSize: 11, color: '#166534' }}>
+          Remaining {(100 - totalGmvPct).toFixed(1)}% → Doppler ML managed
+        </div>
+      )}
+
+      {/* ── Ineligible terminals (priority mode only) ── */}
+      {routingMode === 'priority' && ineligibleTerminals.length > 0 && (
         <div style={{ marginTop: 16 }}>
           <div style={{ fontSize: 11, fontWeight: 600, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 }}>
             Ineligible Terminals ({ineligibleTerminals.length})
@@ -1151,8 +1379,8 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack, onClo
         </div>
       )}
 
-      {/* Expiry — only show when something is avoided */}
-      {avoidedIds.size > 0 && (
+      {/* Expiry — only show in priority mode when something is avoided */}
+      {routingMode === 'priority' && avoidedIds.size > 0 && (
         <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: 12, marginTop: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ fontSize: 11, fontWeight: 600, color: '#374151' }}>Auto-expire?</span>
           <input
@@ -1220,8 +1448,19 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack, onClo
         </span>
         <button
           className="rw-btn primary"
-          disabled={activeTerminals.length === 0}
+          disabled={
+            routingMode === 'priority'
+              ? activeTerminals.length === 0
+              : totalGmvPct === 0 || gmExceeds100
+          }
           onClick={handleSave}
+          title={
+            routingMode === 'gmv' && gmExceeds100
+              ? 'Total GMV allocation exceeds 100%'
+              : routingMode === 'gmv' && totalGmvPct === 0
+              ? 'Set at least one GMV target'
+              : ''
+          }
         >
           ✓ Save Rule
         </button>
