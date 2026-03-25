@@ -854,6 +854,8 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack, onClo
   const [showCompassPreview, setShowCompassPreview] = useState(false)
   const [dragIdx, setDragIdx] = useState(null)
   const [saved, setSaved] = useState(null)
+  const [srThresholds, setSrThresholds] = useState({})
+  const setSrThreshold = (id, val) => setSrThresholds(prev => ({ ...prev, [id]: Math.max(0, Math.min(99, val)) }))
 
   const activeTerminals = order.filter(t => !avoidedIds.has(t.id))
   const priorityTerminal = activeTerminals[0] || null
@@ -894,7 +896,9 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack, onClo
           break
         }
       }
-      docs.push({
+      // Build fallback_condition from SR thresholds set on the priority terminal
+      const priThresh = srThresholds[priorityTerminal.id] ?? 70
+      const doc = {
         namespace: 'merchant_routing',
         scope_merchant_id: merchant.id,
         scope: { merchant_id: merchant.id },
@@ -904,7 +908,11 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack, onClo
         conditions: flattenConditions(conditions),
         enabled: true,
         expires_at: null,
-      })
+      }
+      if (priThresh > 0 && activeTerminals.length > 1) {
+        doc.fallback_condition = { minimum_sr: priThresh }
+      }
+      docs.push(doc)
     }
 
     // Docs for avoided terminals (deduplicated by gateway)
@@ -952,7 +960,7 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack, onClo
         type: 'route',
         terminals: activeTerminals.map(t => t.id),
         splits: [],
-        srThreshold: 70,
+        srThreshold: srThresholds[activeTerminals[0]?.id] ?? 70,
         fallbackTerminal: activeTerminals[activeTerminals.length - 1]?.id || null,
       },
       isDefault: false,
@@ -983,7 +991,7 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack, onClo
         avgTxnValue={avgTxnValue}
         allTerminals={eligibleTerminals}
         rules={rules}
-        srThresh={{}}
+        srThresh={srThresholds}
         onDone={onClose || (() => setSaved(null))}
         onEditRule={() => setSaved(null)}
         onDisableRule={onClose || (() => setSaved(null))}
@@ -994,9 +1002,14 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack, onClo
   return (
     <div className="rw-term-step">
       <FilterSummary method={method} f={filters} />
-      <div style={{ fontSize: 12, color: '#666', marginBottom: 14 }}>
+      <div style={{ fontSize: 12, color: '#666', marginBottom: 6 }}>
         Drag to set priority order. <strong>#1 is your priority terminal.</strong> Mark terminals you want to exclude as "Avoid."
       </div>
+      {activeTerminals.length > 1 && (
+        <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 14 }}>
+          Set an SR threshold per terminal — traffic falls back to the next terminal when SR drops below it.
+        </div>
+      )}
 
       {/* ── Eligible terminals: draggable with avoid ── */}
       <div className="rw-match" style={{ marginBottom: 8 }}>
@@ -1051,6 +1064,25 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack, onClo
                 </span>
                 <span className="rw-term-cost">{t.costPerTxn === 0 ? <span style={{ color: '#059669' }}>₹0</span> : `₹${t.costPerTxn}`}</span>
                 <span style={{ fontSize: 10, color: '#9ca3af' }}>{t.txnShare}%</span>
+                {/* SR threshold — show on each active terminal except the last fallback */}
+                {!isAvoided && activeTerminals.indexOf(t) < activeTerminals.length - 1 && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 10, color: '#6b7280' }}>
+                    <span style={{ whiteSpace: 'nowrap' }}>Fallback if SR &lt;</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max="99"
+                      value={srThresholds[t.id] ?? 70}
+                      onChange={e => setSrThreshold(t.id, +e.target.value)}
+                      onClick={e => e.stopPropagation()}
+                      style={{ width: 40, padding: '2px 4px', border: '1px solid #e5e7eb', borderRadius: 4, fontSize: 10, textAlign: 'center' }}
+                    />
+                    <span>%</span>
+                  </div>
+                )}
+                {!isAvoided && activeTerminals.indexOf(t) === activeTerminals.length - 1 && (
+                  <span style={{ fontSize: 9, color: '#9ca3af', fontStyle: 'italic', whiteSpace: 'nowrap' }}>Final fallback</span>
+                )}
                 <button
                   onClick={() => toggleAvoid(t.id)}
                   style={{

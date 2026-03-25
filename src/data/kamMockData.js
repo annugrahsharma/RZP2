@@ -4347,10 +4347,18 @@ export function toCompassDocument(kamRule, merchant, options = {}) {
   const compassPriority = options.compassPriority || kamRule.compassPriority
     || mapKamPriorityToCompass(kamRule.priority, compassAction)
 
+  // fallback_condition: include minimum_sr from action if available
+  const srThreshold = kamRule.action?.srThreshold
+  const hasMultipleTerminals = (kamRule.action?.terminals?.length || 0) > 1
+  const fallbackCondition = (compassAction === 'include' && srThreshold > 0 && hasMultipleTerminals)
+    ? { minimum_sr: srThreshold }
+    : null
+
   return {
     namespace, scope_merchant_id, scope, target,
     action: compassAction, priority: compassPriority,
     conditions: Object.keys(conditions).length > 0 ? conditions : null,
+    ...(fallbackCondition ? { fallback_condition: fallbackCondition } : {}),
     enabled: kamRule.enabled !== false,
     expires_at: options.expiresAt || kamRule.expiresAt || null,
   }
@@ -4402,7 +4410,7 @@ export function fromCompassDocument(compassDoc, merchant) {
     type: 'conditional', enabled: compassDoc.enabled !== false,
     priority: mapCompassPriorityToKam(compassDoc.priority),
     conditions, conditionLogic: 'AND',
-    action: { type: 'route', terminals, splits: [], srThreshold: 90, fallbackTerminal: null },
+    action: { type: 'route', terminals, splits: [], srThreshold: compassDoc.fallback_condition?.minimum_sr ?? 90, fallbackTerminal: null },
     isDefault: false, isMethodDefault: false,
     createdAt: new Date().toISOString(), createdBy: 'compass-import',
     _compassDoc: compassDoc, _compassId: compassDoc.id || null, _compassNamespace: compassDoc.namespace,
