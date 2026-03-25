@@ -1,7 +1,9 @@
 import { NavLink } from 'react-router-dom'
 import { kamProfile } from '../../data/kamMockData'
+import { useApprovals } from '../../context/ApprovalContext'
 
 export default function KAMSidebar({ collapsed, onToggle }) {
+  const { pendingCount } = useApprovals()
   return (
     <aside className={`kam-sidebar${collapsed ? ' kam-sidebar--collapsed' : ''}`}>
       {/* Toggle button */}
@@ -118,6 +120,37 @@ export default function KAMSidebar({ collapsed, onToggle }) {
             <line x1="10" y1="14" x2="10" y2="17" stroke="currentColor" strokeWidth="1.5" />
           </svg>
           {!collapsed && 'Terminals'}
+        </NavLink>
+        <NavLink
+          to="/kam/approvals"
+          className={({ isActive }) =>
+            `kam-nav-item ${isActive ? 'active' : ''}`
+          }
+          title={collapsed ? 'Approvals' : undefined}
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" strokeWidth="1.5" fill="none" />
+          </svg>
+          {!collapsed && (
+            <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              Approvals
+              {pendingCount > 0 && (
+                <span style={{
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                  minWidth: 18, height: 18, padding: '0 5px', borderRadius: 9,
+                  background: '#f59e0b', color: 'white', fontSize: 10, fontWeight: 700,
+                }}>
+                  {pendingCount}
+                </span>
+              )}
+            </span>
+          )}
         </NavLink>
       </nav>
 
