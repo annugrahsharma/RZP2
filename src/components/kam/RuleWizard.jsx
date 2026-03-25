@@ -1331,7 +1331,7 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack, onClo
         </div>
       )}
 
-      {routingMode === 'gmv' && gmExceeds100 && (
+      {routingMode === 'gmv' && gmvExceeds100 && (
         <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: 8, padding: '8px 12px', marginBottom: 12, fontSize: 12, color: '#991b1b' }}>
           ⚠️ Total GMV allocation ({totalGmvPct}%) exceeds 100%. Please adjust targets.
         </div>
@@ -1451,11 +1451,11 @@ function TerminalStep({ merchant, method, filters, rules, addRule, onBack, onClo
           disabled={
             routingMode === 'priority'
               ? activeTerminals.length === 0
-              : totalGmvPct === 0 || gmExceeds100
+              : totalGmvPct === 0 || gmvExceeds100
           }
           onClick={handleSave}
           title={
-            routingMode === 'gmv' && gmExceeds100
+            routingMode === 'gmv' && gmvExceeds100
               ? 'Total GMV allocation exceeds 100%'
               : routingMode === 'gmv' && totalGmvPct === 0
               ? 'Set at least one GMV target'
