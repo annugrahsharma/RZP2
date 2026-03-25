@@ -99,7 +99,7 @@ export function ApprovalProvider({ children }) {
             comments: comment ? [...a.comments, { by: 'Manager', text: comment, at: new Date().toISOString() }] : a.comments,
           }
         : a
-   "))
+    ))
   }, [])
 
   const rejectRequest = useCallback((approvalId, comment) => {
@@ -124,20 +124,6 @@ export function ApprovalProvider({ children }) {
   const pendingCount = pendingApprovals.filter(a => a.status === 'pending').length
 
   return (
-    <ApprovalContext.Provider value={{
-      pendingApprovals,
-      pendingCount,
-      approvalModal,
-      managers: MANAGERS,
-      requestApproval,
-      approveRequest,
-      rejectRequest,
-      getApprovalForTerminal,
-    }}>
-      {children}
-    </ApprovalContext.Provider>
-  
- "‡ecturn (
     <ApprovalContext.Provider value={{
       pendingApprovals,
       pendingCount,
