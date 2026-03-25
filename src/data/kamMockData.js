@@ -652,6 +652,102 @@ export function getPlatformRulesForMerchant(merchant) {
   })
 }
 
+// ── COMPASS Namespace: fraud_terminal_block ─────
+// Risk team terminal blocks — processed first in pipeline
+export const FRAUD_TERMINAL_BLOCKS = [
+  {
+    id: 'ftb-001',
+    namespace: 'fraud_terminal_block',
+    name: 'RBL T2 Fraud Pattern Block',
+    scope: { type: 'all' },
+    target: { terminal_id: 'term-rbl-002' },
+    action: 'exclude',
+    reason: 'Elevated chargeback rate (4.2%) detected — terminal suspended by Risk team',
+    createdBy: 'risk-automation',
+    createdAt: '2026-03-18T00:00:00Z',
+    enabled: true,
+  },
+  {
+    id: 'ftb-002',
+    namespace: 'fraud_terminal_block',
+    name: 'Yes T2 Compliance Hold',
+    scope: { type: 'all' },
+    target: { terminal_id: 'term-yes-002' },
+    action: 'exclude',
+    reason: 'Compliance review — terminal suspended pending RBI audit clearance',
+    createdBy: 'compliance-ops',
+    createdAt: '2026-03-10T00:00:00Z',
+    enabled: true,
+  },
+  {
+    id: 'ftb-003',
+    namespace: 'fraud_terminal_block',
+    name: 'HDFC T2 International Block',
+    scope: { type: 'mcc', values: ['7995', '7993'] },
+    conditions: [{ field: 'international', operator: 'equals', value: true }],
+    target: { terminal_id: 'term-hdfc-002' },
+    action: 'exclude',
+    reason: 'International gambling blocked — RBI directive',
+    createdBy: 'risk-automation',
+    createdAt: '2026-02-01T00:00:00Z',
+    enabled: true,
+  },
+]
+
+export function getFraudBlocksForMerchant(merchant) {
+  return FRAUD_TERMINAL_BLOCKS.filter(rule => {
+    if (!rule.enabled) return false
+    if (rule.scope.type === 'all') return true
+    if (rule.scope.type === 'mcc') return rule.scope.values.includes(merchant.mcc)
+    return false
+  })
+}
+
+// ── COMPASS Namespace: terminal_override ─────
+// Per-merchant terminal preferences/exclusions
+export const TERMINAL_OVERRIDES = {
+  // Zomato: prefer HDFC for cards, exclude RBL for UPI
+  'merch-001': [
+    {
+      id: 'to-merch-001-001', namespace: 'terminal_override',
+      name: 'Prefer HDFC T1 for Cards', action: 'prefer',
+      target: { terminal_id: 'term-hdfc-001', gateway: 'hdfc', method: 'cards' },
+      conditions: [{ field: 'payment_method', operator: 'equals', value: 'Cards' }],
+      priority: 9999, enabled: true,
+      reason: 'Negotiated rate — HDFC preferred acquirer for Zomato cards',
+      createdBy: 'anugrah.sharma@razorpay.com', createdAt: '2026-01-15T00:00:00Z',
+    },
+  ],
+  // Swiggy: exclude Axis for cards (dispute resolution issues)
+  'merch-002': [
+    {
+      id: 'to-merch-002-001', namespace: 'terminal_override',
+      name: 'Exclude AXIS T1 for Cards', action: 'exclude',
+      target: { terminal_id: 'term-axis-001', gateway: 'axis', method: 'cards' },
+      conditions: [{ field: 'payment_method', operator: 'equals', value: 'Cards' }],
+      priority: 0, enabled: true,
+      reason: 'Dispute resolution SLA breach — Axis cards excluded for Swiggy',
+      createdBy: 'ops-team@razorpay.com', createdAt: '2026-02-20T00:00:00Z',
+    },
+  ],
+  // BigBasket: pin ICICI for UPI
+  'merch-004': [
+    {
+      id: 'to-merch-004-001', namespace: 'terminal_override',
+      name: 'Pin ICICI for UPI Recurring', action: 'prefer',
+      target: { terminal_id: 'term-icici-001', gateway: 'icici', method: 'upi' },
+      conditions: [{ field: 'payment_method', operator: 'equals', value: 'UPI' }],
+      priority: 9999, enabled: true,
+      reason: 'UPI autopay mandate agreement — ICICI pinned',
+      createdBy: 'anugrah.sharma@razorpay.com', createdAt: '2026-03-01T00:00:00Z',
+    },
+  ],
+}
+
+export function getTerminalOverridesForMerchant(merchant) {
+  return TERMINAL_OVERRIDES[merchant.id] || []
+}
+
 export const AMOUNT_PRESETS = [
   { label: '> ₹1L', operator: 'greater_than', value: 100000 },
   { label: '> ₹2L', operator: 'greater_than', value: 200000 },
@@ -2899,42 +2995,76 @@ function _traceTerminalLabel(terminalId) {
   return terminalId
 }
 
-// ── Routing Pipeline Simulator ─────────────
+// ── Routing Pipeline Simulator (COMPASS Architecture) ─────────────
 //
-// Full step-by-step simulation of how a payment routes through the pipeline.
-// Returns every stage with terminal-level detail: initial pool → rule filters → sorter → selection.
-// Supports what-if overrides (disabled rules, downed terminals, threshold changes).
+// Full COMPASS pipeline simulation with 4 namespace stages:
+//   Stage 0: Terminal Pool Assembly (ES Q1 — terminal index)
+//   Stage 1: fraud_terminal_block  — Risk team blocks (exclude)
+//   Stage 2: terminal_override     — Per-terminal exclude/prefer/pin
+//   Stage 3: Platform Rules        — System-level routing constraints
+//   Stage 4: merchant_routing      — Merchant SELECT/REJECT rules (include/exclude)
+//   Stage 5: SR Safety Net         — Threshold filtering
+//   Stage 6: Doppler Sorter        — ML scoring + terminal selection (ES Q2)
+//
+// Every rule in every namespace is shown in the trace — matched, skipped, or blocked.
 
 /**
  * Generate deterministic mock Doppler ML scores for terminals given a payment profile.
- * Higher-SR terminals get higher base scores, with per-payment noise.
  */
 function generateDopplerScores(terminals, transaction, merchant) {
   const seed = hashCode(`${merchant.id}-${transaction.payment_method}-${transaction.card_network || ''}-${transaction.amount}`)
   return terminals.map((t, i) => {
     const baseSR = t.successRate || 70
-    // Doppler score = SR-weighted base (0–100) + noise (±5)
     const noise = (seededRandom(seed + i * 37) - 0.5) * 10
     const dopplerScore = Math.min(100, Math.max(0, baseSR * 1.1 + noise))
-    return {
-      terminalId: t.terminalId,
-      dopplerScore: Math.round(dopplerScore * 10) / 10,
-    }
+    return { terminalId: t.terminalId, dopplerScore: Math.round(dopplerScore * 10) / 10 }
   })
 }
 
 /**
- * Simulate the full routing pipeline for a transaction.
+ * Build a transaction proxy for condition matching.
+ */
+function _buildTxnProxy(transaction, paymentMethod) {
+  return {
+    payment_method: paymentMethod,
+    amount: transaction.amount || 0,
+    card_network: transaction.card_network || null,
+    card_type: transaction.card_type || null,
+    issuer_bank: transaction.issuer_bank || null,
+    international: transaction.international || false,
+  }
+}
+
+/**
+ * Process a single rule against the terminal pool.
+ * Returns { kept, eliminated, matched, targetIds }
+ */
+function _applyRule(rule, remaining, txnProxy) {
+  const ruleMatches = matchesConditions(rule, txnProxy)
+  if (!ruleMatches) return { kept: remaining, eliminated: [], matched: false, targetIds: new Set() }
+
+  const targetIds = new Set(
+    rule.action?.type === 'split'
+      ? (rule.action.splits || []).map(s => s.terminalId)
+      : rule.action?.terminals || []
+  )
+
+  // If rule has no target terminals, it's a no-op
+  if (targetIds.size === 0) return { kept: remaining, eliminated: [], matched: true, targetIds }
+
+  const kept = remaining.filter(t => targetIds.has(t.terminalId))
+  const eliminated = remaining.filter(t => !targetIds.has(t.terminalId))
+
+  return { kept, eliminated, matched: true, targetIds }
+}
+
+/**
+ * Simulate the full COMPASS routing pipeline for a transaction.
  *
- * @param {object} merchant - Merchant object
+ * @param {object} merchant    - Merchant object
  * @param {object} transaction - { payment_method, card_network, card_type, amount, international }
- * @param {array}  rules - Merchant's routingRulesV2 array
- * @param {object} overrides - {
- *   disabledRules: Set<ruleId>,        // rules to treat as disabled
- *   disabledTerminals: Set<terminalId>, // terminals to treat as down
- *   srThreshold: number,                // override SR threshold
- *   routingStrategy: string,            // 'success_rate' | 'cost_based'
- * }
+ * @param {array}  rules       - Merchant's routing rules array
+ * @param {object} overrides   - { disabledRules, disabledTerminals, srThreshold, routingStrategy }
  * @returns {object} Full pipeline trace with stages, final selection, and deltas
  */
 export function simulateRoutingPipeline(merchant, transaction, rules, overrides = {}) {
@@ -2948,8 +3078,11 @@ export function simulateRoutingPipeline(merchant, transaction, rules, overrides 
   } = overrides
 
   const paymentMethod = transaction.payment_method || 'Cards'
+  const txnProxy = _buildTxnProxy(transaction, paymentMethod)
 
-  // ─── Stage 0: Terminal Pool Assembly ───────────────────────
+  // ════════════════════════════════════════════════════════════
+  // STAGE 0: Terminal Pool Assembly (ES Q1)
+  // ════════════════════════════════════════════════════════════
   const allTerminals = merchant.gatewayMetrics.map(gm => {
     const gw = gateways.find(g => g.id === gm.gatewayId)
     const term = gw?.terminals.find(t => t.id === gm.terminalId)
@@ -2968,30 +3101,26 @@ export function simulateRoutingPipeline(merchant, transaction, rules, overrides 
     }
   })
 
-  // Filter by payment method support
   const methodEligible = allTerminals.filter(t => t.supportedMethods.includes(paymentMethod))
   const methodIneligible = allTerminals.filter(t => !t.supportedMethods.includes(paymentMethod))
-
-  // Filter by bank-disabled terminals
   const bankDisabled = methodEligible.filter(t => t.bankStatus === 'disabled')
   const afterBankFilter = methodEligible.filter(t => t.bankStatus !== 'disabled')
-
-  // Filter by terminal availability (what-if: terminal down)
   const downedInThisStep = afterBankFilter.filter(t => disabledTerminals.has(t.terminalId))
   const eligible = afterBankFilter.filter(t => !disabledTerminals.has(t.terminalId))
 
   const eliminatedInPool = [
     ...methodIneligible.map(t => ({ ...t, status: 'eliminated', reason: `Does not support ${paymentMethod}` })),
     ...bankDisabled.map(t => ({ ...t, status: 'eliminated', reason: `Disabled by bank: ${t.bankStatusReason || 'Bank action'}` })),
-    ...downedInThisStep.map(t => ({ ...t, status: 'eliminated', reason: 'Terminal marked as down' })),
+    ...downedInThisStep.map(t => ({ ...t, status: 'eliminated', reason: 'Terminal marked as down (what-if)' })),
   ]
 
   stages.push({
     id: 'pool',
     stepNumber: 0,
     type: 'initial',
-    label: 'ES Query 1: Terminal Pool',
-    description: `${eligible.length} of ${allTerminals.length} terminals eligible for ${paymentMethod} (COMPASS: fetch from terminal index)`,
+    namespace: 'terminal_pool',
+    label: 'COMPASS ES Q1: Terminal Pool Assembly',
+    description: `${eligible.length} of ${allTerminals.length} terminals eligible for ${paymentMethod}`,
     terminalsRemaining: eligible.map(t => ({ ...t, status: 'eligible' })),
     terminalsEliminated: eliminatedInPool,
     totalCount: allTerminals.length,
@@ -3000,18 +3129,353 @@ export function simulateRoutingPipeline(merchant, transaction, rules, overrides 
 
   if (eligible.length === 0) {
     stages.push({
-      id: 'ntf_pool',
-      stepNumber: 1,
-      type: 'ntf',
+      id: 'ntf_pool', stepNumber: 1, type: 'ntf',
       label: 'NTF — No eligible terminals',
-      description: `No terminal supports ${paymentMethod}${downedInThisStep.length > 0 ? ' (some are marked down)' : ''}. Payment fails immediately.`,
+      description: `No terminal supports ${paymentMethod}${downedInThisStep.length > 0 ? ' (some marked down)' : ''}. Payment fails.`,
       ntfCause: downedInThisStep.length > 0 ? 'terminals_down' : 'method_unsupported',
     })
     return _buildResult(stages, null, true, warnings, merchant, routingStrategy)
   }
 
-  // ─── Stage 1+: Rule Filters ────────────────────────────────
   let remaining = [...eligible]
+  let stepNum = 1
+
+  // ════════════════════════════════════════════════════════════
+  // STAGE 1: fraud_terminal_block namespace
+  // Risk team blocks — applied first, unconditionally
+  // ════════════════════════════════════════════════════════════
+  const fraudBlocks = getFraudBlocksForMerchant(merchant)
+  if (fraudBlocks.length > 0) {
+    stages.push({
+      id: 'ns_fraud_header', stepNumber: stepNum, type: 'namespace_header',
+      namespace: 'fraud_terminal_block',
+      label: 'Namespace: fraud_terminal_block',
+      description: `${fraudBlocks.length} fraud/risk block rule(s) — processed first`,
+      ruleCount: fraudBlocks.length,
+    })
+
+    for (const block of fraudBlocks) {
+      const targetId = block.target?.terminal_id
+      const blockedTerminal = remaining.find(t => t.terminalId === targetId)
+
+      // Check conditions if any
+      const condMatch = block.conditions ? matchesConditions({ conditions: block.conditions, conditionLogic: 'AND' }, txnProxy) : true
+
+      if (!condMatch) {
+        stages.push({
+          id: `ftb_${block.id}`, stepNumber: stepNum++,
+          type: 'rule_skip', namespace: 'fraud_terminal_block',
+          ruleAction: 'BLOCK',
+          label: `🚫 ${block.name}`,
+          ruleId: block.id, ruleName: block.name,
+          conditions: block.conditions ? formatRuleConditions({ conditions: block.conditions }) : 'Unconditional',
+          description: `Conditions not met — block skipped`,
+          terminalsRemaining: remaining.map(t => ({ ...t, status: 'passed' })),
+          terminalsEliminated: [],
+          remainingCount: remaining.length, delta: 0,
+          reason: block.reason,
+        })
+      } else if (blockedTerminal) {
+        remaining = remaining.filter(t => t.terminalId !== targetId)
+        stages.push({
+          id: `ftb_${block.id}`, stepNumber: stepNum++,
+          type: 'rule_filter', namespace: 'fraud_terminal_block',
+          ruleAction: 'BLOCK',
+          label: `🚫 ${block.name}`,
+          ruleId: block.id, ruleName: block.name,
+          conditions: block.conditions ? formatRuleConditions({ conditions: block.conditions }) : 'Unconditional',
+          action: `EXCLUDE ${_traceTerminalLabel(targetId)}`,
+          description: `${block.reason}`,
+          terminalsRemaining: remaining.map(t => ({ ...t, status: 'passed' })),
+          terminalsEliminated: [{ ...blockedTerminal, status: 'eliminated', reason: block.reason }],
+          remainingCount: remaining.length, delta: -1,
+          reason: block.reason,
+        })
+      } else {
+        stages.push({
+          id: `ftb_${block.id}`, stepNumber: stepNum++,
+          type: 'rule_pass', namespace: 'fraud_terminal_block',
+          ruleAction: 'BLOCK',
+          label: `🚫 ${block.name}`,
+          ruleId: block.id, ruleName: block.name,
+          conditions: block.conditions ? formatRuleConditions({ conditions: block.conditions }) : 'Unconditional',
+          action: `EXCLUDE ${_traceTerminalLabel(targetId)}`,
+          description: `Target terminal not in pool — no effect`,
+          terminalsRemaining: remaining.map(t => ({ ...t, status: 'passed' })),
+          terminalsEliminated: [],
+          remainingCount: remaining.length, delta: 0,
+          reason: block.reason,
+        })
+      }
+
+      if (remaining.length === 0) {
+        stages.push({
+          id: 'ntf_fraud', stepNumber: stepNum, type: 'ntf',
+          label: 'NTF — All terminals blocked by fraud rules',
+          description: `Fraud/risk blocks eliminated all eligible terminals.`,
+          ntfCause: 'fraud_block',
+        })
+        return _buildResult(stages, null, true, warnings, merchant, routingStrategy)
+      }
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // STAGE 2: terminal_override namespace
+  // Per-merchant terminal preferences/exclusions
+  // ════════════════════════════════════════════════════════════
+  const termOverrides = getTerminalOverridesForMerchant(merchant)
+  const preferredTerminals = new Set() // track preferred for sorter boost
+
+  if (termOverrides.length > 0) {
+    stages.push({
+      id: 'ns_to_header', stepNumber: stepNum, type: 'namespace_header',
+      namespace: 'terminal_override',
+      label: 'Namespace: terminal_override',
+      description: `${termOverrides.length} terminal override(s) — exclude/prefer/pin`,
+      ruleCount: termOverrides.length,
+    })
+
+    for (const override of termOverrides) {
+      if (!override.enabled) continue
+      const targetId = override.target?.terminal_id
+      const condMatch = override.conditions ? matchesConditions({ conditions: override.conditions, conditionLogic: 'AND' }, txnProxy) : true
+      const actionLabel = override.action === 'exclude' ? 'REJECT' : override.action === 'prefer' ? 'SELECT ⭐' : 'PIN 📌'
+      const actionIcon = override.action === 'exclude' ? '🚫' : '⭐'
+
+      if (!condMatch) {
+        stages.push({
+          id: `to_${override.id}`, stepNumber: stepNum++,
+          type: 'rule_skip', namespace: 'terminal_override',
+          ruleAction: actionLabel,
+          label: `${actionIcon} ${override.name}`,
+          ruleId: override.id, ruleName: override.name,
+          conditions: formatRuleConditions({ conditions: override.conditions }),
+          description: `Conditions not met — override skipped`,
+          terminalsRemaining: remaining.map(t => ({ ...t, status: 'passed' })),
+          terminalsEliminated: [],
+          remainingCount: remaining.length, delta: 0,
+          reason: override.reason,
+        })
+      } else if (override.action === 'exclude') {
+        const target = remaining.find(t => t.terminalId === targetId)
+        if (target) {
+          remaining = remaining.filter(t => t.terminalId !== targetId)
+          stages.push({
+            id: `to_${override.id}`, stepNumber: stepNum++,
+            type: 'rule_filter', namespace: 'terminal_override',
+            ruleAction: 'REJECT',
+            label: `🚫 ${override.name}`,
+            ruleId: override.id, ruleName: override.name,
+            conditions: formatRuleConditions({ conditions: override.conditions }),
+            action: `EXCLUDE ${_traceTerminalLabel(targetId)}`,
+            description: `${override.reason}`,
+            terminalsRemaining: remaining.map(t => ({ ...t, status: 'passed' })),
+            terminalsEliminated: [{ ...target, status: 'eliminated', reason: override.reason }],
+            remainingCount: remaining.length, delta: -1,
+            reason: override.reason,
+          })
+        } else {
+          stages.push({
+            id: `to_${override.id}`, stepNumber: stepNum++,
+            type: 'rule_pass', namespace: 'terminal_override',
+            ruleAction: 'REJECT',
+            label: `🚫 ${override.name}`,
+            ruleId: override.id, ruleName: override.name,
+            conditions: formatRuleConditions({ conditions: override.conditions }),
+            action: `EXCLUDE ${_traceTerminalLabel(targetId)}`,
+            description: `Target not in pool — no effect`,
+            terminalsRemaining: remaining.map(t => ({ ...t, status: 'passed' })),
+            terminalsEliminated: [],
+            remainingCount: remaining.length, delta: 0,
+          })
+        }
+      } else {
+        // prefer or pin
+        if (remaining.find(t => t.terminalId === targetId)) {
+          preferredTerminals.add(targetId)
+        }
+        stages.push({
+          id: `to_${override.id}`, stepNumber: stepNum++,
+          type: 'rule_pass', namespace: 'terminal_override',
+          ruleAction: actionLabel,
+          label: `${actionIcon} ${override.name}`,
+          ruleId: override.id, ruleName: override.name,
+          conditions: formatRuleConditions({ conditions: override.conditions }),
+          action: `${override.action.toUpperCase()} ${_traceTerminalLabel(targetId)} → ES Q2 should.boost(9999)`,
+          description: `${override.reason || 'Terminal boosted in sorter'}`,
+          terminalsRemaining: remaining.map(t => ({
+            ...t,
+            status: t.terminalId === targetId ? 'preferred' : 'passed',
+          })),
+          terminalsEliminated: [],
+          remainingCount: remaining.length, delta: 0,
+          reason: override.reason,
+        })
+      }
+
+      if (remaining.length === 0) {
+        stages.push({
+          id: 'ntf_override', stepNumber: stepNum, type: 'ntf',
+          label: 'NTF — All terminals excluded by overrides',
+          description: `Terminal overrides eliminated all eligible terminals.`,
+          ntfCause: 'terminal_override',
+        })
+        return _buildResult(stages, null, true, warnings, merchant, routingStrategy)
+      }
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // STAGE 3: Platform Rules (system-level)
+  // ════════════════════════════════════════════════════════════
+  const platformRules = getPlatformRulesForMerchant(merchant)
+  if (platformRules.length > 0) {
+    stages.push({
+      id: 'ns_platform_header', stepNumber: stepNum, type: 'namespace_header',
+      namespace: 'platform_rules',
+      label: 'Platform Rules (system-level)',
+      description: `${platformRules.length} platform-wide routing constraint(s)`,
+      ruleCount: platformRules.length,
+    })
+
+    for (const pRule of platformRules) {
+      const condMatch = matchesConditions(pRule, txnProxy)
+      const isReject = pRule.action?.type === 'reject'
+      const actionLabel = isReject ? 'REJECT' : 'SELECT'
+      const icon = isReject ? '🚫' : '→'
+
+      if (!condMatch) {
+        stages.push({
+          id: `platform_${pRule.id}`, stepNumber: stepNum++,
+          type: 'rule_skip', namespace: 'platform_rules',
+          ruleAction: actionLabel,
+          label: `${icon} ${pRule.name}`,
+          ruleId: pRule.id, ruleName: pRule.name,
+          conditions: formatRuleConditions(pRule),
+          description: `Conditions not met — rule skipped`,
+          terminalsRemaining: remaining.map(t => ({ ...t, status: 'passed' })),
+          terminalsEliminated: [],
+          remainingCount: remaining.length, delta: 0,
+          reason: pRule.reason,
+        })
+        continue
+      }
+
+      const targetIds = new Set(pRule.action?.terminals || [])
+
+      if (isReject) {
+        // Reject: remove target terminals
+        const rejected = remaining.filter(t => targetIds.has(t.terminalId))
+        const kept = remaining.filter(t => !targetIds.has(t.terminalId))
+
+        if (rejected.length > 0) {
+          stages.push({
+            id: `platform_${pRule.id}`, stepNumber: stepNum++,
+            type: 'rule_filter', namespace: 'platform_rules',
+            ruleAction: 'REJECT',
+            label: `🚫 ${pRule.name}`,
+            ruleId: pRule.id, ruleName: pRule.name,
+            conditions: formatRuleConditions(pRule),
+            action: `REJECT ${[...targetIds].map(id => _traceTerminalLabel(id)).join(', ')}`,
+            description: `${pRule.reason}`,
+            terminalsRemaining: kept.map(t => ({ ...t, status: 'passed' })),
+            terminalsEliminated: rejected.map(t => ({ ...t, status: 'eliminated', reason: pRule.reason })),
+            remainingCount: kept.length, delta: -rejected.length,
+            reason: pRule.reason,
+          })
+          remaining = kept
+        } else {
+          stages.push({
+            id: `platform_${pRule.id}`, stepNumber: stepNum++,
+            type: 'rule_pass', namespace: 'platform_rules',
+            ruleAction: 'REJECT',
+            label: `🚫 ${pRule.name}`,
+            ruleId: pRule.id, ruleName: pRule.name,
+            conditions: formatRuleConditions(pRule),
+            action: `REJECT ${[...targetIds].map(id => _traceTerminalLabel(id)).join(', ')}`,
+            description: `Targets not in pool — no effect`,
+            terminalsRemaining: remaining.map(t => ({ ...t, status: 'passed' })),
+            terminalsEliminated: [],
+            remainingCount: remaining.length, delta: 0,
+          })
+        }
+      } else {
+        // Select: route to target terminals only
+        const kept = remaining.filter(t => targetIds.has(t.terminalId))
+        const eliminated = remaining.filter(t => !targetIds.has(t.terminalId))
+
+        if (kept.length === 0 && eliminated.length > 0) {
+          stages.push({
+            id: `platform_${pRule.id}`, stepNumber: stepNum,
+            type: 'rule_ntf', namespace: 'platform_rules',
+            ruleAction: 'SELECT',
+            label: `→ ${pRule.name}`,
+            ruleId: pRule.id, ruleName: pRule.name,
+            conditions: formatRuleConditions(pRule),
+            action: `SELECT ${[...targetIds].map(id => _traceTerminalLabel(id)).join(', ')}`,
+            description: `Routes to ${[...targetIds].map(id => _traceTerminalLabel(id)).join(', ')} — none in pool. All eliminated.`,
+            terminalsRemaining: [],
+            terminalsEliminated: eliminated.map(t => ({ ...t, status: 'eliminated', reason: 'Not in platform rule target' })),
+            isNTFCause: true, remainingCount: 0, delta: -eliminated.length,
+          })
+          stages.push({
+            id: 'ntf_platform', stepNumber: stepNum + 1, type: 'ntf',
+            label: 'NTF — Platform rule eliminated all terminals',
+            description: `"${pRule.name}" targets unavailable terminals.`,
+            ntfCause: 'platform_rule',
+          })
+          return _buildResult(stages, null, true, warnings, merchant, routingStrategy)
+        }
+
+        if (eliminated.length > 0) {
+          stages.push({
+            id: `platform_${pRule.id}`, stepNumber: stepNum++,
+            type: 'rule_filter', namespace: 'platform_rules',
+            ruleAction: 'SELECT',
+            label: `→ ${pRule.name}`,
+            ruleId: pRule.id, ruleName: pRule.name,
+            conditions: formatRuleConditions(pRule),
+            action: `SELECT ${[...targetIds].map(id => _traceTerminalLabel(id)).join(', ')}`,
+            description: `${eliminated.length} terminal(s) not in target list. ${pRule.reason}`,
+            terminalsRemaining: kept.map(t => ({ ...t, status: 'passed' })),
+            terminalsEliminated: eliminated.map(t => ({ ...t, status: 'eliminated', reason: 'Not in platform rule target' })),
+            remainingCount: kept.length, delta: -eliminated.length,
+          })
+          remaining = kept
+        } else {
+          stages.push({
+            id: `platform_${pRule.id}`, stepNumber: stepNum++,
+            type: 'rule_pass', namespace: 'platform_rules',
+            ruleAction: 'SELECT',
+            label: `→ ${pRule.name}`,
+            ruleId: pRule.id, ruleName: pRule.name,
+            conditions: formatRuleConditions(pRule),
+            action: `SELECT ${[...targetIds].map(id => _traceTerminalLabel(id)).join(', ')}`,
+            description: `All remaining terminals in target list. ${pRule.reason}`,
+            terminalsRemaining: remaining.map(t => ({ ...t, status: 'passed' })),
+            terminalsEliminated: [],
+            remainingCount: remaining.length, delta: 0,
+          })
+        }
+      }
+
+      if (remaining.length === 0) {
+        stages.push({
+          id: 'ntf_platform', stepNumber: stepNum, type: 'ntf',
+          label: 'NTF — Platform rules eliminated all terminals',
+          description: `Platform rules eliminated all eligible terminals.`,
+          ntfCause: 'platform_rule',
+        })
+        return _buildResult(stages, null, true, warnings, merchant, routingStrategy)
+      }
+    }
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // STAGE 4: merchant_routing namespace
+  // Merchant's own SELECT/REJECT rules — all shown in trace
+  // ════════════════════════════════════════════════════════════
   const enabledRules = [...rules]
     .filter(r => r.enabled && !disabledRules.has(r.id))
     .sort((a, b) => a.priority - b.priority)
@@ -3020,224 +3484,318 @@ export function simulateRoutingPipeline(merchant, transaction, rules, overrides 
     .filter(r => r.enabled && disabledRules.has(r.id))
     .sort((a, b) => a.priority - b.priority)
 
-  let stepNum = 1
+  const allMerchantRules = [...enabledRules, ...skippedByOverride]
+  if (allMerchantRules.length > 0) {
+    const selectCount = allMerchantRules.filter(r => !r.isDefault && r.action?.type !== 'reject').length
+    const rejectCount = allMerchantRules.filter(r => r.action?.type === 'reject').length
+    const defaultCount = allMerchantRules.filter(r => r.isDefault || r.isMethodDefault).length
+
+    stages.push({
+      id: 'ns_merchant_header', stepNumber: stepNum, type: 'namespace_header',
+      namespace: 'merchant_routing',
+      label: 'Namespace: merchant_routing',
+      description: `${allMerchantRules.length} rule(s): ${selectCount} select, ${rejectCount} reject, ${defaultCount} default`,
+      ruleCount: allMerchantRules.length,
+    })
+  }
 
   for (const rule of enabledRules) {
     if (rule.isDefault) continue
     if (remaining.length === 0) break
 
-    // Build transaction proxy for condition matching
-    const txnProxy = {
-      payment_method: paymentMethod,
-      amount: transaction.amount || 0,
-      card_network: transaction.card_network || null,
-      card_type: transaction.card_type || null,
-      issuer_bank: transaction.issuer_bank || null,
-      international: transaction.international || false,
-    }
-
     const ruleMatches = matchesConditions(rule, txnProxy)
+    const isRejectRule = rule.action?.type === 'reject'
+    const actionLabel = isRejectRule ? 'REJECT' : 'SELECT'
+    const icon = isRejectRule ? '🚫' : '→'
 
     if (!ruleMatches) {
       stages.push({
-        id: `rule_${rule.id}`,
-        stepNumber: stepNum++,
-        type: 'rule_skip',
-        label: `Rule: ${rule.name}`,
-        ruleId: rule.id,
-        ruleName: rule.name,
+        id: `rule_${rule.id}`, stepNumber: stepNum++,
+        type: 'rule_skip', namespace: 'merchant_routing',
+        ruleAction: actionLabel,
+        label: `${icon} ${rule.name}`,
+        ruleId: rule.id, ruleName: rule.name,
         ruleType: rule.type === 'volume_split' ? 'Volume Split' : 'Conditional',
         conditions: formatRuleConditions(rule),
-        description: 'Go: matchesPaymentContext() → false — rule skipped',
+        description: `matchesPaymentContext() → false — rule skipped`,
         terminalsRemaining: remaining.map(t => ({ ...t, status: 'passed' })),
         terminalsEliminated: [],
-        remainingCount: remaining.length,
-        delta: 0,
+        remainingCount: remaining.length, delta: 0,
       })
       continue
     }
 
-    // Rule matched — determine target terminals
-    const targetIds = new Set(
-      rule.action.type === 'split'
-        ? rule.action.splits.map(s => s.terminalId)
-        : rule.action.terminals || []
-    )
+    if (isRejectRule) {
+      // REJECT rule: remove target terminals from pool
+      const targetIds = new Set(rule.action?.terminals || [])
+      const rejected = remaining.filter(t => targetIds.has(t.terminalId))
+      const kept = remaining.filter(t => !targetIds.has(t.terminalId))
 
-    const kept = remaining.filter(t => targetIds.has(t.terminalId))
-    const eliminated = remaining.filter(t => !targetIds.has(t.terminalId))
+      if (rejected.length > 0) {
+        stages.push({
+          id: `rule_${rule.id}`, stepNumber: stepNum++,
+          type: 'rule_filter', namespace: 'merchant_routing',
+          ruleAction: 'REJECT',
+          label: `🚫 ${rule.name}`,
+          ruleId: rule.id, ruleName: rule.name,
+          ruleType: rule.type === 'volume_split' ? 'Volume Split' : 'Conditional',
+          conditions: formatRuleConditions(rule),
+          action: `REJECT ${[...targetIds].map(id => _traceTerminalLabel(id)).join(', ')}`,
+          description: `Rule matched. ${rejected.length} terminal(s) excluded.`,
+          terminalsRemaining: kept.map(t => ({ ...t, status: 'passed' })),
+          terminalsEliminated: rejected.map(t => ({ ...t, status: 'eliminated', reason: `Excluded by REJECT rule` })),
+          remainingCount: kept.length, delta: -rejected.length,
+        })
+        remaining = kept
+      } else {
+        stages.push({
+          id: `rule_${rule.id}`, stepNumber: stepNum++,
+          type: 'rule_pass', namespace: 'merchant_routing',
+          ruleAction: 'REJECT',
+          label: `🚫 ${rule.name}`,
+          ruleId: rule.id, ruleName: rule.name,
+          ruleType: rule.type === 'volume_split' ? 'Volume Split' : 'Conditional',
+          conditions: formatRuleConditions(rule),
+          action: `REJECT ${[...targetIds].map(id => _traceTerminalLabel(id)).join(', ')}`,
+          description: `Rule matched. Targets not in pool — no effect.`,
+          terminalsRemaining: remaining.map(t => ({ ...t, status: 'passed' })),
+          terminalsEliminated: [],
+          remainingCount: remaining.length, delta: 0,
+        })
+      }
+    } else {
+      // SELECT rule: keep only target terminals
+      const targetIds = new Set(
+        rule.action?.type === 'split'
+          ? (rule.action.splits || []).map(s => s.terminalId)
+          : rule.action?.terminals || []
+      )
 
-    if (kept.length === 0 && eliminated.length > 0) {
-      // NTF: rule eliminates all remaining terminals
-      stages.push({
-        id: `rule_${rule.id}`,
-        stepNumber: stepNum,
-        type: 'rule_ntf',
-        label: `Rule: ${rule.name}`,
-        ruleId: rule.id,
-        ruleName: rule.name,
-        ruleType: rule.type === 'volume_split' ? 'Volume Split' : 'Conditional',
-        conditions: formatRuleConditions(rule),
-        action: formatRuleAction(rule),
-        description: `Rule routes to ${[...targetIds].map(id => _traceTerminalLabel(id)).join(', ')} — none in eligible set. All eliminated.`,
-        terminalsRemaining: [],
-        terminalsEliminated: eliminated.map(t => ({
-          ...t, status: 'eliminated',
-          reason: `Not in rule target: ${[...targetIds].map(id => _traceTerminalLabel(id)).join(', ')}`,
-        })),
-        isNTFCause: true,
-        remainingCount: 0,
-        delta: -eliminated.length,
-      })
+      const kept = remaining.filter(t => targetIds.has(t.terminalId))
+      const eliminated = remaining.filter(t => !targetIds.has(t.terminalId))
 
-      stages.push({
-        id: 'ntf_rule',
-        stepNumber: stepNum + 1,
-        type: 'ntf',
-        label: 'NTF — Payment Failed',
-        description: `Rule "${rule.name}" eliminated all eligible terminals.`,
-        ntfCause: 'rule_elimination',
-        causeRuleId: rule.id,
-        causeRuleName: rule.name,
-      })
+      if (kept.length === 0 && eliminated.length > 0) {
+        stages.push({
+          id: `rule_${rule.id}`, stepNumber: stepNum,
+          type: 'rule_ntf', namespace: 'merchant_routing',
+          ruleAction: 'SELECT',
+          label: `→ ${rule.name}`,
+          ruleId: rule.id, ruleName: rule.name,
+          ruleType: rule.type === 'volume_split' ? 'Volume Split' : 'Conditional',
+          conditions: formatRuleConditions(rule),
+          action: formatRuleAction(rule),
+          description: `SELECT targets ${[...targetIds].map(id => _traceTerminalLabel(id)).join(', ')} — none in pool. All eliminated.`,
+          terminalsRemaining: [],
+          terminalsEliminated: eliminated.map(t => ({
+            ...t, status: 'eliminated',
+            reason: `Not in SELECT target: ${[...targetIds].map(id => _traceTerminalLabel(id)).join(', ')}`,
+          })),
+          isNTFCause: true, remainingCount: 0, delta: -eliminated.length,
+        })
+        stages.push({
+          id: 'ntf_rule', stepNumber: stepNum + 1, type: 'ntf',
+          label: 'NTF — Payment Failed',
+          description: `Rule "${rule.name}" SELECT targets not in pool — all terminals eliminated.`,
+          ntfCause: 'rule_elimination', causeRuleId: rule.id, causeRuleName: rule.name,
+        })
+        return _buildResult(stages, null, true, warnings, merchant, routingStrategy)
+      }
 
-      return _buildResult(stages, null, true, warnings, merchant, routingStrategy)
+      if (eliminated.length > 0) {
+        stages.push({
+          id: `rule_${rule.id}`, stepNumber: stepNum++,
+          type: 'rule_filter', namespace: 'merchant_routing',
+          ruleAction: 'SELECT',
+          label: `→ ${rule.name}`,
+          ruleId: rule.id, ruleName: rule.name,
+          ruleType: rule.type === 'volume_split' ? 'Volume Split' : 'Conditional',
+          conditions: formatRuleConditions(rule),
+          action: formatRuleAction(rule),
+          description: `Rule matched. ${eliminated.length} terminal(s) not in SELECT list eliminated.`,
+          terminalsRemaining: kept.map(t => ({ ...t, status: 'passed' })),
+          terminalsEliminated: eliminated.map(t => ({
+            ...t, status: 'eliminated', reason: 'Not in SELECT target list',
+          })),
+          remainingCount: kept.length, delta: -eliminated.length,
+        })
+        remaining = kept
+      } else {
+        stages.push({
+          id: `rule_${rule.id}`, stepNumber: stepNum++,
+          type: 'rule_pass', namespace: 'merchant_routing',
+          ruleAction: 'SELECT',
+          label: `→ ${rule.name}`,
+          ruleId: rule.id, ruleName: rule.name,
+          ruleType: rule.type === 'volume_split' ? 'Volume Split' : 'Conditional',
+          conditions: formatRuleConditions(rule),
+          action: formatRuleAction(rule),
+          description: `Rule matched. All remaining terminals are in SELECT list.`,
+          terminalsRemaining: remaining.map(t => ({ ...t, status: 'passed' })),
+          terminalsEliminated: [],
+          remainingCount: remaining.length, delta: 0,
+        })
+      }
     }
 
-    if (eliminated.length > 0) {
+    if (remaining.length === 0) {
       stages.push({
-        id: `rule_${rule.id}`,
-        stepNumber: stepNum++,
-        type: 'rule_filter',
-        label: `Rule: ${rule.name}`,
-        ruleId: rule.id,
-        ruleName: rule.name,
-        ruleType: rule.type === 'volume_split' ? 'Volume Split' : 'Conditional',
-        conditions: formatRuleConditions(rule),
-        action: formatRuleAction(rule),
-        description: `Rule matched. ${eliminated.length} terminal(s) not in target list eliminated.`,
-        terminalsRemaining: kept.map(t => ({ ...t, status: 'passed' })),
-        terminalsEliminated: eliminated.map(t => ({
-          ...t, status: 'eliminated', reason: 'Not in rule target list',
-        })),
-        remainingCount: kept.length,
-        delta: -eliminated.length,
+        id: 'ntf_rule', stepNumber: stepNum, type: 'ntf',
+        label: 'NTF — Payment Failed',
+        description: `Merchant routing rules eliminated all eligible terminals.`,
+        ntfCause: 'rule_elimination',
       })
-      remaining = kept
+      return _buildResult(stages, null, true, warnings, merchant, routingStrategy)
+    }
+  }
+
+  // Show method-default rules (always present, lower priority)
+  const methodDefaults = enabledRules.filter(r => r.isMethodDefault)
+  for (const rule of methodDefaults) {
+    if (remaining.length === 0) break
+    const ruleMatches = matchesConditions(rule, txnProxy)
+    if (ruleMatches) {
+      const targetIds = new Set(rule.action?.terminals || [])
+      const kept = remaining.filter(t => targetIds.has(t.terminalId))
+      const eliminated = remaining.filter(t => !targetIds.has(t.terminalId))
+
+      if (eliminated.length > 0 && kept.length > 0) {
+        stages.push({
+          id: `rule_${rule.id}`, stepNumber: stepNum++,
+          type: 'rule_filter', namespace: 'merchant_routing',
+          ruleAction: 'SELECT',
+          label: `→ ${rule.name} (default)`,
+          ruleId: rule.id, ruleName: rule.name,
+          ruleType: 'Method Default',
+          conditions: formatRuleConditions(rule),
+          action: formatRuleAction(rule),
+          description: `Method default: ${eliminated.length} non-matching terminal(s) filtered.`,
+          terminalsRemaining: kept.map(t => ({ ...t, status: 'passed' })),
+          terminalsEliminated: eliminated.map(t => ({ ...t, status: 'eliminated', reason: 'Not in method default' })),
+          remainingCount: kept.length, delta: -eliminated.length,
+        })
+        remaining = kept
+      } else {
+        stages.push({
+          id: `rule_${rule.id}`, stepNumber: stepNum++,
+          type: 'rule_pass', namespace: 'merchant_routing',
+          ruleAction: 'SELECT',
+          label: `→ ${rule.name} (default)`,
+          ruleId: rule.id, ruleName: rule.name,
+          ruleType: 'Method Default',
+          conditions: formatRuleConditions(rule),
+          action: formatRuleAction(rule),
+          description: `Method default — all terminals match.`,
+          terminalsRemaining: remaining.map(t => ({ ...t, status: 'passed' })),
+          terminalsEliminated: [],
+          remainingCount: remaining.length, delta: 0,
+        })
+      }
     } else {
       stages.push({
-        id: `rule_${rule.id}`,
-        stepNumber: stepNum++,
-        type: 'rule_pass',
-        label: `Rule: ${rule.name}`,
-        ruleId: rule.id,
-        ruleName: rule.name,
-        ruleType: rule.type === 'volume_split' ? 'Volume Split' : 'Conditional',
+        id: `rule_${rule.id}`, stepNumber: stepNum++,
+        type: 'rule_skip', namespace: 'merchant_routing',
+        ruleAction: 'SELECT',
+        label: `→ ${rule.name} (default)`,
+        ruleId: rule.id, ruleName: rule.name,
         conditions: formatRuleConditions(rule),
-        action: formatRuleAction(rule),
-        description: 'Rule matched. All remaining terminals are in target list.',
+        description: `Method default — conditions not met, skipped`,
         terminalsRemaining: remaining.map(t => ({ ...t, status: 'passed' })),
         terminalsEliminated: [],
-        remainingCount: remaining.length,
-        delta: 0,
+        remainingCount: remaining.length, delta: 0,
       })
     }
   }
 
-  // Add any rules disabled by what-if override as visual "disabled" steps
+  // Show what-if disabled rules
   for (const rule of skippedByOverride) {
     if (rule.isDefault) continue
+    const isRejectRule = rule.action?.type === 'reject'
     stages.push({
-      id: `rule_${rule.id}`,
-      stepNumber: stepNum++,
-      type: 'rule_disabled',
-      label: `Rule: ${rule.name}`,
-      ruleId: rule.id,
-      ruleName: rule.name,
+      id: `rule_${rule.id}`, stepNumber: stepNum++,
+      type: 'rule_disabled', namespace: 'merchant_routing',
+      ruleAction: isRejectRule ? 'REJECT' : 'SELECT',
+      label: `⏸ ${rule.name}`,
+      ruleId: rule.id, ruleName: rule.name,
       ruleType: rule.type === 'volume_split' ? 'Volume Split' : 'Conditional',
       conditions: formatRuleConditions(rule),
       description: 'Rule disabled in simulation (what-if override)',
       terminalsRemaining: remaining.map(t => ({ ...t, status: 'passed' })),
       terminalsEliminated: [],
-      remainingCount: remaining.length,
-      delta: 0,
+      remainingCount: remaining.length, delta: 0,
       isWhatIfDisabled: true,
     })
   }
 
   if (remaining.length === 0) {
-    // Shouldn't reach here (handled above), but safety net
     return _buildResult(stages, null, true, warnings, merchant, routingStrategy)
   }
 
-  // ─── Stage N: SR Threshold Filter ──────────────────────────
+  // ════════════════════════════════════════════════════════════
+  // STAGE 5: SR Safety Net
+  // ════════════════════════════════════════════════════════════
   if (srThreshold > 0) {
     const belowThreshold = remaining.filter(t => t.successRate < srThreshold)
     const aboveThreshold = remaining.filter(t => t.successRate >= srThreshold)
 
     if (belowThreshold.length > 0 && aboveThreshold.length > 0) {
       stages.push({
-        id: 'sr_threshold',
-        stepNumber: stepNum++,
-        type: 'threshold_filter',
+        id: 'sr_threshold', stepNumber: stepNum++,
+        type: 'threshold_filter', namespace: 'sr_safety_net',
         label: `SR Safety Net (≥${srThreshold}%)`,
         description: `${belowThreshold.length} terminal(s) below ${srThreshold}% SR threshold removed.`,
         terminalsRemaining: aboveThreshold.map(t => ({ ...t, status: 'passed' })),
         terminalsEliminated: belowThreshold.map(t => ({
           ...t, status: 'eliminated', reason: `SR ${t.successRate}% < threshold ${srThreshold}%`,
         })),
-        remainingCount: aboveThreshold.length,
-        delta: -belowThreshold.length,
-        threshold: srThreshold,
+        remainingCount: aboveThreshold.length, delta: -belowThreshold.length, threshold: srThreshold,
       })
       remaining = aboveThreshold
     } else if (belowThreshold.length > 0 && aboveThreshold.length === 0) {
-      // All below threshold — keep all but warn
-      warnings.push(`All ${remaining.length} terminals are below SR threshold ${srThreshold}% — threshold bypassed to prevent NTF`)
+      warnings.push(`All ${remaining.length} terminals below SR threshold ${srThreshold}% — bypassed to prevent NTF`)
       stages.push({
-        id: 'sr_threshold',
-        stepNumber: stepNum++,
-        type: 'threshold_bypass',
+        id: 'sr_threshold', stepNumber: stepNum++,
+        type: 'threshold_bypass', namespace: 'sr_safety_net',
         label: `SR Safety Net (≥${srThreshold}%)`,
         description: `All terminals below threshold — bypassed to prevent NTF.`,
         terminalsRemaining: remaining.map(t => ({ ...t, status: 'warning' })),
         terminalsEliminated: [],
-        remainingCount: remaining.length,
-        delta: 0,
-        threshold: srThreshold,
+        remainingCount: remaining.length, delta: 0, threshold: srThreshold,
       })
     }
   }
 
-  // ─── Stage N+1: Sorter ─────────────────────────────────────
+  // ════════════════════════════════════════════════════════════
+  // STAGE 6: Doppler Sorter (ES Q2 ranking)
+  // ════════════════════════════════════════════════════════════
   const dopplerScores = generateDopplerScores(remaining, transaction, merchant)
   const dopplerMap = Object.fromEntries(dopplerScores.map(d => [d.terminalId, d.dopplerScore]))
 
   const scored = remaining.map(t => {
     const doppler = dopplerMap[t.terminalId] || 50
+    const isPreferred = preferredTerminals.has(t.terminalId)
     let finalScore
 
     if (routingStrategy === 'cost_based') {
-      // Cost-based: lower cost = higher score. Normalize cost to 0–100 (inverse).
       const maxCost = Math.max(...remaining.map(r => r.costPerTxn), 3)
       const costScore = ((maxCost - t.costPerTxn) / maxCost) * 100
       finalScore = Math.round((costScore * 0.6 + doppler * 0.2 + t.successRate * 0.2) * 10) / 10
     } else {
-      // SR-based: SR is primary, Doppler is tiebreaker
       finalScore = Math.round((t.successRate * 0.5 + doppler * 0.35 + (t.isZeroCost ? 5 : 0) * 0.15) * 10) / 10
     }
 
-    return { ...t, dopplerScore: doppler, finalScore }
+    // Apply terminal_override prefer boost
+    if (isPreferred) finalScore += 100
+
+    return { ...t, dopplerScore: doppler, finalScore, isPreferred }
   }).sort((a, b) => b.finalScore - a.finalScore)
 
   const selectedTerminal = scored[0]
 
   stages.push({
-    id: 'sorter',
-    stepNumber: stepNum++,
-    type: 'sorter',
-    label: `Priority Sort + Doppler Re-rank`,
-    description: `${scored.length} terminal(s) scored via ${routingStrategy === 'cost_based' ? 'cost optimization' : 'SR optimization'} + Doppler ML weights. (COMPASS: ES Q2 results ranked)`,
+    id: 'sorter', stepNumber: stepNum++,
+    type: 'sorter', namespace: 'doppler_sorter',
+    label: `COMPASS ES Q2: Doppler Sort + Re-rank`,
+    description: `${scored.length} terminal(s) scored via ${routingStrategy === 'cost_based' ? 'cost optimization' : 'SR optimization'} + Doppler ML${preferredTerminals.size > 0 ? ' + preferred boost' : ''}`,
     strategy: routingStrategy,
     scored: scored.map((t, rank) => ({
       ...t,
@@ -3252,6 +3810,7 @@ export function simulateRoutingPipeline(merchant, transaction, rules, overrides 
       costPerTxn: selectedTerminal.costPerTxn,
       finalScore: selectedTerminal.finalScore,
       dopplerScore: selectedTerminal.dopplerScore,
+      isPreferred: selectedTerminal.isPreferred || false,
     },
     remainingCount: scored.length,
   })

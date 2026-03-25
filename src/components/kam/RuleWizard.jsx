@@ -508,7 +508,19 @@ function generateImpactedFlows(method, filters, monthlyTxns) {
   }]
 }
 
-// ── Mini pipeline renderer (before/after traces) ────────────────
+// ── COMPASS Pipeline Trace renderer (before/after) ────────────────
+// Shows all 4 namespace stages with SELECT/REJECT labels for every rule
+
+const NS_COLORS = {
+  terminal_pool: { bg: '#EFF6FF', border: '#93C5FD', label: '#1E40AF' },
+  fraud_terminal_block: { bg: '#FEF2F2', border: '#FCA5A5', label: '#991B1B' },
+  terminal_override: { bg: '#FFFBEB', border: '#FCD34D', label: '#92400E' },
+  platform_rules: { bg: '#F5F3FF', border: '#C4B5FD', label: '#5B21B6' },
+  merchant_routing: { bg: '#F0FDF4', border: '#86EFAC', label: '#166534' },
+  sr_safety_net: { bg: '#FFF7ED', border: '#FDBA74', label: '#9A3412' },
+  doppler_sorter: { bg: '#EFF6FF', border: '#93C5FD', label: '#1E40AF' },
+}
+
 function ImpactPipelineTrace({ result, label }) {
   if (!result) return null
   const stages = result.stages || []
@@ -518,24 +530,81 @@ function ImpactPipelineTrace({ result, label }) {
         <span className="rw-impact-pipeline-label">{label}</span>
         {result.isNTF
           ? <span className="rw-impact-pip-badge ntf">NTF — payment fails</span>
-          : <span className="rw-impact-pip-badge ok">→ {result.selectedTerminal?.displayId} · SR {result.selectedTerminal?.successRate}%</span>
+          : <span className="rw-impact-pip-badge ok">→ {result.selectedTerminal?.displayId} · SR {result.selectedTerminal?.successRate}%{result.selectedTerminal?.isPreferred ? ' ⭐' : ''}</span>
         }
       </div>
       {stages.map((stage, i) => {
-        const isNTF    = stage.type === 'ntf' || stage.type === 'rule_ntf'
-        const isFilter = stage.type === 'rule_filter'
-        const isSorter = stage.type === 'sorter'
-        const isPass   = stage.type === 'rule_pass'
+        const isNTF      = stage.type === 'ntf' || stage.type === 'rule_ntf'
+        const isFilter   = stage.type === 'rule_filter'
+        const isSorter   = stage.type === 'sorter'
+        const isPass     = stage.type === 'rule_pass'
+        const isSkip     = stage.type === 'rule_skip'
+        const isDisabled = stage.type === 'rule_disabled'
+        const isNsHeader = stage.type === 'namespace_header'
+        const isThreshold = stage.type === 'threshold_filter' || stage.type === 'threshold_bypass'
+        const nsColors = NS_COLORS[stage.namespace] || {}
+
+        // Namespace header — visual separator
+        if (isNsHeader) {
+          return (
+            <div key={i} className="rw-impact-pip-ns-header" style={{
+              background: nsColors.bg || '#F8FAFC',
+              borderLeft: `4px solid ${nsColors.border || '#CBD5E1'}`,
+              padding: '6px 12px', margin: '8px 0 4px 0', borderRadius: '0 6px 6px 0',
+              display: 'flex', alignItems: 'center', gap: 8,
+            }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: nsColors.label || '#475569', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                {stage.label}
+              </span>
+              <span style={{ fontSize: 10, color: '#94A3B8' }}>{stage.description}</span>
+            </div>
+          )
+        }
+
+        // Rule action badge (SELECT / REJECT / BLOCK)
+        const actionBadge = stage.ruleAction ? (
+          <span style={{
+            fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 3, marginLeft: 6,
+            background: stage.ruleAction === 'REJECT' || stage.ruleAction === 'BLOCK' ? '#FEE2E2' : stage.ruleAction?.includes('SELECT') ? '#DCFCE7' : '#F3E8FF',
+            color: stage.ruleAction === 'REJECT' || stage.ruleAction === 'BLOCK' ? '#991B1B' : stage.ruleAction?.includes('SELECT') ? '#166534' : '#6B21A8',
+          }}>
+            {stage.ruleAction}
+          </span>
+        ) : null
+
         return (
-          <div key={i} className={`rw-impact-pip-stage${isNTF ? ' ntf' : isFilter ? ' filter' : isSorter ? ' sorter' : isPass ? ' pass' : ''}`}>
-            <div className="rw-impact-pip-num">{i + 1}</div>
+          <div key={i} className={`rw-impact-pip-stage${isNTF ? ' ntf' : isFilter ? ' filter' : isSorter ? ' sorter' : isPass ? ' pass' : isSkip ? ' skip' : isDisabled ? ' disabled' : isThreshold ? ' threshold' : ''}`}
+            style={{
+              borderLeft: nsColors.border ? `3px solid ${isSkip || isDisabled ? '#E2E8F0' : nsColors.border}` : undefined,
+              opacity: isSkip ? 0.55 : isDisabled ? 0.4 : 1,
+            }}
+          >
+            <div className="rw-impact-pip-num" style={{
+              background: isNTF ? '#DC2626' : isFilter ? '#F59E0B' : isSorter ? '#3B82F6' : isThreshold ? '#F97316' : '#E2E8F0',
+              color: isNTF || isFilter || isSorter || isThreshold ? 'white' : '#6B7280',
+              fontSize: 10, width: 22, height: 22, borderRadius: '50%',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+            }}>{isNTF ? '✕' : isSorter ? '⚡' : isThreshold ? '⛨' : i + 1}</div>
             <div className="rw-impact-pip-body">
-              <div className="rw-impact-pip-stage-label">{stage.label}</div>
+              <div className="rw-impact-pip-stage-label" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                {stage.label}
+                {actionBadge}
+                {isDisabled && <span style={{ fontSize: 9, color: '#9CA3AF', fontStyle: 'italic' }}>(disabled)</span>}
+              </div>
               <div className="rw-impact-pip-desc">{stage.description}</div>
-              {(stage.terminalsRemaining || []).length > 0 && (
+              {stage.action && !isNTF && (
+                <div style={{ fontSize: 10, color: '#6B7280', fontFamily: 'monospace', margin: '2px 0' }}>{stage.action}</div>
+              )}
+              {stage.reason && !stage.description?.includes(stage.reason) && (
+                <div style={{ fontSize: 10, color: '#9CA3AF', fontStyle: 'italic' }}>{stage.reason}</div>
+              )}
+              {(stage.terminalsRemaining || []).length > 0 && !isSkip && (
                 <div className="rw-impact-pip-chips">
                   {stage.terminalsRemaining.map(t => (
-                    <span key={t.terminalId} className="rw-impact-pip-chip pass">{t.displayId} <span className="rw-impact-pip-chip-sr">{t.successRate}%</span></span>
+                    <span key={t.terminalId} className={`rw-impact-pip-chip ${t.status === 'preferred' ? 'preferred' : 'pass'}`} style={t.status === 'preferred' ? { background: '#FEF3C7', borderColor: '#F59E0B' } : {}}>
+                      {t.displayId} <span className="rw-impact-pip-chip-sr">{t.successRate}%</span>
+                      {t.status === 'preferred' && <span style={{ fontSize: 8, marginLeft: 2 }}>⭐</span>}
+                    </span>
                   ))}
                 </div>
               )}
@@ -551,7 +620,7 @@ function ImpactPipelineTrace({ result, label }) {
                   {stage.scored.map((t, si) => (
                     <div key={t.terminalId} className={`rw-impact-pip-score-row${t.isSelected ? ' selected' : ''}`}>
                       <span className="rw-impact-pip-rank">#{si + 1}</span>
-                      <span className="rw-impact-pip-name">{t.displayId}</span>
+                      <span className="rw-impact-pip-name">{t.displayId}{t.isPreferred ? ' ⭐' : ''}</span>
                       <div className="rw-impact-pip-bar-wrap"><div className="rw-impact-pip-bar" style={{ width: `${Math.min(t.finalScore, 100)}%` }} /></div>
                       <span className="rw-impact-pip-score-val">{Math.round(t.finalScore)}</span>
                       {t.isSelected && <span className="rw-impact-pip-sel-badge">Selected</span>}
