@@ -908,6 +908,7 @@ export default function KAMMerchantDetail() {
   const [showDealWarning, setShowDealWarning] = useState(false)
   const [expandedTerminal, setExpandedTerminal] = useState(null)
   const [expandedRecs, setExpandedRecs] = useState(new Set())
+  const [expandedCapSection, setExpandedCapSection] = useState(null)
 
   // ---- Tab & scroll-based navigation ----
   const TAB_ORDER = ['ai-recs', 'routing', 'terminals', 'metrics', 'sr-trend', 'transactions', 'ntfs', 'audit']
@@ -1031,7 +1032,7 @@ export default function KAMMerchantDetail() {
         terminalId,
         provider: gw?.name || 'Unknown',
         providerShort: gw?.shortName || '??',
-        method: pickMethod(terminalId),
+        method: gm.supportedMethods && gm.supportedMethods.length > 0 ? gm.supportedMethods[0] : pickMethod(terminalId),
         successRate: gm.successRate,
         costPerTxn: gm.costPerTxn,
         txnShare: gm.txnShare,
@@ -1973,15 +1974,29 @@ export default function KAMMerchantDetail() {
                                           </div>
                                           <div style={{ marginBottom: 8 }}>
                                             <div style={{ fontSize: 9, color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4 }}>Supported Issuer Banks</div>
-                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                                              {(t.supportedIssuers || []).includes('ALL')
-                                                ? <span style={{ fontSize: 10, background: '#f5f3ff', color: '#7c3aed', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>All Issuers</span>
-                                                : (t.supportedIssuers || []).map(iss => (
-                                                    <span key={iss} style={{ fontSize: 10, background: '#f5f3ff', color: '#7c3aed', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>{iss}</span>
-                                                  ))
-                                              }
-                                              {!(t.supportedIssuers || []).length && <span style={{ fontSize: 10, color: '#9ca3af', fontStyle: 'italic' }}>Not specified</span>}
-                                            </div>
+                                            {(() => {
+                                              const items = t.supportedIssuers || []
+                                              if (items.includes('ALL')) return <span style={{ fontSize: 10, background: '#f5f3ff', color: '#7c3aed', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>All Issuers</span>
+                                              const SHOW_LIMIT = 5
+                                              const showAll = expandedCapSection === `${t.key}-issuers`
+                                              const visible = showAll ? items : items.slice(0, SHOW_LIMIT)
+                                              return (
+                                                <>
+                                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                                                    {visible.map(iss => <span key={iss} style={{ fontSize: 10, background: '#f5f3ff', color: '#7c3aed', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>{iss}</span>)}
+                                                  </div>
+                                                  {items.length > SHOW_LIMIT && (
+                                                    <button
+                                                      onClick={(e) => { e.stopPropagation(); setExpandedCapSection(showAll ? null : `${t.key}-issuers`) }}
+                                                      style={{ fontSize: 10, color: '#7c3aed', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', marginTop: 4, fontWeight: 500 }}
+                                                    >
+                                                      {showAll ? 'Show less' : `Show all (${items.length})`}
+                                                    </button>
+                                                  )}
+                                                </>
+                                              )
+                                            })()}
+                                            {!(t.supportedIssuers || []).length && <span style={{ fontSize: 10, color: '#9ca3af', fontStyle: 'italic' }}>Not specified</span>}
                                           </div>
                                           <div>
                                             <div style={{ fontSize: 9, color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4 }}>Card Types</div>
@@ -2012,15 +2027,29 @@ export default function KAMMerchantDetail() {
                                           </div>
                                           <div style={{ marginBottom: 8 }}>
                                             <div style={{ fontSize: 9, color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4 }}>VPA Handles</div>
-                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                                              {(t.supportedVPAHandles || []).includes('ALL')
-                                                ? <span style={{ fontSize: 10, background: '#ecfdf5', color: '#059669', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>All Handles</span>
-                                                : (t.supportedVPAHandles || []).map(h => (
-                                                    <span key={h} style={{ fontSize: 10, background: '#ecfdf5', color: '#059669', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>{h}</span>
-                                                  ))
-                                              }
-                                              {!(t.supportedVPAHandles || []).length && <span style={{ fontSize: 10, color: '#9ca3af', fontStyle: 'italic' }}>Not specified</span>}
-                                            </div>
+                                            {(() => {
+                                              const items = t.supportedVPAHandles || []
+                                              if (items.includes('ALL')) return <span style={{ fontSize: 10, background: '#ecfdf5', color: '#059669', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>All Handles</span>
+                                              const SHOW_LIMIT = 5
+                                              const showAll = expandedCapSection === `${t.key}-vpa`
+                                              const visible = showAll ? items : items.slice(0, SHOW_LIMIT)
+                                              return (
+                                                <>
+                                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                                                    {visible.map(h => <span key={h} style={{ fontSize: 10, background: '#ecfdf5', color: '#059669', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>{h}</span>)}
+                                                  </div>
+                                                  {items.length > SHOW_LIMIT && (
+                                                    <button
+                                                      onClick={(e) => { e.stopPropagation(); setExpandedCapSection(showAll ? null : `${t.key}-vpa`) }}
+                                                      style={{ fontSize: 10, color: '#059669', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', marginTop: 4, fontWeight: 500 }}
+                                                    >
+                                                      {showAll ? 'Show less' : `Show all (${items.length})`}
+                                                    </button>
+                                                  )}
+                                                </>
+                                              )
+                                            })()}
+                                            {!(t.supportedVPAHandles || []).length && <span style={{ fontSize: 10, color: '#9ca3af', fontStyle: 'italic' }}>Not specified</span>}
                                           </div>
                                           <div>
                                             <div style={{ fontSize: 9, color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4 }}>Recurring / Mandate</div>
@@ -2040,15 +2069,29 @@ export default function KAMMerchantDetail() {
                                           </div>
                                           <div>
                                             <div style={{ fontSize: 9, color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4 }}>Supported Banks</div>
-                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                                              {(t.supportedNBBanks || []).includes('ALL')
-                                                ? <span style={{ fontSize: 10, background: '#fff7ed', color: '#c2410c', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>All Banks</span>
-                                                : (t.supportedNBBanks || []).map(b => (
-                                                    <span key={b} style={{ fontSize: 10, background: '#fff7ed', color: '#c2410c', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>{b}</span>
-                                                  ))
-                                              }
-                                              {!(t.supportedNBBanks || []).length && <span style={{ fontSize: 10, color: '#9ca3af', fontStyle: 'italic' }}>Not specified</span>}
-                                            </div>
+                                            {(() => {
+                                              const items = t.supportedNBBanks || []
+                                              if (items.includes('ALL')) return <span style={{ fontSize: 10, background: '#fff7ed', color: '#c2410c', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>All Banks</span>
+                                              const SHOW_LIMIT = 5
+                                              const showAll = expandedCapSection === `${t.key}-banks`
+                                              const visible = showAll ? items : items.slice(0, SHOW_LIMIT)
+                                              return (
+                                                <>
+                                                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                                                    {visible.map(b => <span key={b} style={{ fontSize: 10, background: '#fff7ed', color: '#c2410c', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>{b}</span>)}
+                                                  </div>
+                                                  {items.length > SHOW_LIMIT && (
+                                                    <button
+                                                      onClick={(e) => { e.stopPropagation(); setExpandedCapSection(showAll ? null : `${t.key}-banks`) }}
+                                                      style={{ fontSize: 10, color: '#c2410c', background: 'none', border: 'none', cursor: 'pointer', padding: '2px 0', marginTop: 4, fontWeight: 500 }}
+                                                    >
+                                                      {showAll ? 'Show less' : `Show all (${items.length})`}
+                                                    </button>
+                                                  )}
+                                                </>
+                                              )
+                                            })()}
+                                            {!(t.supportedNBBanks || []).length && <span style={{ fontSize: 10, color: '#9ca3af', fontStyle: 'italic' }}>Not specified</span>}
                                           </div>
                                         </div>
                                       )}
