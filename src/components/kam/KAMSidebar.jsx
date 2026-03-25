@@ -99,6 +99,26 @@ export default function KAMSidebar({ collapsed, onToggle }) {
           </svg>
           {!collapsed && 'Merchants'}
         </NavLink>
+        <NavLink
+          to="/kam/terminals"
+          className={({ isActive }) =>
+            `kam-nav-item ${isActive ? 'active' : ''}`
+          }
+          title={collapsed ? 'Terminals' : undefined}
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 20 20"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <rect x="2" y="3" width="16" height="11" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none" />
+            <line x1="7" y1="17" x2="13" y2="17" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            <line x1="10" y1="14" x2="10" y2="17" stroke="currentColor" strokeWidth="1.5" />
+          </svg>
+          {!collapsed && 'Terminals'}
+        </NavLink>
       </nav>
 
       <div className="kam-sidebar-profile">

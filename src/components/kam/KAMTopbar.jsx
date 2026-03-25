@@ -3,6 +3,7 @@ import { useLocation } from 'react-router-dom'
 function getPageTitle(pathname) {
   if (pathname === '/kam' || pathname === '/kam/') return 'Overview'
   if (pathname === '/kam/merchants') return 'Merchants'
+  if (pathname === '/kam/terminals') return 'Terminal Configuration'
   if (pathname.startsWith('/kam/merchant/')) return 'Merchant Detail'
   return 'Dashboard'
 }
