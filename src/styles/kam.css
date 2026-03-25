@@ -11,8 +11,8 @@
   background: var(--rzp-bg);
 
   /* Override SM design-system fonts with Razorpay-appropriate stack */
-  --font-primary: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  --font-secondary: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-primary: 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-secondary: 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 /* Sidebar
@@ -91,7 +91,7 @@
 }
 
 .kam-nav-item.active {
-  background: rgba(82, 143, 240, 0.15);
+  background: rgba(13, 109, 255, 0.15);
   color: var(--rzp-text-on-dark);
   font-weight: var(--font-weight-semibold);
   border-left: 3px solid var(--rzp-blue);
