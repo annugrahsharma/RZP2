@@ -1041,9 +1041,14 @@ export default function KAMMerchantDetail() {
         bankStatus: term?.bankStatus || 'active',
         bankStatusReason: term?.bankStatusReason || null,
         bankStatusSince: term?.bankStatusSince || null,
+        supportedMethods: gm.supportedMethods || [],
         supportedNetworks: gm.supportedNetworks || [],
         supportedIssuers: gm.supportedIssuers || [],
         supportedCardTypes: gm.supportedCardTypes || [],
+        supportedUPIFlows: gm.supportedUPIFlows || [],
+        supportedVPAHandles: gm.supportedVPAHandles || [],
+        supportsRecurring: gm.supportsRecurring || false,
+        supportedNBBanks: gm.supportedNBBanks || [],
       }
     })
   }, [merchant?.gatewayMetrics, gateways])
@@ -1854,17 +1859,13 @@ export default function KAMMerchantDetail() {
                         <th>Current SR</th>
                         <th>Daily Volume</th>
                         <th>Txn Share</th>
-                        <th>Cost/Txn</th>
                         <th>Status</th>
-                        <th style={{ width: 40 }}></th>
                       </tr>
                     </thead>
                     <tbody>
                       {group.terminals.map((t) => {
                         const active = isTerminalActive(t.key)
                         const srOptimal = t.successRate >= 71
-                        const isExpanded = expandedTerminal === t.key
-                        const pricingData = getBackwardPricingBreakdown(t.internalTermId)
                         return (
                           <React.Fragment key={t.key}>
                             <tr style={{ opacity: active ? 1 : 0.5 }}>
@@ -1883,24 +1884,107 @@ export default function KAMMerchantDetail() {
                                 )}
                               </td>
                               <td>{t.provider}</td>
-                              <td style={{ fontSize: 11 }}>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, alignItems: 'center' }}>
-                                  {t.supportedNetworks?.length > 0 && t.supportedNetworks.map((net) => (
-                                    <span key={net} style={{ fontSize: 9, background: '#eff6ff', color: '#2563eb', padding: '1px 5px', borderRadius: 8, whiteSpace: 'nowrap' }}>
-                                      {net}
-                                    </span>
-                                  ))}
-                                  {t.supportedIssuers?.length > 0 && (
-                                    <span style={{ fontSize: 9, background: '#f5f3ff', color: '#7c3aed', padding: '1px 5px', borderRadius: 8, whiteSpace: 'nowrap' }}>
-                                      {t.supportedIssuers.includes('ALL') ? 'All Issuers' : t.supportedIssuers.length <= 3 ? t.supportedIssuers.join(', ') : `${t.supportedIssuers.length} Issuers`}
-                                    </span>
-                                  )}
-                                  {t.supportedCardTypes?.length > 0 && t.supportedCardTypes.map((ct) => (
-                                    <span key={ct} style={{ fontSize: 9, background: '#fffbeb', color: '#d97706', padding: '1px 5px', borderRadius: 8, whiteSpace: 'nowrap' }}>
-                                      {ct.charAt(0).toUpperCase() + ct.slice(1)}
-                                    </span>
-                                  ))}
-                                </div>
+                              <td style={{ padding: '6px 8px', verticalAlign: 'top', minWidth: 200 }}>
+                                {/* Cards capabilities */}
+                                {(t.supportedMethods || []).includes('Cards') && (
+                                  <div style={{ marginBottom: 4 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 3 }}>
+                                      <span style={{ fontSize: 9, color: '#9ca3af', fontWeight: 600, width: 52, flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.3 }}>Networks</span>
+                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                                        {(t.supportedNetworks || []).map(net => (
+                                          <span key={net} style={{ fontSize: 9, background: '#eff6ff', color: '#2563eb', padding: '1px 5px', borderRadius: 8 }}>{net}</span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 3 }}>
+                                      <span style={{ fontSize: 9, color: '#9ca3af', fontWeight: 600, width: 52, flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.3 }}>Issuers</span>
+                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                                        {(t.supportedIssuers || []).includes('ALL')
+                                          ? <span style={{ fontSize: 9, background: '#f5f3ff', color: '#7c3aed', padding: '1px 5px', borderRadius: 8 }}>All Issuers</span>
+                                          : (t.supportedIssuers || []).length <= 3
+                                            ? (t.supportedIssuers || []).map(iss => (
+                                                <span key={iss} style={{ fontSize: 9, background: '#f5f3ff', color: '#7c3aed', padding: '1px 5px', borderRadius: 8 }}>{iss}</span>
+                                              ))
+                                            : <>
+                                                {(t.supportedIssuers || []).slice(0, 2).map(iss => (
+                                                  <span key={iss} style={{ fontSize: 9, background: '#f5f3ff', color: '#7c3aed', padding: '1px 5px', borderRadius: 8 }}>{iss}</span>
+                                                ))}
+                                                <span style={{ fontSize: 9, color: '#7c3aed' }}>+{(t.supportedIssuers || []).length - 2} more</span>
+                                              </>
+                                        }
+                                      </div>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                      <span style={{ fontSize: 9, color: '#9ca3af', fontWeight: 600, width: 52, flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.3 }}>Types</span>
+                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                                        {(t.supportedCardTypes || []).map(ct => (
+                                          <span key={ct} style={{ fontSize: 9, background: '#fffbeb', color: '#d97706', padding: '1px 5px', borderRadius: 8 }}>{ct.charAt(0).toUpperCase() + ct.slice(1)}</span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                                {/* UPI capabilities */}
+                                {(t.supportedMethods || []).includes('UPI') && (
+                                  <div style={{ marginBottom: 4 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 3 }}>
+                                      <span style={{ fontSize: 9, color: '#9ca3af', fontWeight: 600, width: 52, flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.3 }}>Flows</span>
+                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                                        {(t.supportedUPIFlows || []).map(flow => (
+                                          <span key={flow} style={{ fontSize: 9, background: '#ecfdf5', color: '#059669', padding: '1px 5px', borderRadius: 8 }}>{flow}</span>
+                                        ))}
+                                      </div>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 3 }}>
+                                      <span style={{ fontSize: 9, color: '#9ca3af', fontWeight: 600, width: 52, flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.3 }}>VPA</span>
+                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                                        {(t.supportedVPAHandles || []).includes('ALL')
+                                          ? <span style={{ fontSize: 9, background: '#ecfdf5', color: '#059669', padding: '1px 5px', borderRadius: 8 }}>All Handles</span>
+                                          : (t.supportedVPAHandles || []).length <= 3
+                                            ? (t.supportedVPAHandles || []).map(h => (
+                                                <span key={h} style={{ fontSize: 9, background: '#ecfdf5', color: '#059669', padding: '1px 5px', borderRadius: 8 }}>{h}</span>
+                                              ))
+                                            : <>
+                                                {(t.supportedVPAHandles || []).slice(0, 2).map(h => (
+                                                  <span key={h} style={{ fontSize: 9, background: '#ecfdf5', color: '#059669', padding: '1px 5px', borderRadius: 8 }}>{h}</span>
+                                                ))}
+                                                <span style={{ fontSize: 9, color: '#059669' }}>+{(t.supportedVPAHandles || []).length - 2} more</span>
+                                              </>
+                                        }
+                                      </div>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                      <span style={{ fontSize: 9, color: '#9ca3af', fontWeight: 600, width: 52, flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.3 }}>Recur</span>
+                                      {t.supportsRecurring
+                                        ? <span style={{ fontSize: 9, background: '#ecfdf5', color: '#059669', padding: '1px 5px', borderRadius: 8 }}>Supported</span>
+                                        : <span style={{ fontSize: 9, background: '#fef2f2', color: '#dc2626', padding: '1px 5px', borderRadius: 8 }}>Not Supported</span>
+                                      }
+                                    </div>
+                                  </div>
+                                )}
+                                {/* NB capabilities */}
+                                {(t.supportedMethods || []).includes('NB') && (
+                                  <div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                                      <span style={{ fontSize: 9, color: '#9ca3af', fontWeight: 600, width: 52, flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.3 }}>Banks</span>
+                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                                        {(t.supportedNBBanks || []).includes('ALL')
+                                          ? <span style={{ fontSize: 9, background: '#fff7ed', color: '#c2410c', padding: '1px 5px', borderRadius: 8 }}>All Banks</span>
+                                          : (t.supportedNBBanks || []).length <= 3
+                                            ? (t.supportedNBBanks || []).map(b => (
+                                                <span key={b} style={{ fontSize: 9, background: '#fff7ed', color: '#c2410c', padding: '1px 5px', borderRadius: 8 }}>{b}</span>
+                                              ))
+                                            : <>
+                                                {(t.supportedNBBanks || []).slice(0, 2).map(b => (
+                                                  <span key={b} style={{ fontSize: 9, background: '#fff7ed', color: '#c2410c', padding: '1px 5px', borderRadius: 8 }}>{b}</span>
+                                                ))}
+                                                <span style={{ fontSize: 9, color: '#c2410c' }}>+{(t.supportedNBBanks || []).length - 2} more</span>
+                                              </>
+                                        }
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
                               </td>
                               <td>
                                 <span style={{ fontWeight: 600 }}>{t.successRate}%</span>
@@ -1928,12 +2012,6 @@ export default function KAMMerchantDetail() {
                                   </span>
                                 </div>
                               </td>
-                              <td style={{ fontFamily: 'monospace', fontSize: 13 }}>
-                                {'\u20B9'}{t.costPerTxn.toFixed(2)}
-                                {isTerminalZeroCost(t.internalTermId) && (
-                                  <span className="kam-zero-cost-tag">0-Cost</span>
-                                )}
-                              </td>
                               <td>
                                 <button
                                   className={`kam-toggle${active ? ' active' : ''}`}
@@ -1941,60 +2019,7 @@ export default function KAMMerchantDetail() {
                                   aria-label={`Toggle terminal ${t.terminalId}`}
                                 />
                               </td>
-                              <td>
-                                {pricingData.length > 0 && (
-                                  <button
-                                    className="kam-btn kam-btn-ghost kam-btn-sm"
-                                    onClick={() => setExpandedTerminal(isExpanded ? null : t.key)}
-                                    style={{ padding: 4 }}
-                                    aria-label="Toggle pricing details"
-                                  >
-                                    <svg
-                                      width="14" height="14" viewBox="0 0 24 24" fill="none"
-                                      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-                                  style={{ transition: 'transform 0.2s', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
-                                >
-                                  <polyline points="6 9 12 15 18 9" />
-                                </svg>
-                              </button>
-                            )}
-                          </td>
                         </tr>
-                        {isExpanded && pricingData.length > 0 && (
-                          <tr className="kam-pricing-expanded-row">
-                            <td colSpan={9} style={{ padding: 0 }}>
-                              <div className="kam-pricing-breakdown">
-                                <div className="kam-pricing-breakdown-title">Backward Pricing Schedule</div>
-                                <table className="kam-pricing-table">
-                                  <thead>
-                                    <tr>
-                                      <th>Network</th>
-                                      <th>Card Type</th>
-                                      <th>Amount Range</th>
-                                      <th>Cost/Txn</th>
-                                      <th>International</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    {pricingData.map((tier, i) => (
-                                      <tr key={i}>
-                                        <td><span className="kam-network-badge">{tier.network}</span></td>
-                                        <td>{tier.cardType}</td>
-                                        <td>{tier.amountRange}</td>
-                                        <td style={{ fontFamily: 'monospace', fontWeight: 600 }}>
-                                          {tier.costPerTxn === 0
-                                            ? <span className="kam-zero-cost-tag">0-Cost</span>
-                                            : `\u20B9${tier.costPerTxn.toFixed(2)}`}
-                                        </td>
-                                        <td>{tier.isInternational ? 'Yes' : '\u2014'}</td>
-                                      </tr>
-                                    ))}
-                                  </tbody>
-                                </table>
-                              </div>
-                            </td>
-                          </tr>
-                        )}
                           </React.Fragment>
                         )
                       })}
