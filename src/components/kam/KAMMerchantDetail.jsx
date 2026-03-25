@@ -1855,20 +1855,33 @@ export default function KAMMerchantDetail() {
                       <tr>
                         <th>Terminal ID</th>
                         <th>Provider</th>
-                        <th>Capabilities</th>
                         <th>Current SR</th>
                         <th>Daily Volume</th>
                         <th>Txn Share</th>
                         <th>Status</th>
+                        <th style={{ width: 40 }}></th>
                       </tr>
                     </thead>
                     <tbody>
                       {group.terminals.map((t) => {
                         const active = isTerminalActive(t.key)
                         const srOptimal = t.successRate >= 71
+                        const isExpanded = expandedTerminal === t.key
+                        // Build compact summary of methods
+                        const methods = t.supportedMethods || []
+                        const summaryParts = []
+                        if (methods.includes('Cards')) {
+                          const nets = (t.supportedNetworks || []).join(', ')
+                          summaryParts.push(nets || 'Cards')
+                        }
+                        if (methods.includes('UPI')) {
+                          const flows = (t.supportedUPIFlows || []).join(', ')
+                          summaryParts.push(flows ? `UPI: ${flows}` : 'UPI')
+                        }
+                        if (methods.includes('NB')) summaryParts.push('NB')
                         return (
                           <React.Fragment key={t.key}>
-                            <tr style={{ opacity: active ? 1 : 0.5 }}>
+                            <tr style={{ opacity: active ? 1 : 0.5, cursor: 'pointer' }} onClick={() => setExpandedTerminal(isExpanded ? null : t.key)}>
                               <td>
                                 <span style={{ fontFamily: 'monospace', fontWeight: 600, fontSize: 13 }}>
                                   {t.terminalId}
@@ -1884,108 +1897,6 @@ export default function KAMMerchantDetail() {
                                 )}
                               </td>
                               <td>{t.provider}</td>
-                              <td style={{ padding: '6px 8px', verticalAlign: 'top', minWidth: 200 }}>
-                                {/* Cards capabilities */}
-                                {(t.supportedMethods || []).includes('Cards') && (
-                                  <div style={{ marginBottom: 4 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 3 }}>
-                                      <span style={{ fontSize: 9, color: '#9ca3af', fontWeight: 600, width: 52, flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.3 }}>Networks</span>
-                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-                                        {(t.supportedNetworks || []).map(net => (
-                                          <span key={net} style={{ fontSize: 9, background: '#eff6ff', color: '#2563eb', padding: '1px 5px', borderRadius: 8 }}>{net}</span>
-                                        ))}
-                                      </div>
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 3 }}>
-                                      <span style={{ fontSize: 9, color: '#9ca3af', fontWeight: 600, width: 52, flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.3 }}>Issuers</span>
-                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-                                        {(t.supportedIssuers || []).includes('ALL')
-                                          ? <span style={{ fontSize: 9, background: '#f5f3ff', color: '#7c3aed', padding: '1px 5px', borderRadius: 8 }}>All Issuers</span>
-                                          : (t.supportedIssuers || []).length <= 3
-                                            ? (t.supportedIssuers || []).map(iss => (
-                                                <span key={iss} style={{ fontSize: 9, background: '#f5f3ff', color: '#7c3aed', padding: '1px 5px', borderRadius: 8 }}>{iss}</span>
-                                              ))
-                                            : <>
-                                                {(t.supportedIssuers || []).slice(0, 2).map(iss => (
-                                                  <span key={iss} style={{ fontSize: 9, background: '#f5f3ff', color: '#7c3aed', padding: '1px 5px', borderRadius: 8 }}>{iss}</span>
-                                                ))}
-                                                <span style={{ fontSize: 9, color: '#7c3aed' }}>+{(t.supportedIssuers || []).length - 2} more</span>
-                                              </>
-                                        }
-                                      </div>
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                      <span style={{ fontSize: 9, color: '#9ca3af', fontWeight: 600, width: 52, flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.3 }}>Types</span>
-                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-                                        {(t.supportedCardTypes || []).map(ct => (
-                                          <span key={ct} style={{ fontSize: 9, background: '#fffbeb', color: '#d97706', padding: '1px 5px', borderRadius: 8 }}>{ct.charAt(0).toUpperCase() + ct.slice(1)}</span>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  </div>
-                                )}
-                                {/* UPI capabilities */}
-                                {(t.supportedMethods || []).includes('UPI') && (
-                                  <div style={{ marginBottom: 4 }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 3 }}>
-                                      <span style={{ fontSize: 9, color: '#9ca3af', fontWeight: 600, width: 52, flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.3 }}>Flows</span>
-                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-                                        {(t.supportedUPIFlows || []).map(flow => (
-                                          <span key={flow} style={{ fontSize: 9, background: '#ecfdf5', color: '#059669', padding: '1px 5px', borderRadius: 8 }}>{flow}</span>
-                                        ))}
-                                      </div>
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 3 }}>
-                                      <span style={{ fontSize: 9, color: '#9ca3af', fontWeight: 600, width: 52, flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.3 }}>VPA</span>
-                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-                                        {(t.supportedVPAHandles || []).includes('ALL')
-                                          ? <span style={{ fontSize: 9, background: '#ecfdf5', color: '#059669', padding: '1px 5px', borderRadius: 8 }}>All Handles</span>
-                                          : (t.supportedVPAHandles || []).length <= 3
-                                            ? (t.supportedVPAHandles || []).map(h => (
-                                                <span key={h} style={{ fontSize: 9, background: '#ecfdf5', color: '#059669', padding: '1px 5px', borderRadius: 8 }}>{h}</span>
-                                              ))
-                                            : <>
-                                                {(t.supportedVPAHandles || []).slice(0, 2).map(h => (
-                                                  <span key={h} style={{ fontSize: 9, background: '#ecfdf5', color: '#059669', padding: '1px 5px', borderRadius: 8 }}>{h}</span>
-                                                ))}
-                                                <span style={{ fontSize: 9, color: '#059669' }}>+{(t.supportedVPAHandles || []).length - 2} more</span>
-                                              </>
-                                        }
-                                      </div>
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                      <span style={{ fontSize: 9, color: '#9ca3af', fontWeight: 600, width: 52, flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.3 }}>Recur</span>
-                                      {t.supportsRecurring
-                                        ? <span style={{ fontSize: 9, background: '#ecfdf5', color: '#059669', padding: '1px 5px', borderRadius: 8 }}>Supported</span>
-                                        : <span style={{ fontSize: 9, background: '#fef2f2', color: '#dc2626', padding: '1px 5px', borderRadius: 8 }}>Not Supported</span>
-                                      }
-                                    </div>
-                                  </div>
-                                )}
-                                {/* NB capabilities */}
-                                {(t.supportedMethods || []).includes('NB') && (
-                                  <div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                                      <span style={{ fontSize: 9, color: '#9ca3af', fontWeight: 600, width: 52, flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.3 }}>Banks</span>
-                                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-                                        {(t.supportedNBBanks || []).includes('ALL')
-                                          ? <span style={{ fontSize: 9, background: '#fff7ed', color: '#c2410c', padding: '1px 5px', borderRadius: 8 }}>All Banks</span>
-                                          : (t.supportedNBBanks || []).length <= 3
-                                            ? (t.supportedNBBanks || []).map(b => (
-                                                <span key={b} style={{ fontSize: 9, background: '#fff7ed', color: '#c2410c', padding: '1px 5px', borderRadius: 8 }}>{b}</span>
-                                              ))
-                                            : <>
-                                                {(t.supportedNBBanks || []).slice(0, 2).map(b => (
-                                                  <span key={b} style={{ fontSize: 9, background: '#fff7ed', color: '#c2410c', padding: '1px 5px', borderRadius: 8 }}>{b}</span>
-                                                ))}
-                                                <span style={{ fontSize: 9, color: '#c2410c' }}>+{(t.supportedNBBanks || []).length - 2} more</span>
-                                              </>
-                                        }
-                                      </div>
-                                    </div>
-                                  </div>
-                                )}
-                              </td>
                               <td>
                                 <span style={{ fontWeight: 600 }}>{t.successRate}%</span>
                                 {' '}
@@ -2015,11 +1926,137 @@ export default function KAMMerchantDetail() {
                               <td>
                                 <button
                                   className={`kam-toggle${active ? ' active' : ''}`}
-                                  onClick={() => handleTerminalToggle(t)}
+                                  onClick={(e) => { e.stopPropagation(); handleTerminalToggle(t) }}
                                   aria-label={`Toggle terminal ${t.terminalId}`}
                                 />
                               </td>
-                        </tr>
+                              <td>
+                                <button
+                                  className="kam-btn kam-btn-ghost kam-btn-sm"
+                                  onClick={(e) => { e.stopPropagation(); setExpandedTerminal(isExpanded ? null : t.key) }}
+                                  style={{ padding: 4 }}
+                                  aria-label="Toggle capability details"
+                                >
+                                  <svg
+                                    width="14" height="14" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                                    style={{ transition: 'transform 0.2s', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
+                                  >
+                                    <polyline points="6 9 12 15 18 9" />
+                                  </svg>
+                                </button>
+                              </td>
+                            </tr>
+                            {isExpanded && (
+                              <tr className="kam-pricing-expanded-row">
+                                <td colSpan={7} style={{ padding: 0 }}>
+                                  <div style={{ background: '#f8fafc', borderTop: '1px solid #e2e8f0', padding: '12px 16px' }}>
+                                    <div style={{ fontSize: 11, fontWeight: 700, color: '#374151', marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                      Terminal Capabilities — {t.terminalId}
+                                    </div>
+                                    <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap' }}>
+                                      {/* Cards section */}
+                                      {methods.includes('Cards') && (
+                                        <div style={{ flex: '1 1 220px', background: 'white', borderRadius: 8, border: '1px solid #e5e7eb', padding: '10px 14px' }}>
+                                          <div style={{ fontSize: 10, fontWeight: 700, color: '#2563eb', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#2563eb', display: 'inline-block' }} />
+                                            Cards
+                                          </div>
+                                          <div style={{ marginBottom: 8 }}>
+                                            <div style={{ fontSize: 9, color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4 }}>Supported Networks</div>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                                              {(t.supportedNetworks || []).map(net => (
+                                                <span key={net} style={{ fontSize: 10, background: '#eff6ff', color: '#2563eb', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>{net}</span>
+                                              ))}
+                                              {!(t.supportedNetworks || []).length && <span style={{ fontSize: 10, color: '#9ca3af', fontStyle: 'italic' }}>Not specified</span>}
+                                            </div>
+                                          </div>
+                                          <div style={{ marginBottom: 8 }}>
+                                            <div style={{ fontSize: 9, color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4 }}>Supported Issuer Banks</div>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                                              {(t.supportedIssuers || []).includes('ALL')
+                                                ? <span style={{ fontSize: 10, background: '#f5f3ff', color: '#7c3aed', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>All Issuers</span>
+                                                : (t.supportedIssuers || []).map(iss => (
+                                                    <span key={iss} style={{ fontSize: 10, background: '#f5f3ff', color: '#7c3aed', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>{iss}</span>
+                                                  ))
+                                              }
+                                              {!(t.supportedIssuers || []).length && <span style={{ fontSize: 10, color: '#9ca3af', fontStyle: 'italic' }}>Not specified</span>}
+                                            </div>
+                                          </div>
+                                          <div>
+                                            <div style={{ fontSize: 9, color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4 }}>Card Types</div>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                                              {(t.supportedCardTypes || []).map(ct => (
+                                                <span key={ct} style={{ fontSize: 10, background: '#fffbeb', color: '#d97706', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>{ct.charAt(0).toUpperCase() + ct.slice(1)}</span>
+                                              ))}
+                                              {!(t.supportedCardTypes || []).length && <span style={{ fontSize: 10, color: '#9ca3af', fontStyle: 'italic' }}>Not specified</span>}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+                                      {/* UPI section */}
+                                      {methods.includes('UPI') && (
+                                        <div style={{ flex: '1 1 220px', background: 'white', borderRadius: 8, border: '1px solid #e5e7eb', padding: '10px 14px' }}>
+                                          <div style={{ fontSize: 10, fontWeight: 700, color: '#059669', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#059669', display: 'inline-block' }} />
+                                            UPI
+                                          </div>
+                                          <div style={{ marginBottom: 8 }}>
+                                            <div style={{ fontSize: 9, color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4 }}>Supported Flows</div>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                                              {(t.supportedUPIFlows || []).map(flow => (
+                                                <span key={flow} style={{ fontSize: 10, background: '#ecfdf5', color: '#059669', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>{flow}</span>
+                                              ))}
+                                              {!(t.supportedUPIFlows || []).length && <span style={{ fontSize: 10, color: '#9ca3af', fontStyle: 'italic' }}>Not specified</span>}
+                                            </div>
+                                          </div>
+                                          <div style={{ marginBottom: 8 }}>
+                                            <div style={{ fontSize: 9, color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4 }}>VPA Handles</div>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                                              {(t.supportedVPAHandles || []).includes('ALL')
+                                                ? <span style={{ fontSize: 10, background: '#ecfdf5', color: '#059669', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>All Handles</span>
+                                                : (t.supportedVPAHandles || []).map(h => (
+                                                    <span key={h} style={{ fontSize: 10, background: '#ecfdf5', color: '#059669', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>{h}</span>
+                                                  ))
+                                              }
+                                              {!(t.supportedVPAHandles || []).length && <span style={{ fontSize: 10, color: '#9ca3af', fontStyle: 'italic' }}>Not specified</span>}
+                                            </div>
+                                          </div>
+                                          <div>
+                                            <div style={{ fontSize: 9, color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4 }}>Recurring / Mandate</div>
+                                            {t.supportsRecurring
+                                              ? <span style={{ fontSize: 10, background: '#ecfdf5', color: '#059669', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>Supported</span>
+                                              : <span style={{ fontSize: 10, background: '#fef2f2', color: '#dc2626', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>Not Supported</span>
+                                            }
+                                          </div>
+                                        </div>
+                                      )}
+                                      {/* NB section */}
+                                      {methods.includes('NB') && (
+                                        <div style={{ flex: '1 1 220px', background: 'white', borderRadius: 8, border: '1px solid #e5e7eb', padding: '10px 14px' }}>
+                                          <div style={{ fontSize: 10, fontWeight: 700, color: '#c2410c', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+                                            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#c2410c', display: 'inline-block' }} />
+                                            Net Banking
+                                          </div>
+                                          <div>
+                                            <div style={{ fontSize: 9, color: '#9ca3af', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.3, marginBottom: 4 }}>Supported Banks</div>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                                              {(t.supportedNBBanks || []).includes('ALL')
+                                                ? <span style={{ fontSize: 10, background: '#fff7ed', color: '#c2410c', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>All Banks</span>
+                                                : (t.supportedNBBanks || []).map(b => (
+                                                    <span key={b} style={{ fontSize: 10, background: '#fff7ed', color: '#c2410c', padding: '2px 8px', borderRadius: 10, fontWeight: 500 }}>{b}</span>
+                                                  ))
+                                              }
+                                              {!(t.supportedNBBanks || []).length && <span style={{ fontSize: 10, color: '#9ca3af', fontStyle: 'italic' }}>Not specified</span>}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
                           </React.Fragment>
                         )
                       })}
